@@ -1,4 +1,4 @@
-# pca
+# PCA (parametric curve assistant)
 This python functions are made with the purpose to helps engineering to easily create NURBS, B-spline, Bezier and other kind of parametric curves and plotting them
 In this files you will found:
 B-spline and NURBS Basis function
