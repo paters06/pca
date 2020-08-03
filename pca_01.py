@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sun May 17 15:11:32 2020
+Modified on Sun Aug 02 15:29:17 2020
 
 @author: hernando
-@free to write your name here, if you want to collaborate :)
+@collaborator: paternina
 """
 "NURBS"
 
@@ -13,114 +14,147 @@ from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
 import sys
 
-def knot (n,p):
-    u0=np.array([0]*(p+1))
+def knotVector(n,p):
+
+    ustart = np.zeros(p+1)
+    
     if n<p:
         print ("Fatal error")
-        sys.exit("no such vector curve exist, pls try n greater than p")
+        sys.exit("No such vector curve exists, please try n greater than p")
+        return ustart
     else:
-        j=np.arange(1,n-p+1)
-        ujp=j/(n-p+1)
-        um=np.array([1]*(p+1))
-        k=np.concatenate([u0,ujp,um])
-        
-    return k
+        umid = np.arange(1,n-p)/(n-p+1)
+        uend = np.ones(p+1)
+        return np.concatenate([ustart,umid,uend])
 
-def N0(U,u):
-    #U: el vector de nudos
-    #u: valor del parametro ente 0 y 1
-    N0=((U[0:-1]<=u)*(u<U[1:]))*1
-    return N0
+#U: knot vector
+#u: parameter between 0 and 1
+def findKnotInterval(U,u):
+    for i in range(len(U)-1):
+        if U[i]<=u and U[i+1]>u:
+            index = i
 
-def N_1(N0,U,p,u):
-    I=0
-    N_1=np.array([0.0]*(len(N0)-1))
-    for i in range(len(N0[:-1])):
-        num1=u-U[i]
-        num2=U[i+p+1]-u
-        den1=U[i+p]-U[i]
-        den2=U[i+p+1]-U[i+1]
-        if den1==0:
-            A=0
-        else:
-            A=num1/den1
-        if den2==0:
-            B=0
-        else:
-            B=num2/den2
-        N_1[I]=A*N0[i]+B*N0[i+1]# 
-        I=I+1
-        if u==1:
-            N_1[-1:]=1
-    return N_1
+    if U[-1] == U.max():
+        index = -1
 
-def N(N0,U,p,u):
-    for i in range(p):
-        N0=N_1(N0,U,(i+1),u)
-    return N0    
+    return index
 
-def ugen(a,b,step):
+def uGenerator(a,b,step):
     if 0<=a and b<=1:
-        u=rango=np.arange(a,b,step,dtype=np.float64)
+        u = np.arange(a,b,step,dtype=np.float64)
     else:
-        print('Los rangos no pertenecen al dominio de la funcion')
+        print('Ranks do not belong to the domain of the function')
         sys.exit("Error message")
     return u  
-        
-        
-def b_spline(u,px,p):
-    U=knot(len(px)-1,p)
-    cx=np.array([0.0]*len(u))
-    for i in range(len(u)):
-        Nn0=N0(U,u[i])
-        Nn=N(Nn0,U,p,u[i])
-        cx[i]=px@Nn
-    return cx
 
-def b_spline2d(u,v,px,p,q):
-    T=px.shape
-    Ui=knot(T[0]-1,p)
-    Uj=knot(T[1]-1,q)
-    cx=np.zeros([len(u),len(v)])
-    for i in range(len(u)):
-        for j in range(len(v)):
-            Nn0_i=N0(Ui,u[i])
-            Nn0_j=N0(Uj,v[j])
-            Nn_i=N(Nn0_i,Ui,p,u[i])
-            Nn_j=N(Nn0_j,Uj,q,v[j])
-            cx[i,j]=Nn_i@px@Nn_j 
-    return cx
+def nFunction(U,p,u):
+    m = len(U) - 1
+    for pi in range(p+1):
+        # print("p-Order: ",pi)
+        if pi != 0:
+            nbas = np.zeros(len(nbasis)-1)
+            for j in range(m-pi):
+                
+                num1 = u - U[j]
+                den1 = U[j+pi] - U[j]
+
+                num2 = U[j+pi+1] - u
+                den2 = U[j+pi+1] - U[j+1]
+
+                if den1==0:
+                    A = 0
+                else:
+                    A = num1/den1
+                if den2==0:
+                    B = 0
+                else:
+                    B = num2/den2
+
+                nbas[j] = A*nbasis[j] + B*nbasis[j+1]
+
+            nbasis = nbas
+        else:
+            index = findKnotInterval(U,u)
+            nbasis = np.zeros(len(U)-1)
+            for i in range(len(nbasis)):
+                if U[i]<=u and U[i+1]>u:
+                    nbasis[i] = 1.0
+
+        if u == U.max():
+            nbasis[-1:]=1
+
+    return nbasis
         
-        
-def NURBS(u,px,w,p):
-    U=knot(len(px)-1,p)
-    cx=np.array([0.0]*len(u))
-    for i in range(len(u)):
-        Nn0=N0(U,u[i])
-        Nn=N(Nn0,U,p,u[i])
-        cx[i]=(px@(Nn*w))/(Nn@w)
-    return cx
+def bSplineCurve(U,p,px,py):
+    numpoints = 101
+    urank = np.linspace(U.min(),U.max(),numpoints)
 
+    cx = np.zeros(len(urank))
+    cy = np.zeros(len(urank))
 
-def NURBS2d(u,v,px,w,p,q):
-    T=px.shape
-    Ui=knot(T[0]-1,p)
-    Uj=knot(T[1]-1,q)
-    cx=np.zeros([len(u),len(v)])
-    for i in range(len(u)):
-        for j in range(len(v)):
-            Nn0_i=N0(Ui,u[i])
-            Nn0_j=N0(Uj,v[j])
-            Nn_i=N(Nn0_i,Ui,p,u[i])
-            Nn_j=N(Nn0_j,Uj,q,v[j])
-            cx[i,j]=(Nn_i@(px*w)@Nn_j)/(Nn_i@(w)@Nn_j) 
-    return cx
+    for i in range(len(urank)):
+        nVec = nFunction(U,p,urank[i])
+        cx[i] = px@nVec
+        cy[i] = py@nVec
+    return cx,cy
 
-def ploting2d(cx,cy):
+def nurbsCurve(U,p,px,py,w):
+    numpoints = 101
+    urank = np.linspace(U.min(),U.max(),numpoints)
+
+    cx = np.zeros(len(urank))
+    cy = np.zeros(len(urank))
+    
+    for i in range(len(urank)):
+        nVec = nFunction(U,p,urank[i])
+        cx[i] = (px@(nVec*w))/(nVec@w)
+        cy[i] = (py@(nVec*w))/(nVec@w)
+    return cx,cy
+
+def bSplineSurface(U,V,p,q,px,py,pz):
+    numpoints = 101
+    urank = np.linspace(U.min(),U.max(),numpoints)
+    vrank = np.linspace(V.min(),V.max(),numpoints)
+
+    cx = np.zeros([len(urank),len(vrank)])
+    cy = np.zeros([len(urank),len(vrank)])
+    cz = np.zeros([len(urank),len(vrank)])
+    for i in range(len(urank)):
+        for j in range(len(vrank)):
+            nVeci = nFunction(U,p,urank[i])
+            nVecj = nFunction(V,q,vrank[j])
+
+            cx[i,j] = nVecj.transpose()@px@nVeci
+            cy[i,j] = nVecj.transpose()@py@nVeci
+            cz[i,j] = nVecj.transpose()@pz@nVeci
+    return cx,cy,cz
+
+def nurbsSurface(U,V,p,q,px,py,pz,w):
+    numpoints = 101
+    urank = np.linspace(U.min(),U.max(),numpoints)
+    vrank = np.linspace(V.min(),V.max(),numpoints)
+
+    cx = np.zeros([len(urank),len(vrank)])
+    cy = np.zeros([len(urank),len(vrank)])
+    cz = np.zeros([len(urank),len(vrank)])
+    for i in range(len(urank)):
+        for j in range(len(vrank)):
+            nVeci = nFunction(U,p,urank[i])
+            nVecj = nFunction(V,q,vrank[j])
+
+            cx[i,j] = (nVecj.transpose()@(px*w)@nVeci)/(nVecj.transpose()@(w)@nVeci)
+            cy[i,j] = (nVecj.transpose()@(py*w)@nVeci)/(nVecj.transpose()@(w)@nVeci)
+            cz[i,j] = (nVecj.transpose()@(pz*w)@nVeci)/(nVecj.transpose()@(w)@nVeci)
+    return cx,cy,cz
+
+def plotCurve2d(cx,cy,px,py):
+    fig = plt.figure()
     plt.plot(cx,cy)
-    return
+    plt.plot(px,py,'ro')
+    plt.plot(px,py)
+    plt.show()
 
-def ploting3d(cx,cy,cz,*argv):
+def plotting3d(cx,cy,cz,*argv):
     fig = plt.figure()
     ax = plt.axes(projection='3d')
     ax.plot3D(cx, cy, cz, 'gray')
@@ -129,16 +163,17 @@ def ploting3d(cx,cy,cz,*argv):
             if len(argv)==4:
                 ax.plot3D(argv[1],argv[2],argv[3], 'red')
             elif len(argv)> 4:
-                sys.exit("too much argumets, please delet one or more")
+                sys.exit("Too much arguments, please delete one or more")
             else:
-                sys.exit("missing arguments to plot control points")
+                sys.exit("Missing arguments to plot control points")
                 
-def plotingsurf(cx,cy,cz,*argv):
+def plottingSurface(cx,cy,cz,*argv):
     fig = plt.figure()
-    ax = plt.axes(projection='3d')
-    ax.contour3D(cx, cy, cz, 50, cmap='binary')
+    ax = plt.axes(projection = '3d')
+    ax.contour3D(cx, cy, cz, 50, cmap = 'binary')
     if len(argv)==3:
-        ax.plot_wireframe(argv[0], argv[1], argv[2], color='red')
+        ax.plot_wireframe(argv[0], argv[1], argv[2], color = 'red')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z');
+    plt.show()
