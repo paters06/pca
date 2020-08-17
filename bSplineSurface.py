@@ -36,4 +36,15 @@ q = 2
 # v = bs.uGenerator(0.0,1.0,0.01)
 
 cx,cy,cz = pca.bSplineSurface(U,V,p,q,Px,Py,Pz)
-pca.plottingSurface(cx,cy,cz,Px,Py,Pz)
+# pca.plottingSurface(cx,cy,cz,Px,Py,Pz)
+
+#Examples with partial derivatives
+# cPrimeXu,cPrimeYu,cPrimeZu = pca.bSplineSurfaceDerivativeU(U,V,p,q,Px,Py,Pz)
+# pca.plotTangentSurface(cx,cy,cz,cPrimeXu,cPrimeYu,cPrimeZu,Px,Py,Pz,'Partial derivative with respect to u')
+
+# cPrimeXv,cPrimeYv,cPrimeZv = pca.bSplineSurfaceDerivativeV(U,V,p,q,Px,Py,Pz)
+# pca.plotTangentSurface(cx,cy,cz,cPrimeXv,cPrimeYv,cPrimeZv,Px,Py,Pz,'Partial derivative with respect to v')
+
+#The operation gives almost zero matrices
+#cPrimeXuv,cPrimeYuv,cPrimeZuv = pca.bSplineSurfaceDerivativeUV(U,V,p,q,Px,Py,Pz)
+# pca.plotTangentSurface(cx,cy,cz,cPrimeXuv,cPrimeYuv,cPrimeZuv,Px,Py,Pz,'Partial derivative with respect to u and v')
