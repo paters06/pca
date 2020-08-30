@@ -17,17 +17,35 @@ import sys
 #tolerance for knot vector
 tol = 1e-5
 
-def knotVector(n,p):
-
-    ustart = np.zeros(p+1)
-
+def knotGeneratorUniform(n,p):
     if n<p:
         print ("Fatal error")
         sys.exit("No such vector curve exists, please try n greater than p")
-        return ustart
+        return np.zeros(p+1)
     else:
-        umid = np.arange(1,n-p)/(n-p+1)
+        ustart = np.zeros(p+1)
+        umid = np.zeros(n-p)
+        for j in range(1,n-p+1):
+            umid[j-1] = j/(n-p+1)
         uend = np.ones(p+1)
+        return np.concatenate([ustart,umid,uend])
+
+def knotGeneratorChord(n,p,tv):
+    if n<p:
+        print ("Fatal error")
+        sys.exit("No such vector curve exists, please try n greater than p")
+        return np.zeros(p+1)
+    else:
+        ustart = np.zeros(p+1)
+        uend = np.ones(p+1)
+        umid = np.zeros(n-p)
+        for j in range(1,n-p+1):
+            ui = 0
+            for i in range(j,j+p):
+                # print(tv[i])
+                ui += tv[i]
+            ui *= (1.0/p)
+            umid[j-1] = ui
         return np.concatenate([ustart,umid,uend])
 
 #U: knot vector
@@ -42,14 +60,6 @@ def findKnotInterval(U,u):
                 nbasis[i] = 1.0
     return index
 
-def uGenerator(a,b,step):
-    if 0<=a and b<=1:
-        u = np.arange(a,b,step,dtype=np.float64)
-    else:
-        print('Ranks do not belong to the domain of the function')
-        sys.exit("Error message")
-    return u
-
 ####################################################
 #################BASIS FUNCTIONS####################
 ####################################################
@@ -59,7 +69,7 @@ def nFunction(U,p,u):
     for pi in range(p+1):
         # print("p-Order: ",pi)
         if pi != 0:
-            nbas = np.zeros(len(nbasis)-1)
+            nbas = np.zeros((1,len(nbasis[0])-1))
             for j in range(m-pi):
 
                 num1 = u - U[j]
@@ -78,24 +88,24 @@ def nFunction(U,p,u):
                 else:
                     B = num2/den2
 
-                nbas[j] = A*nbasis[j] + B*nbasis[j+1]
+                nbas[0][j] = A*nbasis[0][j] + B*nbasis[0][j+1]
 
             nbasis = nbas
         else:
-            nbasis = np.zeros(len(U)-1)
-            for i in range(len(nbasis)):
+            nbasis = np.zeros((1,len(U)-1))
+            for i in range(len(nbasis[0])):
                 if U[i] < (u + tol) and (u + tol) < (U[i+1]):
-                    nbasis[i] = 1.0
+                    nbasis[0][i] = 1.0
 
                 if abs(u - U.max())<tol:
                     if U[i] < (u - tol) and (u - tol) < U[i+1]:
-                        nbasis[i] = 1.0
+                        nbasis[0][i] = 1.0
     return nbasis
 
 def derNFunction(U,p,u):
     m = len(U) - 1
     dnbasis = nFunction(U,p-1,u)
-    dnbas = np.zeros(len(dnbasis)-1)
+    dnbas = np.zeros((1,len(dnbasis[0])-1))
     for j in range(m-p):
 
         num1 = 1.0
@@ -114,7 +124,7 @@ def derNFunction(U,p,u):
         else:
             B = num2/den2
 
-        dnbas[j] = p*(A*dnbasis[j] - B*dnbasis[j+1])
+        dnbas[0][j] = p*(A*dnbasis[0][j] - B*dnbasis[0][j+1])
 
     dnbasis = dnbas
     return dnbasis
@@ -122,7 +132,7 @@ def derNFunction(U,p,u):
 def secDerNFunction(U,p,u):
     m = len(U) - 1
     d2nbasis = derNFunction(U,p-1,u)
-    d2nbas = np.zeros(len(d2nbasis)-1)
+    d2nbas = np.zeros((1,len(d2nbasis[0])-1))
     for j in range(m-p):
 
         num1 = 1.0
@@ -141,7 +151,7 @@ def secDerNFunction(U,p,u):
         else:
             B = num2/den2
 
-        d2nbas[j] = p*(A*d2nbasis[j] - B*d2nbasis[j+1])
+        d2nbas[0][j] = p*(A*d2nbasis[0][j] - B*d2nbasis[0][j+1])
 
     d2nbasis = d2nbas
     return d2nbasis
@@ -152,30 +162,49 @@ def secDerNFunction(U,p,u):
 
 ################B-SPLINES CURVES####################
 
-def bSplineCurve(U,p,px,py):
+def bSpline1DCurve(U,p,P):
+    numpoints = 101
+    urank = np.linspace(U.min(),U.max(),numpoints)
+
+    cx = np.zeros(len(urank))
+
+    px = np.reshape(P[0],(1,len(P[0])))
+
+    for i in range(len(urank)):
+        nVec = nFunction(U,p,urank[i])
+        cx[i] = px@nVec.transpose()
+    return cx
+
+def bSplineCurve(U,p,P):
     numpoints = 101
     urank = np.linspace(U.min(),U.max(),numpoints)
 
     cx = np.zeros(len(urank))
     cy = np.zeros(len(urank))
 
+    px = np.reshape(P[0],(1,len(P[0])))
+    py = np.reshape(P[1],(1,len(P[1])))
+
     for i in range(len(urank)):
         nVec = nFunction(U,p,urank[i])
-        cx[i] = px@nVec
-        cy[i] = py@nVec
+        cx[i] = px@nVec.transpose()
+        cy[i] = py@nVec.transpose()
     return cx,cy
 
-def bSplineCurveDerivative(U,p,px,py):
+def bSplineCurveDerivative(U,p,P):
     numpoints = 101
     urank = np.linspace(U.min(),U.max(),numpoints)
 
     cprimex = np.zeros(len(urank))
     cprimey = np.zeros(len(urank))
 
+    px = np.reshape(P[0],(1,len(P[0])))
+    py = np.reshape(P[1],(1,len(P[1])))
+
     for i in range(len(urank)):
         dnVec = derNFunction(U,p,urank[i])
-        cprimex[i] = px@dnVec
-        cprimey[i] = py@dnVec
+        cprimex[i] = px@dnVec.transpose()
+        cprimey[i] = py@dnVec.transpose()
     return cprimex,cprimey
 
 ################B-SPLINES SURFACES###################
@@ -193,9 +222,9 @@ def bSplineSurface(U,V,p,q,px,py,pz):
             nVeci = nFunction(U,p,urank[i])
             nVecj = nFunction(V,q,vrank[j])
 
-            cx[i,j] = nVecj.transpose()@px@nVeci
-            cy[i,j] = nVecj.transpose()@py@nVeci
-            cz[i,j] = nVecj.transpose()@pz@nVeci
+            cx[i,j] = nVecj@px@nVeci.transpose()
+            cy[i,j] = nVecj@py@nVeci.transpose()
+            cz[i,j] = nVecj@pz@nVeci.transpose()
     return cx,cy,cz
 
 def bSplineSurfaceDerivativeU(U,V,p,q,px,py,pz):
@@ -211,9 +240,9 @@ def bSplineSurfaceDerivativeU(U,V,p,q,px,py,pz):
             dnVeci = derNFunction(U,p,urank[i])
             nVecj = nFunction(V,q,vrank[j])
 
-            cprimex[i,j] = nVecj.transpose()@px@dnVeci
-            cprimey[i,j] = nVecj.transpose()@py@dnVeci
-            cprimez[i,j] = nVecj.transpose()@pz@dnVeci
+            cprimex[i,j] = nVecj@px@dnVeci.transpose()
+            cprimey[i,j] = nVecj@py@dnVeci.transpose()
+            cprimez[i,j] = nVecj@pz@dnVeci.transpose()
     return cprimex,cprimey,cprimez
 
 def bSplineSurfaceDerivativeV(U,V,p,q,px,py,pz):
@@ -229,9 +258,9 @@ def bSplineSurfaceDerivativeV(U,V,p,q,px,py,pz):
             nVeci = nFunction(U,p,urank[i])
             dnVecj = derNFunction(V,q,vrank[j])
 
-            cprimex[i,j] = dnVecj.transpose()@px@nVeci
-            cprimey[i,j] = dnVecj.transpose()@py@nVeci
-            cprimez[i,j] = dnVecj.transpose()@pz@nVeci
+            cprimex[i,j] = dnVecj@px@nVeci.transpose()
+            cprimey[i,j] = dnVecj@py@nVeci.transpose()
+            cprimez[i,j] = dnVecj@pz@nVeci.transpose()
     return cprimex,cprimey,cprimez
 
 def bSplineSurfaceDerivativeUV(U,V,p,q,px,py,pz):
@@ -247,9 +276,9 @@ def bSplineSurfaceDerivativeUV(U,V,p,q,px,py,pz):
             dnVeci = derNFunction(U,p,urank[j])
             dnVecj = derNFunction(V,q,vrank[j])
 
-            cprimex[i,j] = dnVecj.transpose()@px@dnVeci
-            cprimey[i,j] = dnVecj.transpose()@py@dnVeci
-            cprimez[i,j] = dnVecj.transpose()@pz@dnVeci
+            cprimex[i,j] = dnVecj@px@dnVeci.transpose()
+            cprimey[i,j] = dnVecj@py@dnVeci.transpose()
+            cprimez[i,j] = dnVecj@pz@dnVeci.transpose()
     return cprimex,cprimey,cprimez
 
 ####################################################
@@ -258,17 +287,20 @@ def bSplineSurfaceDerivativeUV(U,V,p,q,px,py,pz):
 
 ##################NURBS CURVES######################
 
-def nurbsCurve(U,p,px,py,w):
+def nurbsCurve(U,p,P,w):
     numpoints = 101
     urank = np.linspace(U.min(),U.max(),numpoints)
 
     cx = np.zeros(len(urank))
     cy = np.zeros(len(urank))
 
+    px = np.reshape(P[0],(1,len(P[0])))
+    py = np.reshape(P[1],(1,len(P[1])))
+
     for i in range(len(urank)):
         nVec = nFunction(U,p,urank[i])
-        cx[i] = (px@(nVec*w))/(nVec@w)
-        cy[i] = (py@(nVec*w))/(nVec@w)
+        cx[i] = (px@(nVec*w).transpose())/(nVec@w.transpose())
+        cy[i] = (py@(nVec*w).transpose())/(nVec@w.transpose())
     return cx,cy
 
 #################NURBS SURFACES#####################
@@ -286,35 +318,46 @@ def nurbsSurface(U,V,p,q,px,py,pz,w):
             nVeci = nFunction(U,p,urank[i])
             nVecj = nFunction(V,q,vrank[j])
 
-            cx[i,j] = (nVecj.transpose()@(px*w)@nVeci)/(nVecj.transpose()@(w)@nVeci)
-            cy[i,j] = (nVecj.transpose()@(py*w)@nVeci)/(nVecj.transpose()@(w)@nVeci)
-            cz[i,j] = (nVecj.transpose()@(pz*w)@nVeci)/(nVecj.transpose()@(w)@nVeci)
+            cx[i,j] = (nVecj@(px*w)@nVeci.transpose())/(nVecj@(w)@nVeci.transpose())
+            cy[i,j] = (nVecj@(py*w)@nVeci.transpose())/(nVecj@(w)@nVeci.transpose())
+            cz[i,j] = (nVecj@(pz*w)@nVeci.transpose())/(nVecj@(w)@nVeci.transpose())
     return cx,cy,cz
 
 ####################################################
 ######################PLOTS#########################
 ####################################################
 
-def plotCurve2d(cx,cy,px,py,*argv):
+def plotCurve2d(cx,cy,P,*argv):
     fig = plt.figure()
     plt.plot(cx,cy)
-    plt.plot(px,py,'ro')
-    plt.plot(px,py)
-    #plt.show()
+    plt.plot(P[0],P[1],'ro')
+    plt.plot(P[0],P[1])
     if argv != ():
         if argv[0] == 'yes':
             plt.savefig(argv[1]+'.png')
+        else:
+            plt.show()
     else:
         plt.show()
 
-def plotTangentCurve2d(cx,cy,cpx,cpy,px,py,*argv):
+def plotInterpolatedCurve(cx,cy,P,Q):
     fig = plt.figure()
-    plt.plot(px,py,'ro')
-    plt.plot(px,py)
+    plt.plot(cx,cy)
+    plt.plot(P[0,:],P[1,:],'ro')
+    plt.plot(P[0,:],P[1,:])
+    plt.plot(Q[0,:],Q[1,:],'ko')
+    plt.show()
+
+def plotTangentCurve2d(cx,cy,cpx,cpy,P,*argv):
+    fig = plt.figure()
+    plt.plot(P[0],P[1],'ro')
+    plt.plot(P[0],P[1])
     plt.quiver(cx,cy,cpx,cpy,color=['k'])
     if argv != ():
         if argv[0] == 'yes':
             plt.savefig(argv[1]+'.png')
+        else:
+            plt.show()
     else:
         plt.show()
 
