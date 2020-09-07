@@ -1,8 +1,8 @@
 #First B-spline curve
 import numpy as np
 import matplotlib.pyplot as plt
-
 import pca_01 as pca
+import plottingScripts as plts
 
 # Examples with curves
 
@@ -14,13 +14,18 @@ import pca_01 as pca
 # U = np.array([0,0,0,0,2,3,3,5,5,5,5])
 # p = 3
 
-P = np.array([[1,2,3,4,5,6,7,8],[1,1,1,1,0,0,0,0]])
+# P = np.array([[1,2,3,4,5,6,7,8],[1,1,1,1,0,0,0,0]])
+# p = 2
+# U = pca.knotGeneratorUniform(len(P[0])-1,p)
+
+num = 5
+P = np.array([np.linspace(0,1,num),np.zeros(num)])
 p = 2
-U = pca.knotGeneratorUniform(len(P[0])-1,p)
+U = np.array([0,0,0,1/3,2/3,1.0,1.0,1.0])
 
 #B-Spline curve
 cx,cy = pca.bSplineCurve(U,p,P)
-pca.plotCurve2d(cx,cy,P)
+plts.plotCurve2d(cx,cy,P)
 
 # Examples with derivatives
 
@@ -31,8 +36,8 @@ pca.plotCurve2d(cx,cy,P)
 # p = 2
 
 # cX,cY = pca.bSplineCurve(U,p,P)
-# pca.plotCurve2d(cX,cY,Px,Py,"yes","test1")
-# pca.plotCurve2d(cX,cY,P,"no")
+# plts.plotCurve2d(cX,cY,Px,Py,"yes","test1")
+# plts.plotCurve2d(cX,cY,P,"no")
 
 # cPrimeX,cPrimeY = pca.bSplineCurveDerivative(U,p,P)
-# pca.plotTangentCurve2d(cX,cY,cPrimeX,cPrimeY,P,"yes","test2")
+# plts.plotTangentCurve2d(cX,cY,cPrimeX,cPrimeY,P,"yes","test2")

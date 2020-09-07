@@ -172,7 +172,7 @@ def bSpline1DCurve(U,p,P):
 
     for i in range(len(urank)):
         nVec = nFunction(U,p,urank[i])
-        cx[i] = px@nVec.transpose()
+        cx[i] = nVec@px.T
     return cx
 
 def bSplineCurve(U,p,P):
@@ -187,8 +187,8 @@ def bSplineCurve(U,p,P):
 
     for i in range(len(urank)):
         nVec = nFunction(U,p,urank[i])
-        cx[i] = px@nVec.transpose()
-        cy[i] = py@nVec.transpose()
+        cx[i] = nVec@px.T
+        cy[i] = nVec@py.T
     return cx,cy
 
 def bSplineCurveDerivative(U,p,P):
@@ -203,8 +203,8 @@ def bSplineCurveDerivative(U,p,P):
 
     for i in range(len(urank)):
         dnVec = derNFunction(U,p,urank[i])
-        cprimex[i] = px@dnVec.transpose()
-        cprimey[i] = py@dnVec.transpose()
+        cprimex[i] = dnVec@px.T
+        cprimey[i] = dnVec@py.T
     return cprimex,cprimey
 
 ################B-SPLINES SURFACES###################
@@ -222,9 +222,9 @@ def bSplineSurface(U,V,p,q,px,py,pz):
             nVeci = nFunction(U,p,urank[i])
             nVecj = nFunction(V,q,vrank[j])
 
-            cx[i,j] = nVecj@px@nVeci.transpose()
-            cy[i,j] = nVecj@py@nVeci.transpose()
-            cz[i,j] = nVecj@pz@nVeci.transpose()
+            cx[i,j] = nVecj.T@px@nVeci
+            cy[i,j] = nVecj.T@py@nVeci
+            cz[i,j] = nVecj.T@pz@nVeci
     return cx,cy,cz
 
 def bSplineSurfaceDerivativeU(U,V,p,q,px,py,pz):
@@ -240,9 +240,9 @@ def bSplineSurfaceDerivativeU(U,V,p,q,px,py,pz):
             dnVeci = derNFunction(U,p,urank[i])
             nVecj = nFunction(V,q,vrank[j])
 
-            cprimex[i,j] = nVecj@px@dnVeci.transpose()
-            cprimey[i,j] = nVecj@py@dnVeci.transpose()
-            cprimez[i,j] = nVecj@pz@dnVeci.transpose()
+            cprimex[i,j] = nVecj.T@px@dnVeci
+            cprimey[i,j] = nVecj.T@py@dnVeci
+            cprimez[i,j] = nVecj.T@pz@dnVeci
     return cprimex,cprimey,cprimez
 
 def bSplineSurfaceDerivativeV(U,V,p,q,px,py,pz):
@@ -258,9 +258,9 @@ def bSplineSurfaceDerivativeV(U,V,p,q,px,py,pz):
             nVeci = nFunction(U,p,urank[i])
             dnVecj = derNFunction(V,q,vrank[j])
 
-            cprimex[i,j] = dnVecj@px@nVeci.transpose()
-            cprimey[i,j] = dnVecj@py@nVeci.transpose()
-            cprimez[i,j] = dnVecj@pz@nVeci.transpose()
+            cprimex[i,j] = dnVecj.T@px@nVeci
+            cprimey[i,j] = dnVecj.T@py@nVeci
+            cprimez[i,j] = dnVecj.T@pz@nVeci
     return cprimex,cprimey,cprimez
 
 def bSplineSurfaceDerivativeUV(U,V,p,q,px,py,pz):
@@ -276,9 +276,9 @@ def bSplineSurfaceDerivativeUV(U,V,p,q,px,py,pz):
             dnVeci = derNFunction(U,p,urank[j])
             dnVecj = derNFunction(V,q,vrank[j])
 
-            cprimex[i,j] = dnVecj@px@dnVeci.transpose()
-            cprimey[i,j] = dnVecj@py@dnVeci.transpose()
-            cprimez[i,j] = dnVecj@pz@dnVeci.transpose()
+            cprimex[i,j] = dnVecj.T@px@dnVeci
+            cprimey[i,j] = dnVecj.T@py@dnVeci
+            cprimez[i,j] = dnVecj.T@pz@dnVeci
     return cprimex,cprimey,cprimez
 
 ####################################################
@@ -322,79 +322,3 @@ def nurbsSurface(U,V,p,q,px,py,pz,w):
             cy[i,j] = (nVecj@(py*w)@nVeci.transpose())/(nVecj@(w)@nVeci.transpose())
             cz[i,j] = (nVecj@(pz*w)@nVeci.transpose())/(nVecj@(w)@nVeci.transpose())
     return cx,cy,cz
-
-####################################################
-######################PLOTS#########################
-####################################################
-
-def plotCurve2d(cx,cy,P,*argv):
-    fig = plt.figure()
-    plt.plot(cx,cy)
-    plt.plot(P[0],P[1],'ro')
-    plt.plot(P[0],P[1])
-    if argv != ():
-        if argv[0] == 'yes':
-            plt.savefig(argv[1]+'.png')
-        else:
-            plt.show()
-    else:
-        plt.show()
-
-def plotInterpolatedCurve(cx,cy,P,Q):
-    fig = plt.figure()
-    plt.plot(cx,cy)
-    plt.plot(P[0,:],P[1,:],'ro')
-    plt.plot(P[0,:],P[1,:])
-    plt.plot(Q[0,:],Q[1,:],'ko')
-    plt.show()
-
-def plotTangentCurve2d(cx,cy,cpx,cpy,P,*argv):
-    fig = plt.figure()
-    plt.plot(P[0],P[1],'ro')
-    plt.plot(P[0],P[1])
-    plt.quiver(cx,cy,cpx,cpy,color=['k'])
-    if argv != ():
-        if argv[0] == 'yes':
-            plt.savefig(argv[1]+'.png')
-        else:
-            plt.show()
-    else:
-        plt.show()
-
-def plotting3d(cx,cy,cz,*argv):
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
-    ax.plot3D(cx, cy, cz, 'gray')
-    if argv != ():
-        if argv[0]=='on':
-            if len(argv)==4:
-                ax.plot3D(argv[1],argv[2],argv[3], 'red')
-            elif len(argv)> 4:
-                sys.exit("Too much arguments, please delete one or more")
-            else:
-                sys.exit("Missing arguments to plot control points")
-
-def plottingSurface(cx,cy,cz,*argv):
-    fig = plt.figure()
-    ax = plt.axes(projection = '3d')
-    ax.contour3D(cx, cy, cz, 50, cmap = 'binary')
-    if len(argv)==3:
-        ax.plot_wireframe(argv[0], argv[1], argv[2], color = 'red')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z');
-    plt.show()
-
-def plotTangentSurface(cx,cy,cz,cpx,cpy,cpz,px,py,pz,*argv):
-    fig = plt.figure()
-    ax = plt.axes(projection = '3d')
-    #ax.contour3D(cx, cy, cz, 50, cmap = 'binary')
-    ax.plot_wireframe(px,py,pz, color = 'red')
-    plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['k'],length = 1.0,normalize = True)
-
-    if argv != ():
-        ax.set_title(argv[0])
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z');
-    plt.show()
