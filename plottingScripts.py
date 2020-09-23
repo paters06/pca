@@ -128,7 +128,7 @@ def plotTangentSurface(cx,cy,cz,cpx,cpy,cpz,px,py,pz,*argv):
     ax.set_zlabel('z');
     plt.show()
 
-def plotNodeInsertion(cx,cy,cxnew,cynew,P,Pnew,*argv):
+def plotKnotInsertion(cx,cy,cxnew,cynew,P,Pnew,*argv):
     fig,ax = plt.subplots(1,2,sharey=True,figsize=(8,4.8))
     fig.suptitle('Knot insertion')
     ax[0].set_title('Original')
@@ -136,6 +136,46 @@ def plotNodeInsertion(cx,cy,cxnew,cynew,P,Pnew,*argv):
     ax[0].plot(P[0],P[1],'ro')
     ax[0].plot(P[0],P[1],'k')
     ax[1].set_title('After insertion')
+    ax[1].plot(cxnew,cynew)
+    ax[1].plot(Pnew[0],Pnew[1],'ro')
+    ax[1].plot(Pnew[0],Pnew[1],'k')
+
+    if argv != ():
+        if argv[0] == 'yes':
+            plt.savefig(argv[1]+'.png')
+        else:
+            plt.show()
+    else:
+        plt.show()
+
+def plotKnotRefinement(cx,cy,cxnew,cynew,P,Pnew,*argv):
+    fig,ax = plt.subplots(1,2,sharey=True,figsize=(8,4.8))
+    fig.suptitle('Knot refinement')
+    ax[0].set_title('Original')
+    ax[0].plot(cx,cy)
+    ax[0].plot(P[0],P[1],'ro')
+    ax[0].plot(P[0],P[1],'k')
+    ax[1].set_title('After refinement')
+    ax[1].plot(cxnew,cynew)
+    ax[1].plot(Pnew[0],Pnew[1],'ro')
+    ax[1].plot(Pnew[0],Pnew[1],'k')
+
+    if argv != ():
+        if argv[0] == 'yes':
+            plt.savefig(argv[1]+'.png')
+        else:
+            plt.show()
+    else:
+        plt.show()
+
+def plotDegreeElevation(cx,cy,cxnew,cynew,P,Pnew,*argv):
+    fig,ax = plt.subplots(1,2,sharey=True,figsize=(8,4.8))
+    fig.suptitle('Degree Elevation')
+    ax[0].set_title('Original')
+    ax[0].plot(cx,cy)
+    ax[0].plot(P[0],P[1],'ro')
+    ax[0].plot(P[0],P[1],'k')
+    ax[1].set_title('After elevation')
     ax[1].plot(cxnew,cynew)
     ax[1].plot(Pnew[0],Pnew[1],'ro')
     ax[1].plot(Pnew[0],Pnew[1],'k')
