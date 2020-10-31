@@ -18,14 +18,37 @@ import plottingScripts as plts
 # p = 2
 # U = pca.knotGeneratorUniform(len(P[0])-1,p)
 
-num = 5
-P = np.array([np.linspace(0,1,num),np.zeros(num)])
-p = 2
-U = np.array([0,0,0,1/3,2/3,1.0,1.0,1.0])
+# num = 5
+# P = np.array([np.linspace(0,1,num),np.zeros(num)])
+# p = 2
+# U = np.array([0,0,0,1/3,2/3,1.0,1.0,1.0])
+
+U = np.array([0,0,0.2,0.4,0.6,0.8,1,1])
+V = np.array([0,0,0.5,1,1])
+p = 1
+q = 1
+
+u = 0.0225403330759
+v = 0.0563508326896
+
+na = pca.nFunction(U,p,u)
+dna = pca.derNFunction(U,p,u)
+nb = pca.nFunction(V,q,v)
+dnb = pca.derNFunction(V,q,v)
+
+dnadu = nb.T@dna
+
+# print(na)
+print(dna)
+print(nb)
+# print(dnb)
+
+print(dnadu)
+print(np.reshape(dnadu,(1,dnadu.shape[0]*dnadu.shape[1])))
 
 #B-Spline curve
-cx,cy = pca.bSplineCurve(U,p,P)
-plts.plotCurve2d(cx,cy,P)
+# cx,cy = pca.bSplineCurve(U,p,P)
+# plts.plotCurve2d(cx,cy,P)
 
 # Examples with derivatives
 

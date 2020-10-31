@@ -27,18 +27,18 @@ import refinements as rfn
 
 ################ KNOT REFINEMENT EXAMPLE ####################
 
-# P = np.array([[0.0,1.0,0.75,4.5,3.0,5.0],[0.0,0.1,2.0,3.0,0.2,0.0]])
-# p = 3
-# U = np.array([0,0,0,0,0.3,0.7,1,1,1,1])
-# X = np.array([0.15,0.5,0.85])
+P = np.array([[0.0,1.0,0.75,4.5,3.0,5.0],[0.0,0.1,2.0,3.0,0.2,0.0]])
+p = 3
+U = np.array([0,0,0,0,0.3,0.7,1,1,1,1])
+X = np.array([0.15,0.5,0.85])
 
-# Ured = U[p:-p]
-# X = 0.5*(Ured[0:-1] + Ured[1:])
-#
-# Q,Ubar = knotRefinement(U,X,p,P)
-#
-# cx,cy = pca.bSplineCurve(U,p,P)
-# cxref,cyref = pca.bSplineCurve(Ubar,p,Q)
+Ured = U[p:-p]
+X = 0.5*(Ured[0:-1] + Ured[1:])
+
+Q,Ubar = rfn.knotRefinement(U,X,p,P)
+
+cx,cy = bs.bSplineCurve(U,p,P)
+cxref,cyref = bs.bSplineCurve(Ubar,p,Q)
 # plts.plotCurve2d(cx,cy,P)
 # plts.plotCurve2d(cxref,cyref,Q)
 # plts.plotKnotRefinement(cx,cy,cxref,cyref,P,Q)
@@ -82,18 +82,18 @@ import refinements as rfn
 # p = 3
 # U = np.array([0,0,0,0,0.4,0.7,1,1,1,1])
 
-P = np.array([[0.0,0.5,1.0],[0.0,1.0,0.0]])
-p = 2
-U = np.array([0,0,0,1,1,1])
+# P = np.array([[0.0,0.5,1.0],[0.0,1.0,0.0]])
+# p = 2
+# U = np.array([0,0,0,1,1,1])
 
-t = 1
+# t = 1
 
-Qe,Ue,pe = rfn.degreeElevation(U,p,P,t)
+# Qe,Ue,pe = rfn.degreeElevation(U,p,P,t)
 
-cx,cy = bs.bSplineCurve(U,p,P)
-cxs,cys = bs.bSplineCurve(Ue,pe,Qe)
+# cx,cy = bs.bSplineCurve(U,p,P)
+# cxs,cys = bs.bSplineCurve(Ue,pe,Qe)
 
-plts.plotDegreeElevation(cx,cy,cxs,cys,P,Qe)
+# plts.plotDegreeElevation(cx,cy,cxs,cys,P,Qe)
 # plt.plot(cx,cy)
 # plt.plot(cxs,cys)
 # plt.legend(['Initial curve','Degree augmented curve'])

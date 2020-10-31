@@ -1,4 +1,4 @@
-# import numpy as np
+import numpy as np
 import matplotlib.pyplot as plt
 
 ####################################################
@@ -106,9 +106,12 @@ def plotting3d(cx,cy,cz,*argv):
 def plottingSurface(cx,cy,cz,*argv):
     fig = plt.figure()
     ax = plt.axes(projection = '3d')
-    ax.contour3D(cx, cy, cz, 50, cmap = 'binary')
+    ax.contour3D(cx, cy, cz, 50, cmap = 'viridis')
     if len(argv)==3:
-        ax.plot_wireframe(argv[0], argv[1], argv[2], color = 'red')
+        px = np.reshape(argv[0],(len(argv[0]),1))
+        py = np.reshape(argv[1],(len(argv[1]),1))
+        pz = np.reshape(argv[2],(len(argv[2]),1))
+        ax.plot_wireframe(px,py,pz, color = 'red')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z');
@@ -126,6 +129,17 @@ def plotTangentSurface(cx,cy,cz,cpx,cpy,cpz,px,py,pz,*argv):
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z');
+    plt.show()
+
+def plotting2DField(cx,cy,fz):
+    fig = plt.figure()
+    ax = plt.axes()
+    # field = ax.imshow(fz)
+    field = ax.contourf(cx,cy,fz)
+    cb = fig.colorbar(field)
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    cb.set_label('value')
     plt.show()
 
 def plotKnotInsertion(cx,cy,cxnew,cynew,P,Pnew,*argv):

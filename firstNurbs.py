@@ -9,14 +9,13 @@ Modified on Sun Aug 02 17:59:20 2020
 """
 import numpy as np
 import pca_01 as pca
+import nurbs as rbs
+import plottingScripts as plts
 
-Px = np.array([0,1,3,4,5])
-Py = np.array([0,1,2,1,-1])
+P = np.array([[0,1,3,4,5],[0,1,2,1,-1]])
 U = np.array([0,0,0,1,2,3,3,3])
 w = np.array([1,4,1,1,1])
 p = 2
 
-cx,cy = pca.nurbsCurve(U,p,Px,Py,w)
-pca.plotCurve2d(cx,cy,Px,Py)
-
-
+cx,cy = rbs.nurbsCurve(U,p,P,w)
+plts.plotCurve2d(cx,cy,P)

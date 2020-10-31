@@ -6,6 +6,14 @@ import pca_01 as pca
 import bSplines as bs
 import curveFitting as cfit
 import plottingScripts as plts
+import refinements as rfn
+
+def checkingSymmetricMatrix(A):
+    check = np.allclose(A, A.T, rtol=1e-5, atol=1e-8)
+    if check:
+        print("The given matrix is symmetric")
+    else:
+        print("The given matrix is not symmetric")
 
 def scalingSegment(ua,ub,gausspt):
     localpts = np.zeros(len(gausspt))
@@ -81,6 +89,7 @@ def assemblyWeakForm(numnodes,U,p,Ured,PGeom,gaussquad,tx,u0):
         Fe = np.zeros((numnodes,1))
         for j in range(len(intgPoints)):
             jacob = jacobian(U,p,intgPoints[j],PGeom)
+            print(jacob)
             totalLength += 0.5*(Ured[i+1] - Ured[i])*jacob*gaussLegendreWeights[j]
             Ke += 0.5*(Ured[i+1] - Ured[i])*(1.0/(jacob**2))*localStiffnessMatrix(U,p,intgPoints[j])*jacob*gaussLegendreWeights[j]
 
@@ -170,36 +179,48 @@ def l2ErrorNorm(U,p,Ured,gaussquad,PGeom,dtotal):
             errorIntegral += 0.5*lenSegment*((ux - uE)**2)*gaussLegendreWeights[j]
     return np.sqrt(errorIntegral)
 
-def convergenceRate(pdegree):
-    numNodesList = [5,9,17,21,31,41,51]
-    hVector = L/(np.array(numNodesList) - 1)
-    l2normVector = np.zeros_like(hVector)
+def convergenceRate(Uinit,pdegree,numIter):
+    # numIter = 5
+    hVector = np.zeros((1,numIter))
+    l2normVector = np.zeros((1,numIter))
 
-    for i in range(len(numNodesList)):
-        # print(len(numNodesList))
-        numNodes = numNodesList[i]
-        #Isogeometric routines
-        U,Ured,gaussLegendreQuadrature = preProcessing(numNodes,pdegree,numGaussPoints)
+    gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
+
+    U = Uinit
+    for i in range(numIter):
+        print("Iteration #",i)
+        Ured = U[pdegree:-pdegree]
 
         #Construction of geometry
-        numPtsGeom = len(U) - pdegree - 1
-        x = np.linspace(0,L,numPtsGeom)
-        PGeom = np.array([x,np.zeros(numPtsGeom)])
+        numpts = len(U) - pdegree - 1
+        x = np.linspace(0,L,numpts)
+        PGeom = np.array([x,np.zeros(numpts)])
 
-        dtotal = assemblyWeakForm(numNodes,U,pdegree,Ured,PGeom,gaussLegendreQuadrature,tx,u0)
+        dtotal = assemblyWeakForm(numpts,U,pdegree,Ured,PGeom,gaussLegendreQuadrature,tx,u0)
 
         cx,ux,sx,uExact,sExact,PGeom = postProcessing(U,pdegree,PGeom,dtotal)
 
         #L2-Norm error
-        l2normVector[i] = l2ErrorNorm(U,pdegree,Ured,gaussLegendreQuadrature,PGeom,dtotal)
-        # print('L2-norm error',l2norm)
+        hVector[0][i] = L/(numpts - 1)
+        l2normVector[0][i] = l2ErrorNorm(U,pdegree,Ured,gaussLegendreQuadrature,PGeom,dtotal)
+        print('L2-norm error',l2normVector[0][i])
+        #Refining the knot vector
+        X = 0.5*(Ured[0:-1] + Ured[1:])
+        Ubar = np.hstack((U,X))
+        Ubar.sort()
+        U = Ubar
 
     xVec = np.log(hVector)
     yVec = np.log(l2normVector)
 
     xAvg = xVec.mean()
     slope = (yVec*(xVec - xAvg)).sum()/(xVec*(xVec - xAvg)).sum()
-    return l2normVector,hVector,slope
+
+    print('Convergence Rate of the numerical solution: ',slope)
+    # print(hVector)
+    # print(l2normVector)
+    # plt.plot(np.log(hVector),np.log(l2normVector))
+    # plt.show()
 
 ####################################################
 ###################MAIN PROBLEM#####################
@@ -207,9 +228,6 @@ def convergenceRate(pdegree):
 
 #Data
 L = 10.0
-numNodes = 31
-p = 1
-
 E = 1000
 u0 = 0.0
 tx = 25.0
@@ -217,30 +235,35 @@ tx = 25.0
 numGaussPoints = 3
 
 #Isogeometric routines
-U,Ured,gaussLegendreQuadrature = preProcessing(numNodes,p,numGaussPoints)
+Uinit = np.array([0,0,0.5,1,1])
+# Uinit = np.array([0,0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,1])
+# Uinit = np.array([ 0.,0.,0.0625,0.125,0.1875,0.25,0.3125,0.375,0.4375,0.5,0.5625,
+# 0.625,0.6875,0.75,0.8125,0.875,0.9375,1.,1.])
+
+# Uinit = np.array([0,0,0,0.1,0.3,0.5,1,1,1])
+# Uinit = np.array([0,0,0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,1,1])
+p = 1
+Ured = Uinit[p:-p]
+gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
+# U,Ured,gaussLegendreQuadrature = preProcessing(numNodes,p,numGaussPoints)
 
 #Construction of geometry
-numPtsGeom = len(U) - p - 1
+numPtsGeom = len(Uinit) - p - 1
 x = np.linspace(0,L,numPtsGeom)
 PGeom = np.array([x,np.zeros(numPtsGeom)])
 
-dtotal = assemblyWeakForm(numNodes,U,p,Ured,PGeom,gaussLegendreQuadrature,tx,u0)
+dtotal = assemblyWeakForm(numPtsGeom,Uinit,p,Ured,PGeom,gaussLegendreQuadrature,tx,u0)
+#
+# cx,ux,sx,uExact,sExact,PGeom = postProcessing(Uinit,p,PGeom,dtotal)
+#
+# #L2-Norm error
+# l2norm = l2ErrorNorm(Uinit,p,Ured,gaussLegendreQuadrature,PGeom,dtotal)
+# print('L2-norm error',l2norm)
 
-cx,ux,sx,uExact,sExact,PGeom = postProcessing(U,p,PGeom,dtotal)
-
-#L2-Norm error
-l2norm = l2ErrorNorm(U,p,Ured,gaussLegendreQuadrature,PGeom,dtotal)
-print('L2-norm error',l2norm)
-
-plts.plotComparisonCurves(cx,ux,uExact,'u')
+# plts.plotComparisonCurves(cx,ux,uExact,'u')
 # plts.plotComparisonCurves(cx,sx,sExact,'s')
 
 # plts.plot1DField(cx,ux,'u')
 # plts.plot1DField(cx,sx,'s')
 
-# l2normVector,hVector,convRate = convergenceRate(2)
-# print('Convergence Rate of the numerical solution: ',convRate)
-# print(hVector)
-# print(l2normVector)
-# plt.plot(np.log(hVector),np.log(l2normVector))
-# plt.show()
+# convergenceRate(Uinit,p,5)
