@@ -16,24 +16,39 @@ def ratFunction(U,V,w,p,q,u,v):
     return ratfunc
 
 def dRatdU(U,V,w,p,q,u,v):
-    dnVecU = pca.derNFunction(U,p,u)
+    nVecU = pca.nFunction(U,p,u)
     nVecV = pca.nFunction(V,q,v)
+    dnVecU = pca.derNFunction(U,p,u)
 
-    dn2u = nVecV.T@dnVecU
-    dn2u = np.reshape(dn2u,(1,dn2u.shape[0]*dn2u.shape[1]))
+    nunv = nVecV.T@nVecU
+    nunv = np.reshape(nunv,(1,nunv.shape[0]*nunv.shape[1]))
+    dnunv = nVecV.T@dnVecU
+    dnunv = np.reshape(dnunv,(1,dnunv.shape[0]*dnunv.shape[1]))
 
-    ratfunc = (dn2u*w.T)/(dn2u@w)
-    return ratfunc
+    W = nunv@w
+    dW = dnunv@w
+
+    # print((dnunv*W).shape)
+    # print((nunv*dW).shape)
+    # print(w.T.shape)
+    dratfunc = (w.T)*(dnunv*W - nunv*dW)/(W**2)
+    return dratfunc
 
 def dRatdV(U,V,w,p,q,u,v):
     nVecU = pca.nFunction(U,p,u)
+    nVecV = pca.nFunction(V,q,v)
     dnVecV = pca.derNFunction(V,q,v)
 
-    dn2v = dnVecV.T@nVecU
-    dn2v = np.reshape(dn2v,(1,dn2v.shape[0]*dn2v.shape[1]))
+    nunv = nVecV.T@nVecU
+    nunv = np.reshape(nunv,(1,nunv.shape[0]*nunv.shape[1]))
+    nudnv = dnVecV.T@nVecU
+    nudnv = np.reshape(nudnv,(1,nudnv.shape[0]*nudnv.shape[1]))
 
-    ratfunc = (dn2v*w.T)/(dn2v@w)
-    return ratfunc
+    W = nunv@w
+    dW = nudnv@w
+
+    dratfunc = (w.T)*(nudnv*W - nunv*dW)/(W**2)
+    return dratfunc
 
 ##################NURBS CURVES######################
 

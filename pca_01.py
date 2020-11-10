@@ -52,11 +52,13 @@ def knotGeneratorChord(n,p,tv):
 def findKnotInterval(U,u):
     for i in range(len(U)-1):
         if U[i] < (u + tol) and (u + tol) < (U[i+1]):
-            nbasis[i] = 1.0
+            # nbasis[i] = 1.0
+            index = i
 
         if abs(u - U.max())<tol:
             if U[i] < (u - tol) and (u - tol) < U[i+1]:
-                nbasis[i] = 1.0
+                # nbasis[i] = 1.0
+                index = i
     return index
 
 ####################################################

@@ -34,15 +34,20 @@ def plotSparsity(A):
     plt.colorbar()
     plt.show()
 
-def coordinateParametrization(ua,ub,va,vb,gausspta,gaussptb):
+def parametricCoordinate(ua,ub,va,vb,gausspta,gaussptb):
     localpts = np.zeros((1,2))
     localpts[0][0] = 0.5*(ub - ua)*gausspta + 0.5*(ub + ua)
     localpts[0][1] = 0.5*(vb - va)*gaussptb + 0.5*(vb + va)
     return localpts
 
+def geometricCoordinate(paramcoor,U,V,w,p,q,px,py):
+    ratFunc = rbs.ratFunction(U,V,w,p,q,paramcoor[0][0],paramcoor[0][1])
+    geomcoor = np.zeros((1,2))
+    geomcoor[0][0] = ratFunc@px
+    geomcoor[0][1] = ratFunc@py
+    return geomcoor
+
 def jacobian(U,V,w,p,q,pta,ptb,px,py,parentgrad):
-    # print(pta)
-    # print(ptb)
     n2 = rbs.ratFunction(U,V,w,p,q,pta,ptb)
     dn2u = rbs.dRatdU(U,V,w,p,q,pta,ptb)
     dn2v = rbs.dRatdV(U,V,w,p,q,pta,ptb)
@@ -59,10 +64,6 @@ def jacobian(U,V,w,p,q,pta,ptb,px,py,parentgrad):
     jacob[1][0] = dYdu
     jacob[1][1] = dYdv
 
-    # print("N2")
-    # print(n2@px)
-    # print("dXdu")
-    # print(dn2u)
     jacob = jacob@parentgrad
 
     return jacob
@@ -114,7 +115,7 @@ def localStiffnessMatrix(U,V,w,useg,vseg,p,q,px,py,gausspoints,gaussweights,pare
     lke = np.zeros((2*px.shape[0],2*px.shape[0]))
     for qj in range(len(gausspoints)):
         for qi in range(len(gausspoints)):
-            coor = coordinateParametrization(useg[0],useg[1],vseg[0],vseg[1],gausspoints[qi],gausspoints[qj])
+            coor = parametricCoordinate(useg[0],useg[1],vseg[0],vseg[1],gausspoints[qi],gausspoints[qj])
             # print(coor)
             jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,parentgrad)
             wJac = weightedJacobian(jac,gaussweights,qi,qj)
@@ -131,7 +132,7 @@ def localBodyVector(U,V,w,useg,vseg,p,q,px,py,gausspoints,gaussweights,parentgra
 
     for qj in range(len(gausspoints)):
         for qi in range(len(gausspoints)):
-            coor = coordinateParametrization(useg[0],useg[1],vseg[0],vseg[1],gausspoints[qi],gausspoints[qj])
+            coor = parametricCoordinate(useg[0],useg[1],vseg[0],vseg[1],gausspoints[qi],gausspoints[qj])
             jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,parentgrad)
             wJac = weightedJacobian(jac,gaussweights,qi,qj)
             nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
@@ -139,17 +140,29 @@ def localBodyVector(U,V,w,useg,vseg,p,q,px,py,gausspoints,gaussweights,parentgra
 
     return lbe
 
-def appliedLoadVector(U,V,w,uval,vseg,p,q,px,py,gausspoints,gaussweights,load):
+# def appliedLoadVector(U,V,w,uval,vseg,p,q,px,py,gausspoints,gaussweights,load):
+def appliedLoadVector(U,V,w,useg,vval,p,q,px,py,gausspoints,gaussweights,load):
     lle = np.zeros((2*px.shape[0],1))
     tvec = np.zeros((2,1))
     tvec[0][0] = -load
 
     for qj in range(len(gausspoints)):
         #The first gausspoints does not influence in the output due to uval
-        coor = coordinateParametrization(uval,uval,vseg[0],vseg[1],gausspoints[qj],gausspoints[qj])
-        jac = 0.5*(vseg[1] - vseg[0])
+        # coor = parametricCoordinate(uval,uval,vseg[0],vseg[1],gausspoints[qj],gausspoints[qj])
+        coor = parametricCoordinate(useg[0],useg[1],vval,vval,gausspoints[qj],gausspoints[qj])
+        gcoor = geometricCoordinate(coor,U,V,w,p,q,px,py)
+        print("Geometric coor")
+        print(gcoor)
+        # jac2 = 0.5*(vseg[1] - vseg[0])
+        jac2 = 0.5*(useg[1] - useg[0])
+        du = rbs.dRatdU(U,V,w,p,q,coor[0][0],coor[0][1])
+        print(du)
+        dxdu = du@px
+        dydu = du@py
+        jac1 = np.sqrt(dxdu**2 + dydu**2)
+        # print(dydu)
         nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
-        lle += (nMat.T@tvec)*jac*gaussweights[qj]
+        lle += (nMat.T@tvec)*4.0*jac2*gaussweights[qj]
 
     return lle
 
@@ -157,21 +170,41 @@ def elementArea(U,V,w,useg,vseg,p,q,px,py,gausspoints,gaussweights,parentgrad):
     elemA = 0
     for qj in range(len(gausspoints)):
         for qi in range(len(gausspoints)):
-            coor = coordinateParametrization(useg[0],useg[1],vseg[0],vseg[1],gausspoints[qi],gausspoints[qj])
+            coor = parametricCoordinate(useg[0],useg[1],vseg[0],vseg[1],gausspoints[qi],gausspoints[qj])
             jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,parentgrad)
             wJac = weightedJacobian(jac,gaussweights,qi,qj)
             elemA += 1.0*wJac
 
     return elemA
 
+def elementLength(U,V,w,useg,vval,p,q,px,py,gausspoints,gaussweights):
+    elemL = 0
+    for qj in range(len(gausspoints)):
+        #The first gausspoints does not influence in the output due to uval
+        # coor = parametricCoordinate(uval,uval,vseg[0],vseg[1],gausspoints[qj],gausspoints[qj])
+        coor = parametricCoordinate(useg[0],useg[1],vval,vval,gausspoints[qj],gausspoints[qj])
+        gcoor = geometricCoordinate(coor,U,V,w,p,q,px,py)
+        print("Geometric coor")
+        print(gcoor)
+        # jac2 = 0.5*(vseg[1] - vseg[0])
+        jac2 = 0.5*(useg[1] - useg[0])
+        dxdu = rbs.dRatdU(U,V,w,p,q,coor[0][0],coor[0][1])@px
+        dydu = rbs.dRatdU(U,V,w,p,q,coor[0][0],coor[0][1])@py
+        jac1 = np.sqrt(dxdu**2 + dydu**2)
+        # print(dydu)
+        elemL += 1.0*jac1*jac2*gaussweights[qj]
+
+    return elemL
+
 ################ ISOGEOMETRIC ANALYSIS ####################
 
-def assemblyWeakForm(U,V,w,Ured,Vred,p,q,px,py,gaussquad,dmat,rho,uneu,load):
+def assemblyWeakForm(U,V,w,Ured,Vred,p,q,px,py,gaussquad,dmat,rho,uneu,vneu,load):
     K = np.zeros((2*px.shape[0],2*px.shape[0]))
     F = np.zeros((2*px.shape[0],1))
     Fb = np.zeros((2*px.shape[0],1))
     Fl = np.zeros((2*px.shape[0],1))
     totalArea = 0
+    totalLength = 0
     gaussLegendrePoints = gaussquad[0]
     gaussLegendreWeights = gaussquad[1]
 
@@ -195,11 +228,15 @@ def assemblyWeakForm(U,V,w,Ured,Vred,p,q,px,py,gaussquad,dmat,rho,uneu,load):
             K += localStiffnessMatrix(U,V,w,usegment,vsegment,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,parentElemGrad,dmat)
             Fb += localBodyVector(U,V,w,usegment,vsegment,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,parentElemGrad,rho)
             totalArea += elementArea(U,V,w,usegment,vsegment,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,parentElemGrad)
-            if abs(Ured[ii] - uneu) < 1e-5:
-                Fl += appliedLoadVector(U,V,w,Ured[ii+1],vsegment,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,load)
+            if Ured[ii] < uneu and abs(Vred[ji+1] - vneu) < 1e-5:
+                # Fl += appliedLoadVector(U,V,w,Ured[ii+1],vsegment,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,load)
+                Fl += appliedLoadVector(U,V,w,usegment,Vred[ji+1],p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,load)
+                # totalLength += elementLength(U,V,w,usegment,Vred[ji+1],p,q,px,py,gaussLegendrePoints,gaussLegendreWeights)
 
             print("---")
 
+    # print("Total Length")
+    # print(totalLength)
     F = Fb + Fl
     return K,F,totalArea
 
@@ -236,11 +273,60 @@ def solveMatrixEquations(Kred,Fred,totaldofs,remdofs):
 
 ################ POSTPROCESSING ####################
 
-def postProcessing(U,V,w,p,q,P,D):
-    cx,cy = rbs.nurbs2DField(U,V,p,q,P,w)
+def displacementField(U,V,w,p,q,D):
     ux,uy = rbs.nurbs2DField(U,V,p,q,D,w)
-    plts.plotting2DField(cx,cy,ux)
-    plts.plotting2DField(cx,cy,uy)
+    return ux,uy
+
+def stressField(U,V,w,p,q,ured,vred,P,dtot,dmat):
+    numpoints = 21
+    urank = np.linspace(U.min(),U.max(),numpoints)
+    vrank = np.linspace(V.min(),V.max(),numpoints)
+
+    parentgrad = np.zeros((2,2))
+
+    sx = np.zeros([len(urank),len(vrank)])
+    sy = np.zeros([len(urank),len(vrank)])
+    sxy = np.zeros([len(urank),len(vrank)])
+    for j in range(len(vrank)):
+        for i in range(len(urank)):
+
+            if urank[i] != 0.5 and vrank[j] != 1.0:
+                xpcoor = urank[i]
+                ypcoor = vrank[j]
+            else:
+                xpcoor = 0.52
+                ypcoor = vrank[j]
+
+            ii = pca.findKnotInterval(ured,xpcoor)
+            ji = pca.findKnotInterval(vred,ypcoor)
+
+            parentgrad[0][0] = 0.5*(ured[ii+1] - ured[ii])
+            parentgrad[1][1] = 0.5*(vred[ji+1] - vred[ji])
+
+            jac = jacobian(U,V,w,p,q,xpcoor,ypcoor,P[:,0],P[:,1],parentgrad)
+            # print("---")
+            # print(parentgrad)
+            # print(urank[i])
+            # print(vrank[j])
+            # print(jac)
+            # print("---")
+            bmat = strainDisplacementMatrix(U,V,w,p,q,xpcoor,ypcoor,jac)
+
+            svec = dmat@(bmat@dtot)
+            sx[i,j] = svec[0]
+            sy[i,j] = svec[1]
+            sxy[i,j] = svec[2]
+
+    return sx,sy,sxy
+
+def postProcessing(U,V,w,p,q,ured,vred,P,D,dtot,dmat):
+    cx,cy = rbs.nurbs2DField(U,V,p,q,P,w)
+    ux,uy = displacementField(U,V,w,p,q,D)
+    sx,sy,sxy = stressField(U,V,w,p,q,ured,vred,P,dtot,dmat)
+    # plts.plotting2DField(cx,cy,ux,P,["Ux Displacement Field","[m]"])
+    # plts.plotting2DField(cx,cy,sx,P,["Sx Component Stress Field","[Pa]"])
+    print(sx.max())
+    print(sx.min())
 
 ####################################################
 ###################MAIN PROBLEM#####################
@@ -248,13 +334,14 @@ def postProcessing(U,V,w,p,q,P,D):
 
 #Data
 E = 1e5 #Pa
-nu = 0.3
+nu = 0.31
 rho = 0 #kg/m3
 u0 = 0.0
 tv = 10 #Pa
 uDirichlet = [1,4,5,8,9,12]
 uAxis = [1,0,1,0,1,0]
-uNeumann = 0
+uNeumann = 0.5
+vNeumann = 1
 
 numGaussPoints = 4
 gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
@@ -278,7 +365,8 @@ Ured = Uinit[p:-p]
 Vred = Vinit[q:-q]
 
 dMat = elasticMatrix(E,nu)
-K,F,totalArea = assemblyWeakForm(Uinit,Vinit,w,Ured,Vred,p,q,P[:,0],P[:,1],gaussLegendreQuadrature,dMat,rho,uNeumann,tv)
+K,F,totalArea = assemblyWeakForm(Uinit,Vinit,w,Ured,Vred,p,q,P[:,0],P[:,1],gaussLegendreQuadrature,dMat,rho,uNeumann,vNeumann,tv)
+# print(F)
 # plotSparsity(K)
 
 Kred,Fred,removedDofs = boundaryConditionsEnforcement(K,F,uDirichlet,uAxis,u0)
@@ -292,4 +380,4 @@ D = np.hstack((dx,dy))
 # print(P)
 # print(D)
 
-postProcessing(Uinit,Vinit,w,p,q,P,D)
+postProcessing(Uinit,Vinit,w,p,q,Ured,Vred,P,D,dtotal,dMat)

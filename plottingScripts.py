@@ -131,15 +131,27 @@ def plotTangentSurface(cx,cy,cz,cpx,cpy,cpz,px,py,pz,*argv):
     ax.set_zlabel('z');
     plt.show()
 
-def plotting2DField(cx,cy,fz):
+def plotting2DField(cx,cy,fz,*argv):
     fig = plt.figure()
     ax = plt.axes()
-    # field = ax.imshow(fz)
-    field = ax.contourf(cx,cy,fz)
+    titlestring = ""
+    colorbarstring = "value"
+    field = ax.pcolormesh(cx,cy,fz)
+    # field = ax.pcolormesh(cx,cy,fz,vmin=fz.min(),vmax=fz.max())
+    # field = ax.pcolormesh(cx,cy,fz,shading='gouraud',vmin=fz.min(),vmax=fz.max())
+    if argv!= ():
+        pts = argv[0]
+        stringlegends = argv[1]
+        titlestring = stringlegends[0]
+        colorbarstring = stringlegends[1]
+        points = ax.plot(pts[:,0],pts[:,1],'.r')
+
+    # print(colorbarstring)
     cb = fig.colorbar(field)
     ax.set_xlabel('x')
     ax.set_ylabel('y')
-    cb.set_label('value')
+    ax.set_title(titlestring)
+    cb.set_label(colorbarstring)
     plt.show()
 
 def plotKnotInsertion(cx,cy,cxnew,cynew,P,Pnew,*argv):
