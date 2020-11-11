@@ -12,8 +12,8 @@ def findKnotIndex(U,u):
                 kindex = k
     return kindex
 
-def knotInsertion(U,p,P,unew):
-    Pnew = np.zeros((2,len(P[0]) + 1))
+def knotInsertion(U,p,Ph,unew):
+    Pnew = np.zeros((Ph.shape[0] + 1,Ph.shape[1]))
     Unew = np.zeros(len(U) + 1)
 
     for k in range(len(U)):
@@ -34,35 +34,35 @@ def knotInsertion(U,p,P,unew):
         else:
             print('Index error')
 
-    for i in range(len(Pnew[0])):
+    for i in range(Pnew.shape[0]):
         if i <= kindex - p:
-            Pnew[:,i] = P[:,i]
+            Pnew[i,:] = Ph[i,:]
         elif i >= kindex - p + 1 and i <= kindex:
             alpha_i = (unew - U[i])/(U[i+p] - U[i])
-            Pnew[:,i] = alpha_i*P[:,i] + (1.0 - alpha_i)*P[:,i-1]
+            Pnew[i,:] = alpha_i*Ph[i,:] + (1.0 - alpha_i)*Ph[i-1,:]
         elif i >= kindex + 1:
-            Pnew[:,i] = P[:,i-1]
+            Pnew[i,:] = Ph[i-1,:]
         else:
             print('Index error')
 
     return Unew,Pnew
 
-def knotRefinement(U,X,p,P):
+def knotRefinement(U,X,p,Pw):
     a = findKnotIndex(U,X[0])
     b = findKnotIndex(U,X[-1])
     b += 1
 
-    n = len(P[0]) - 1
+    n = Pw.shape[0] - 1
     r = len(X) - 1
     m = n + p + 1
-    Q = np.zeros((2,n + 1 + r + 1))
+    Qw = np.zeros((n + 1 + r + 1,Pw.shape[1]))
     Ubar = np.zeros(len(U) + r + 1)
 
     for j in range(0,a-p+1):
-        Q[:,j] = P[:,j]
+        Qw[j,:] = Pw[j,:]
 
     for j in range(b-1,n+1):
-        Q[:,j+r+1] = P[:,j]
+        Qw[j+r+1,:] = Pw[j,:]
 
     for j in range(0,a+1):
         Ubar[j] = U[j]
@@ -75,38 +75,44 @@ def knotRefinement(U,X,p,P):
     for j in range(r,0-1,-1):
 
         while X[j] <= U[i] and i > a:
-            Q[:,k-p-1] = P[:,i-p-1]
+            Qw[k-p-1,:] = Pw[i-p-1,:]
             Ubar[k] = U[i]
             k -= 1
             i -= 1
 
-        Q[:,k-p-1] = Q[:,k-p]
+        Qw[k-p-1,:] = Qw[k-p,:]
         for l in range(1,p+1):
             ind = k - p + l
             alpha = Ubar[k+l] - X[j]
             if abs(alpha) < 1e-5:
-                Q[:,ind-1] = Q[:,ind]
+                Qw[ind-1,:] = Qw[ind,:]
             else:
                 alpha /= (Ubar[k+l] - U[i-p+l])
-                Q[:,ind-1] = alpha*Q[:,ind-1] + (1.0 - alpha)*Q[:,ind]
+                Qw[ind-1,:] = alpha*Qw[ind-1,:] + (1.0 - alpha)*Qw[ind,:]
 
         Ubar[k] = X[j]
         k -= 1
 
-    return Q,Ubar
+    return Qw,Ubar
 
-def preSplineDecomposition(U,p,P):
+def preSplineDecomposition(U,p,Pw):
     X = np.array([])
     multiVec = np.ones(p)
     for u in U:
         if abs(u-U.min()) > 1e-5 and abs(u-U.max()) > 1e-5:
             X = np.concatenate([X,u*multiVec])
 
-    Qsplit,Usplit = knotRefinement(U,X,p,P)
+    if len(X) > 0:
+        Qsplit,Usplit = knotRefinement(U,X,p,Pw)
+    else:
+        Qsplit = Pw
+        Usplit = U
+        print("The spline only has one element")
+
     return Qsplit,Usplit
 
-def splineSplitting(U,p,P):
-    n = len(P[0]) - 1
+def splineSplitting(U,p,Pw):
+    n = Pw.shape[0] - 1
     m = n + p + 1
     a = p
     b = p + 1
@@ -116,10 +122,10 @@ def splineSplitting(U,p,P):
     alphas = np.zeros(p-1)
 
     for i in range(0,numSegments):
-        qList.append(np.zeros((2,p+1)))
+        qList.append(np.zeros((p+1,Pw.shape[1])))
 
     for i in range(0,p+1):
-        qList[nb][:,i] = P[:,i]
+        qList[nb][i,:] = Pw[i,:]
 
     while b < m:
         i = b
@@ -140,15 +146,15 @@ def splineSplitting(U,p,P):
 
                 for k in range(p,s-1,-1):
                     alpha = alphas[k-s]
-                    qList[nb][:,k] = alpha*qList[nb][:,k] + (1.0 - alpha)*qList[nb][:,k-1]
+                    qList[nb][k,:] = alpha*qList[nb][k,:] + (1.0 - alpha)*qList[nb][k-1,:]
 
                 if b < m:
-                    qList[nb+1][:,save] = qList[nb][:,p]
+                    qList[nb+1][save,:] = qList[nb][p,:]
 
         nb += 1
         if b < m:
             for i in range(p-mult,p+1):
-                qList[nb][:,i] = P[:,b-p+i]
+                qList[nb][i,:] = Pw[b-p+i,:]
 
             a = b
             b += 1
@@ -156,23 +162,23 @@ def splineSplitting(U,p,P):
     Qx = np.array([])
     Qy = np.array([])
     for q in qList:
-        Qx = np.concatenate([Qx,q[0]])
-        Qy = np.concatenate([Qy,q[1]])
+        Qx = np.concatenate([Qx,q[:,0]])
+        Qy = np.concatenate([Qy,q[:,1]])
     Q = np.vstack((Qx,Qy))
     return Q
 
-def splineSplittingv2(U,p,P):
-    n = len(P[0]) - 1
+def splineSplittingv2(U,p,Pw):
+    n = len(Pw.shape[0]) - 1
     m = n + p + 1
     a = p
     b = p + 1
     alphas = np.zeros(p-1)
 
-    Qw = np.zeros((2,p+1))
-    NextQw = np.zeros((2,p-1))
+    Qw = np.zeros((p+1,Pw.shape[1]))
+    NextQw = np.zeros((p-1,Pw.shape[1]))
 
     for i in range(0,p+1):
-        Qw[:,i] = P[:,i]
+        Qw[i,:] = Pw[i,:]
 
     while b < m:
         i = b
@@ -196,21 +202,21 @@ def splineSplittingv2(U,p,P):
 
                 for k in range(p,s-1,-1):
                     alpha = alphas[k-s]
-                    Qw[:,k] = alpha*Qw[:,k] + (1.0 - alpha)*Qw[:,k-1]
+                    Qw[k,:] = alpha*Qw[k,:] + (1.0 - alpha)*Qw[k-1,:]
 
                 if b < m:
                     #Control point of the next segment
-                    NextQw[:,save] = Qw[:,p]
+                    NextQw[save,:] = Qw[p,:]
 
         print('Bezier control points of the segment')
         print(Qw)
         if b < m:
             #Initialize for next segment
             for i in range(0,p-1):
-                Qw[:,i] = NextQw[:,i]
+                Qw[i,:] = NextQw[i,:]
 
             for i in range(p-mult,p+1):
-                Qw[:,i] = P[:,b-p+i]
+                Qw[i,:] = Pw[b-p+i,:]
 
             a = b
             b += 1
@@ -223,7 +229,7 @@ def binomialCoefficient(a,b):
     return bc
 
 def degreeElevation(U,p,Pw,t):
-    n = len(Pw[0]) - 1
+    n = Pw.shape[0] - 1
     m = n + p + 1
     ph = p + t
     ph2 = ph//2
@@ -231,12 +237,12 @@ def degreeElevation(U,p,Pw,t):
     s0 = len(np.unique(U))-2
 
     bezalfs = np.zeros((p+t+1,p+1))
-    bpts = np.zeros((2,p+1))
-    ebpts = np.zeros((2,p+t+1))
-    Nextbpts = np.zeros((2,p-1))
+    bpts = np.zeros((p+1,Pw.shape[1]))
+    ebpts = np.zeros((p+t+1,Pw.shape[1]))
+    Nextbpts = np.zeros((p-1,Pw.shape[1]))
     alfs = np.zeros(p-1)
     Uh = np.zeros(len(U) + len(np.unique(U))*t)
-    Qw = np.zeros((2,len(Uh) - (p+t) - 1))
+    Qw = np.zeros((len(Uh) - (p+t) - 1,Pw.shape[1]))
 
     #Compute bezier degree elevation coefficients
     bezalfs[0][0] = 1.0
@@ -260,14 +266,14 @@ def degreeElevation(U,p,Pw,t):
     b = p + 1
     cind = 1
     ua = Uh[0]
-    Qw[:,0] = Pw[:,0]
+    Qw[0,:] = Pw[0,:]
 
     for i in range(0,ph+1):
         Uh[i] = ua
 
     #Initialize first bezier segment
     for i in range(0,p+1):
-        bpts[:,i] = Pw[:,i]
+        bpts[i,:] = Pw[i,:]
 
     #Big loop through knot vector
     while b < m:
@@ -301,19 +307,19 @@ def degreeElevation(U,p,Pw,t):
                 save = r - j
                 s = mul + j
                 for k in range(p,s-1,-1):
-                    bpts[:,k] = alfs[k-s]*bpts[:,k] + (1.0 - alfs[k-s])*bpts[:,k-1]
+                    bpts[k,:] = alfs[k-s]*bpts[k,:] + (1.0 - alfs[k-s])*bpts[k-1,:]
 
-                Nextbpts[:,save] = bpts[:,p]
+                Nextbpts[save,:] = bpts[p,:]
 
         #End of insert knot
         #Degree elevate bezier
         #Only points lbz,...,ph are used below
         # ebpts = np.zeros((2,p+t+1))
         for i in range(lbz,ph+1):
-            ebpts[:,i] = np.zeros(2)
+            ebpts[i,:] = np.zeros(Pw.shape[1])
             mpi = min(p,i)
             for j in range(max(0,i-t),mpi+1):
-                ebpts[:,i] += bezalfs[i][j]*bpts[:,j]
+                ebpts[i,:] += bezalfs[i][j]*bpts[j,:]
 
         # print('Bezier + t control points of current segment')
         # print(ebpts)
@@ -334,14 +340,14 @@ def degreeElevation(U,p,Pw,t):
                 while (j - i) > tr:
                     if i < cind:
                         alf = (ub - Uh[i])/(ua - Uh[i])
-                        Qw[:,i] = alf*Qw[:,i] + (1.0 - alf)*Qw[:,i-1]
+                        Qw[i,:] = alf*Qw[i,:] + (1.0 - alf)*Qw[i-1,:]
 
                     if j >= lbz:
                         if (j - tr) <= (kind - ph + oldr):
                             gam = (ub - Uh[j - tr])/den
-                            ebpts[:,kj] = gam*ebpts[:,kj] + (1.0 - gam)*ebpts[:,kj+1]
+                            ebpts[kj,:] = gam*ebpts[kj,:] + (1.0 - gam)*ebpts[kj+1,:]
                         else:
-                            ebpts[:,kj] = bet*ebpts[:,kj] + (1.0 - bet)*ebpts[:,kj+1]
+                            ebpts[kj,:] = bet*ebpts[kj,:] + (1.0 - bet)*ebpts[kj+1,:]
 
                     i += 1
                     j -= 1
@@ -359,16 +365,16 @@ def degreeElevation(U,p,Pw,t):
 
         #Load control points into Qw
         for j in range(lbz,rbz+1):
-            Qw[:,cind] = ebpts[:,j]
+            Qw[cind,:] = ebpts[j,:]
             cind += 1
 
         if b < m:
             #Set up for the next loop through
             for j in range(0,r):
-                bpts[:,j] = Nextbpts[:,j]
+                bpts[j,:] = Nextbpts[j,:]
 
             for j in range(r,p+1):
-                bpts[:,j] = Pw[:,b-p+j]
+                bpts[j,:] = Pw[b-p+j,:]
 
             a = b
             b += 1

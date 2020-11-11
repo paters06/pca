@@ -57,10 +57,11 @@ def plot1DField(cx,uy,field,*argv):
         plt.show()
 
 def plotCurve2d(cx,cy,P,*argv):
-    fig = plt.figure()
+    fig,ax = plt.subplots()
     plt.plot(cx,cy)
-    plt.plot(P[0],P[1],'ro')
-    plt.plot(P[0],P[1])
+    ax.set_aspect('equal','box')
+    plt.plot(P[:,0],P[:,1],'ro')
+    plt.plot(P[:,0],P[:,1])
     if argv != ():
         if argv[0] == 'yes':
             plt.savefig(argv[1]+'.png')
@@ -157,14 +158,18 @@ def plotting2DField(cx,cy,fz,*argv):
 def plotKnotInsertion(cx,cy,cxnew,cynew,P,Pnew,*argv):
     fig,ax = plt.subplots(1,2,sharey=True,figsize=(8,4.8))
     fig.suptitle('Knot insertion')
+
     ax[0].set_title('Original')
+    ax[0].set_aspect('equal','box')
     ax[0].plot(cx,cy)
-    ax[0].plot(P[0],P[1],'ro')
-    ax[0].plot(P[0],P[1],'k')
+    ax[0].plot(P[:,0],P[:,1],'ro')
+    ax[0].plot(P[:,0],P[:,1],'k')
+
     ax[1].set_title('After insertion')
+    ax[1].set_aspect('equal','box')
     ax[1].plot(cxnew,cynew)
-    ax[1].plot(Pnew[0],Pnew[1],'ro')
-    ax[1].plot(Pnew[0],Pnew[1],'k')
+    ax[1].plot(Pnew[:,0],Pnew[:,1],'ro')
+    ax[1].plot(Pnew[:,0],Pnew[:,1],'k')
 
     if argv != ():
         if argv[0] == 'yes':
@@ -177,14 +182,18 @@ def plotKnotInsertion(cx,cy,cxnew,cynew,P,Pnew,*argv):
 def plotKnotRefinement(cx,cy,cxnew,cynew,P,Pnew,*argv):
     fig,ax = plt.subplots(1,2,sharey=True,figsize=(8,4.8))
     fig.suptitle('Knot refinement')
+
     ax[0].set_title('Original')
+    ax[0].set_aspect('equal','box')
     ax[0].plot(cx,cy)
-    ax[0].plot(P[0],P[1],'ro')
-    ax[0].plot(P[0],P[1],'k')
+    ax[0].plot(P[:,0],P[:,1],'ro')
+    ax[0].plot(P[:,0],P[:,1],'k')
+
     ax[1].set_title('After refinement')
+    ax[1].set_aspect('equal','box')
     ax[1].plot(cxnew,cynew)
-    ax[1].plot(Pnew[0],Pnew[1],'ro')
-    ax[1].plot(Pnew[0],Pnew[1],'k')
+    ax[1].plot(Pnew[:,0],Pnew[:,1],'ro')
+    ax[1].plot(Pnew[:,0],Pnew[:,1],'k')
 
     if argv != ():
         if argv[0] == 'yes':
@@ -197,14 +206,18 @@ def plotKnotRefinement(cx,cy,cxnew,cynew,P,Pnew,*argv):
 def plotDegreeElevation(cx,cy,cxnew,cynew,P,Pnew,*argv):
     fig,ax = plt.subplots(1,2,sharey=True,figsize=(8,4.8))
     fig.suptitle('Degree Elevation')
+
     ax[0].set_title('Original')
+    ax[0].set_aspect('equal','box')
     ax[0].plot(cx,cy)
-    ax[0].plot(P[0],P[1],'ro')
-    ax[0].plot(P[0],P[1],'k')
+    ax[0].plot(P[:,0],P[:,1],'ro')
+    ax[0].plot(P[:,0],P[:,1],'k')
+
     ax[1].set_title('After elevation')
+    ax[1].set_aspect('equal','box')
     ax[1].plot(cxnew,cynew)
-    ax[1].plot(Pnew[0],Pnew[1],'ro')
-    ax[1].plot(Pnew[0],Pnew[1],'k')
+    ax[1].plot(Pnew[:,0],Pnew[:,1],'ro')
+    ax[1].plot(Pnew[:,0],Pnew[:,1],'k')
 
     if argv != ():
         if argv[0] == 'yes':

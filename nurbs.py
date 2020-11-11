@@ -1,6 +1,23 @@
 import numpy as np
 import pca_01 as pca
 
+#####################################################
+##################CONTROL POINTS#####################
+#####################################################
+
+#Convert from real control points to homogeneous ones
+def weightedControlPoints(P,w):
+    Pw = np.hstack((P,np.ones((P.shape[0],1))))
+    Pw *= w
+    return Pw
+
+#Convert from homogeneous to real projection
+def geometricControlPoints(Pw):
+    w = Pw[:,-1]
+    w = np.reshape(w,(len(w),1))
+    P = Pw[:,:-1]/w
+    return P,w
+
 ####################################################
 ######################NURBS#########################
 ####################################################
@@ -59,12 +76,12 @@ def nurbsCurve(U,p,P,w):
     cx = np.zeros(len(urank))
     cy = np.zeros(len(urank))
 
-    px = np.reshape(P[0],(len(P[0]),1))
-    py = np.reshape(P[1],(len(P[1]),1))
+    px = np.reshape(P[:,0],(len(P[:,0]),1))
+    py = np.reshape(P[:,1],(len(P[:,1]),1))
 
     for i in range(len(urank)):
         nVec = pca.nFunction(U,p,urank[i])
-        ratFunc = (nVec*w)/(nVec@w)
+        ratFunc = (nVec*w.T)/(nVec@w)
         cx[i] = ratFunc@px
         cy[i] = ratFunc@py
     return cx,cy
