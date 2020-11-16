@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 ####################################################
 ######################PLOTS#########################
@@ -141,18 +142,21 @@ def plotting2DField(cx,cy,fz,*argv):
     # field = ax.pcolormesh(cx,cy,fz,vmin=fz.min(),vmax=fz.max())
     # field = ax.pcolormesh(cx,cy,fz,shading='gouraud',vmin=fz.min(),vmax=fz.max())
     if argv!= ():
-        pts = argv[0]
-        stringlegends = argv[1]
-        titlestring = stringlegends[0]
-        colorbarstring = stringlegends[1]
-        points = ax.plot(pts[:,0],pts[:,1],'.r')
+        if len(argv) == 1:
+            pts = argv[0]
+        elif len(argv) == 2:
+            stringlegends = argv[1]
+            titlestring = stringlegends[0]
+            colorbarstring = stringlegends[1]
+        else:
+            print("More than 2 extra arguments")
+        ax.scatter(pts[:,0],pts[:,1])
 
-    # print(colorbarstring)
     cb = fig.colorbar(field)
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_title(titlestring)
-    cb.set_label(colorbarstring)
+    # cb.set_label(colorbarstring)
     plt.show()
 
 def plotKnotInsertion(cx,cy,cxnew,cynew,P,Pnew,*argv):
@@ -218,6 +222,28 @@ def plotDegreeElevation(cx,cy,cxnew,cynew,P,Pnew,*argv):
     ax[1].plot(cxnew,cynew)
     ax[1].plot(Pnew[:,0],Pnew[:,1],'ro')
     ax[1].plot(Pnew[:,0],Pnew[:,1],'k')
+
+    if argv != ():
+        if argv[0] == 'yes':
+            plt.savefig(argv[1]+'.png')
+        else:
+            plt.show()
+    else:
+        plt.show()
+
+def plotSurfaceKnotInsertion(cx,cy,cxnew,cynew,P,Pnew,*argv):
+    fig,ax = plt.subplots(1,2,sharey=True,figsize=(8,4.8))
+    fig.suptitle('Knot insertion')
+
+    ax[0].set_title('Original')
+    ax[0].set_aspect('equal','box')
+    ax[0].pcolormesh(cx,cy,np.zeros((cx.shape[0],cx.shape[1])))
+    ax[0].scatter(P[:,0],P[:,1])
+
+    ax[1].set_title('After insertion')
+    ax[1].set_aspect('equal','box')
+    ax[1].pcolormesh(cxnew,cynew,np.zeros((cxnew.shape[0],cxnew.shape[1])))
+    ax[1].scatter(Pnew[:,0],Pnew[:,1])
 
     if argv != ():
         if argv[0] == 'yes':

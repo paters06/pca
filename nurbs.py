@@ -45,9 +45,6 @@ def dRatdU(U,V,w,p,q,u,v):
     W = nunv@w
     dW = dnunv@w
 
-    # print((dnunv*W).shape)
-    # print((nunv*dW).shape)
-    # print(w.T.shape)
     dratfunc = (w.T)*(dnunv*W - nunv*dW)/(W**2)
     return dratfunc
 

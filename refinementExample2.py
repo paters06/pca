@@ -3,13 +3,13 @@ import pca_01 as pca
 import nurbs as rbs
 import plottingScripts as plts
 import matplotlib.pyplot as plt
-import refinements as rfn
+import curveRefinements as crfn
 
 ############# SINGLE KNOT INSERTION EXAMPLE #################
 
 def singleKnotInsertionScript(U,p,P,w):
     Pw = rbs.weightedControlPoints(P,w)
-    Uh,Pwh = rfn.knotInsertion(U,p,Pw,0.5)
+    Uh,Pwh = crfn.knotInsertion(U,p,Pw,0.5)
     Ph,wh = rbs.geometricControlPoints(Pwh)
 
     cx,cy = rbs.nurbsCurve(U,p,P,w)
@@ -27,7 +27,7 @@ def knotRefinementScript(U,p,P,w):
     Ured = U[p:-p]
     X = 0.5*(Ured[0:-1] + Ured[1:])
 
-    Qw,Ubar = rfn.knotRefinement(U,X,p,Pw)
+    Qw,Ubar = crfn.knotRefinement(U,X,p,Pw)
     Pref,wref = rbs.geometricControlPoints(Qw)
 
     cx,cy = rbs.nurbsCurve(U,p,P,w)
@@ -44,7 +44,7 @@ def preSplineDecompositionScript(U,p,P,w):
     cx,cy = rbs.nurbsCurve(U,p,P,w)
     # plts.plotCurve2d(cx,cy,P)
 
-    Qdecmp,Udecmp = rfn.preSplineDecomposition(U,p,Pw)
+    Qdecmp,Udecmp = crfn.preSplineDecomposition(U,p,Pw)
     Pdecmp,wdecmp = rbs.geometricControlPoints(Qdecmp)
 
     cxdecmp,cydecmp = rbs.nurbsCurve(Udecmp,p,Pdecmp,wdecmp)
@@ -54,10 +54,10 @@ def preSplineDecompositionScript(U,p,P,w):
 
 def splineDecompositionScript(U,p,P,w):
     Pw = rbs.weightedControlPoints(P,w)
-    Qdecmp,Usplit = rfn.preSplineDecomposition(U,p,Pw)
-    Qsplit = rfn.splineSplitting(U,p,Pw)
+    Qdecmp,Usplit = crfn.preSplineDecomposition(U,p,Pw)
+    Qsplit = crfn.splineSplitting(U,p,Pw)
     Psplit,wsplit = rbs.geometricControlPoints(Qsplit)
-    rfn.splineSplittingv2(U,p,Pw)
+    crfn.splineSplittingv2(U,p,Pw)
 
     cx,cy = rbs.nurbsCurve(U,p,P,w)
     cxs,cys = rbs.nurbsCurve(Usplit,p,P,w)
@@ -67,7 +67,7 @@ def splineDecompositionScript(U,p,P,w):
 def degreeElevationScript(U,p,P,w):
     Pw = rbs.weightedControlPoints(P,w)
     t = 1
-    Qe,Ue,pe = rfn.degreeElevation(U,p,Pw,t)
+    Qe,Ue,pe = crfn.degreeElevation(U,p,Pw,t)
     Pe,we = rbs.geometricControlPoints(Qe)
 
     cx,cy = rbs.nurbsCurve(U,p,P,w)
@@ -98,5 +98,5 @@ pinp = 2
 Uinp = np.array([0,0,0,1,1,1])
 # Pwinp = rbs.weightedControlPoints(P,w)
 
-option = 5
+option = 1
 numberToScript(Uinp,pinp,Pinp,winp,option)

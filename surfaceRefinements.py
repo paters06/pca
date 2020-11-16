@@ -12,40 +12,173 @@ def findKnotIndex(U,u):
                 kindex = k
     return kindex
 
-def knotInsertion(U,p,Ph,unew):
-    Pnew = np.zeros((Ph.shape[0] + 1,Ph.shape[1]))
-    Unew = np.zeros(len(U) + 1)
+############# SINGLE KNOT INSERTION FOR SURFACE #################
 
-    for k in range(len(U)):
-        if U[k] < (unew + tol) and (unew + tol) < (U[k+1]):
-            kindex = k
+def knotInsertion(unew,vnew,dir,U,V,p,q,Pw):
+    if dir == "UDIR":
+        Rw = np.zeros((p+1,Pw.shape[1]))
+        Unew = np.zeros(len(U) + 1)
+        Vnew = np.zeros(len(V) + 1)
 
-        if abs(unew - U.max())<tol:
-            if U[k] < (unew - tol) and (unew - tol) < U[k+1]:
-                kindex = k
+        k = findKnotIndex(U,unew)
+        r = 1 #Single insertion
+        s = 0 #Multiplicity of the knots
 
-    for i in range(len(Unew)):
-        if i <= kindex:
+        # nP is the number of rows of control points minus 1
+        # before the knot insertion
+        # Np is the number of rows of control points
+        # before the knot insertion
+
+        # mp is the number of columns of control points minus 1
+        # before the knot insertion
+
+        nP = (len(U) - 1) - p - 1
+        Np = nP + 1
+        mP = nP + p + 1
+        mp = (len(V) - 1) - q - 1
+
+        Qw = np.zeros((Pw.shape[0] + mp + 1,Pw.shape[1]))
+
+        # nq is the number of rows of control points minus one
+        # after the knot insertion
+
+        nq = nP + r
+        Nq = nq + 1
+
+        alpha = np.zeros((p-r-s+1,r+1))
+
+        #Load new vector
+        for i in range(0,k+1):
             Unew[i] = U[i]
-        elif i == kindex + 1:
-            Unew[i] = unew
-        elif i > kindex + 1:
-            Unew[i] = U[i-1]
-        else:
-            print('Index error')
 
-    for i in range(Pnew.shape[0]):
-        if i <= kindex - p:
-            Pnew[i,:] = Ph[i,:]
-        elif i >= kindex - p + 1 and i <= kindex:
-            alpha_i = (unew - U[i])/(U[i+p] - U[i])
-            Pnew[i,:] = alpha_i*Ph[i,:] + (1.0 - alpha_i)*Ph[i-1,:]
-        elif i >= kindex + 1:
-            Pnew[i,:] = Ph[i-1,:]
-        else:
-            print('Index error')
+        for i in range(1,r+1):
+            Unew[k+i] = unew
 
-    return Unew,Pnew
+        for i in range(k+1,mP+1):
+            Unew[i+r] = U[i]
+
+        #Copy old vector in new vector
+        Vnew = V
+
+        #Save the alphas
+        for j in range(1,r+1):
+            L = k - p + j
+
+            for i in range(0,p-j-s+1):
+                alpha[i][j] = (unew - U[L+i])/(U[i+k+1] - U[L+i])
+
+        #For each row do
+        for row in range(0,mp+1):
+
+            #Save unaltered control points
+            for i in range(0,k-p+1):
+                Qw[row*Nq+i,:] = Pw[row*Np+i,:]
+
+            for i in range(k-s,nP+1):
+                Qw[row*Nq+i+r,:] = Pw[row*Np+i,:]
+
+            #Load auxiliary control points
+            for i in range(0,p-s+1):
+                Rw[i,:] = Pw[row*Np+k-p+i,:]
+
+            #Insert the knot r times
+            for j in range(1,r+1):
+                L = k-p+j
+
+                for i in range(0,p-j-s+1):
+                    Rw[i,:] = alpha[i][j]*Rw[i+1,:] + (1.0 - alpha[i][j])*Rw[i,:]
+
+                Qw[row*Nq+L,:] = Rw[0,:]
+                Qw[row*Nq+k+r-j-s,:] = Rw[p-j-s,:]
+
+            #Load remaining control points
+            for i in range(L+1,k-s):
+                print("in")
+                Qw[row*Nq+i,:] = Rw[i-L,:]
+
+    if dir == "VDIR":
+        Rw = np.zeros((p+1,Pw.shape[1]))
+        Unew = np.zeros(len(U) + 1)
+        Vnew = np.zeros(len(V) + 1)
+
+        k = findKnotIndex(V,vnew)
+        r = 1 #Single insertion
+        s = 0 #Multiplicity of the knots
+
+        # nP is the number of rows of control points minus 1
+        # before the knot insertion
+
+        # mp is the number of columns of control points minus 1
+        # before the knot insertion
+        # Mp is the number of columns of control points
+        # before the knot insertion
+
+        nP = (len(U) - 1) - p - 1
+        mp = (len(V) - 1) - q - 1
+        Mp = mp + 1
+        mP = mp + q + 1
+
+        Qw = np.zeros((Pw.shape[0] + nP + 1,Pw.shape[1]))
+
+        # mq is the number of columns of control points minus one
+        # after the knot insertion
+
+        mq = mp + r
+        Mq = mq + 1
+
+        alpha = np.zeros((p-r-s+1,r+1))
+
+        #Copy old vector in new vector
+        Unew = U
+
+        #Load new vector
+        for i in range(0,k+1):
+            Vnew[i] = V[i]
+
+        for i in range(1,r+1):
+            Vnew[k+i] = unew
+
+        for i in range(k+1,mp+1):
+            Vnew[i+r] = V[i]
+
+        #Save the alphas
+        for j in range(1,r+1):
+            L = k - p + j
+
+            for i in range(0,p-j-s+1):
+                alpha[i][j] = (vnew - V[L+i])/(V[i+k+1] - V[L+i])
+
+        #For each row do
+        for col in range(0,nP+1):
+
+            #Save unaltered control points
+            for i in range(0,k-p+1):
+                Qw[col*Mq+i,:] = Pw[col*Mp+i,:]
+
+            for i in range(k-s,nP+1):
+                Qw[col*Mq+i+r,:] = Pw[col*Mp+i,:]
+
+            #Load auxiliary control points
+            for i in range(0,p-s+1):
+                Rw[i,:] = Pw[col*Mp+k-p+i,:]
+
+            #Insert the knot r times
+            for j in range(1,r+1):
+                L = k-p+j
+
+                for i in range(0,p-j-s+1):
+                    Rw[i,:] = alpha[i][j]*Rw[i+1,:] + (1.0 - alpha[i][j])*Rw[i,:]
+
+                Qw[col*Mq+L,:] = Rw[0,:]
+                Qw[col*Mq+k+r-j-s,:] = Rw[p-j-s,:]
+
+            #Load remaining control points
+            for i in range(L+1,k-s):
+                Qw[col*Mq+i,:] = Rw[i-L,:]
+
+    return Unew,Vnew,Qw
+
+################ KNOT REFINEMENT FOR CURVE ####################
 
 def knotRefinement(U,X,p,Pw):
     a = findKnotIndex(U,X[0])
@@ -95,6 +228,8 @@ def knotRefinement(U,X,p,Pw):
 
     return Qw,Ubar
 
+################ Pre-SPLINE DECOMPOSITION FOR CURVE ####################
+
 def preSplineDecomposition(U,p,Pw):
     X = np.array([])
     multiVec = np.ones(p)
@@ -110,6 +245,8 @@ def preSplineDecomposition(U,p,Pw):
         print("The spline only has one element")
 
     return Qsplit,Usplit
+
+################ SPLINE DECOMPOSITION FOR CURVE ####################
 
 def splineSplitting(U,p,Pw):
     n = Pw.shape[0] - 1
@@ -220,6 +357,8 @@ def splineSplittingv2(U,p,Pw):
 
             a = b
             b += 1
+
+################ DEGREE ELEVATION FOR CURVE ####################
 
 def binomialCoefficient(a,b):
     bc = 1.0
