@@ -14,9 +14,8 @@ def findKnotIndex(U,u):
 
 ############# SINGLE KNOT INSERTION FOR SURFACE #################
 
-def knotInsertion(unew,vnew,dir,U,V,p,q,Pw):
+def knotInsertion(unew,vnew,dir,U,V,p,q,Pwg):
     if dir == "UDIR":
-        Rw = np.zeros((p+1,Pw.shape[1]))
         Unew = np.zeros(len(U) + 1)
         Vnew = np.zeros(len(V) + 1)
 
@@ -32,12 +31,10 @@ def knotInsertion(unew,vnew,dir,U,V,p,q,Pw):
         # mp is the number of columns of control points minus 1
         # before the knot insertion
 
-        nP = (len(U) - 1) - p - 1
+        nP = Pwg.shape[1] - 1
         Np = nP + 1
         mP = nP + p + 1
-        mp = (len(V) - 1) - q - 1
-
-        Qw = np.zeros((Pw.shape[0] + mp + 1,Pw.shape[1]))
+        mp = Pwg.shape[2] - 1
 
         # nq is the number of rows of control points minus one
         # after the knot insertion
@@ -45,6 +42,8 @@ def knotInsertion(unew,vnew,dir,U,V,p,q,Pw):
         nq = nP + r
         Nq = nq + 1
 
+        Qwg = np.zeros((Pwg.shape[0],Nq,Pwg.shape[2]))
+        Rw = np.zeros((p+1,Pwg.shape[0]))
         alpha = np.zeros((p-r-s+1,r+1))
 
         #Load new vector
@@ -72,14 +71,14 @@ def knotInsertion(unew,vnew,dir,U,V,p,q,Pw):
 
             #Save unaltered control points
             for i in range(0,k-p+1):
-                Qw[row*Nq+i,:] = Pw[row*Np+i,:]
+                Qwg[:,i,row] = Pwg[:,i,row]
 
             for i in range(k-s,nP+1):
-                Qw[row*Nq+i+r,:] = Pw[row*Np+i,:]
+                Qwg[:,i+r,row] = Pwg[:,i,row]
 
             #Load auxiliary control points
             for i in range(0,p-s+1):
-                Rw[i,:] = Pw[row*Np+k-p+i,:]
+                Rw[i,:] = Pwg[:,k-p+i,row]
 
             #Insert the knot r times
             for j in range(1,r+1):
@@ -88,16 +87,14 @@ def knotInsertion(unew,vnew,dir,U,V,p,q,Pw):
                 for i in range(0,p-j-s+1):
                     Rw[i,:] = alpha[i][j]*Rw[i+1,:] + (1.0 - alpha[i][j])*Rw[i,:]
 
-                Qw[row*Nq+L,:] = Rw[0,:]
-                Qw[row*Nq+k+r-j-s,:] = Rw[p-j-s,:]
+                Qwg[:,L,row] = Rw[0,:]
+                Qwg[:,k+r-j-s,row] = Rw[p-j-s,:]
 
             #Load remaining control points
             for i in range(L+1,k-s):
-                print("in")
-                Qw[row*Nq+i,:] = Rw[i-L,:]
+                Qwg[:,i,row] = Rw[i-L,:]
 
     if dir == "VDIR":
-        Rw = np.zeros((p+1,Pw.shape[1]))
         Unew = np.zeros(len(U) + 1)
         Vnew = np.zeros(len(V) + 1)
 
@@ -105,128 +102,203 @@ def knotInsertion(unew,vnew,dir,U,V,p,q,Pw):
         r = 1 #Single insertion
         s = 0 #Multiplicity of the knots
 
-        # nP is the number of rows of control points minus 1
+        # nP is the number of columns of control points minus 1
+        # before the knot insertion
+        # Np is the number of colums of control points
         # before the knot insertion
 
-        # mp is the number of columns of control points minus 1
-        # before the knot insertion
-        # Mp is the number of columns of control points
+        # mp is the number of rows of control points minus 1
         # before the knot insertion
 
-        nP = (len(U) - 1) - p - 1
-        mp = (len(V) - 1) - q - 1
-        Mp = mp + 1
-        mP = mp + q + 1
+        nP = Pwg.shape[2] - 1
+        Np = nP + 1
+        mP = nP + q + 1
+        mp = Pwg.shape[1] - 1
 
-        Qw = np.zeros((Pw.shape[0] + nP + 1,Pw.shape[1]))
-
-        # mq is the number of columns of control points minus one
+        # nq is the number of columns of control points minus one
         # after the knot insertion
 
-        mq = mp + r
-        Mq = mq + 1
+        nq = nP + r
+        Nq = nq + 1
 
-        alpha = np.zeros((p-r-s+1,r+1))
-
-        #Copy old vector in new vector
-        Unew = U
+        Qwg = np.zeros((Pwg.shape[0],Pwg.shape[1],Nq))
+        Rw = np.zeros((q+1,Pwg.shape[0]))
+        alpha = np.zeros((q-r-s+1,r+1))
 
         #Load new vector
         for i in range(0,k+1):
             Vnew[i] = V[i]
 
         for i in range(1,r+1):
-            Vnew[k+i] = unew
+            Vnew[k+i] = vnew
 
-        for i in range(k+1,mp+1):
+        for i in range(k+1,mP+1):
             Vnew[i+r] = V[i]
+
+        #Copy old vector in new vector
+        Unew = U
 
         #Save the alphas
         for j in range(1,r+1):
-            L = k - p + j
+            L = k - q + j
 
-            for i in range(0,p-j-s+1):
+            for i in range(0,q-j-s+1):
                 alpha[i][j] = (vnew - V[L+i])/(V[i+k+1] - V[L+i])
 
         #For each row do
-        for col in range(0,nP+1):
+        for col in range(0,mp+1):
 
             #Save unaltered control points
-            for i in range(0,k-p+1):
-                Qw[col*Mq+i,:] = Pw[col*Mp+i,:]
+            for i in range(0,k-q+1):
+                Qwg[:,col,i] = Pwg[:,col,i]
 
             for i in range(k-s,nP+1):
-                Qw[col*Mq+i+r,:] = Pw[col*Mp+i,:]
+                Qwg[:,col,i+r] = Pwg[:,col,i]
 
             #Load auxiliary control points
-            for i in range(0,p-s+1):
-                Rw[i,:] = Pw[col*Mp+k-p+i,:]
+            for i in range(0,q-s+1):
+                Rw[i,:] = Pwg[:,col,k-q+i]
 
             #Insert the knot r times
             for j in range(1,r+1):
-                L = k-p+j
+                L = k-q+j
 
-                for i in range(0,p-j-s+1):
+                for i in range(0,q-j-s+1):
                     Rw[i,:] = alpha[i][j]*Rw[i+1,:] + (1.0 - alpha[i][j])*Rw[i,:]
 
-                Qw[col*Mq+L,:] = Rw[0,:]
-                Qw[col*Mq+k+r-j-s,:] = Rw[p-j-s,:]
+                Qwg[:,col,L] = Rw[0,:]
+                Qwg[:,col,k+r-j-s] = Rw[q-j-s,:]
 
             #Load remaining control points
             for i in range(L+1,k-s):
-                Qw[col*Mq+i,:] = Rw[i-L,:]
+                Qwg[:,col,i] = Rw[i-L,:]
 
-    return Unew,Vnew,Qw
+    return Unew,Vnew,Qwg
 
 ################ KNOT REFINEMENT FOR CURVE ####################
 
-def knotRefinement(U,X,p,Pw):
-    a = findKnotIndex(U,X[0])
-    b = findKnotIndex(U,X[-1])
-    b += 1
+def knotRefinement(X,dir,U,V,p,q,Pwg):
+    if dir == "UDIR":
+        a = findKnotIndex(U,X[0])
+        b = findKnotIndex(U,X[-1])
+        b += 1
 
-    n = Pw.shape[0] - 1
-    r = len(X) - 1
-    m = n + p + 1
-    Qw = np.zeros((n + 1 + r + 1,Pw.shape[1]))
-    Ubar = np.zeros(len(U) + r + 1)
+        n = Pwg.shape[1] - 1
+        r = len(X) - 1
+        m = n + p + 1
+        mcol = Pwg.shape[2] - 1
+        Qwg = np.zeros((Pwg.shape[0],n + 1 + r + 1,Pwg.shape[2]))
+        Ubar = np.zeros(len(U) + r + 1)
 
-    for j in range(0,a-p+1):
-        Qw[j,:] = Pw[j,:]
+        #Initializing Ubar
+        for j in range(0,a+1):
+            Ubar[j] = U[j]
 
-    for j in range(b-1,n+1):
-        Qw[j+r+1,:] = Pw[j,:]
+        for j in range(b+p,m+1):
+            Ubar[j+r+1] = U[j]
 
-    for j in range(0,a+1):
-        Ubar[j] = U[j]
+        #Copying V into Vbar
+        Vbar = V
 
-    for j in range(b+p,m+1):
-        Ubar[j+r+1] = U[j]
+        #Save unaltered control points
+        for row in range(0,mcol+1):
 
-    i = b + p - 1
-    k = b + p + r
-    for j in range(r,0-1,-1):
+            for k in range(0,a-p+1):
+                Qwg[:,k,row] = Pwg[:,k,row]
 
-        while X[j] <= U[i] and i > a:
-            Qw[k-p-1,:] = Pw[i-p-1,:]
-            Ubar[k] = U[i]
+            for k in range(b-1,n+1):
+                Qwg[:,k+r+1,row] = Pwg[:,k,row]
+
+        i = b + p - 1
+        k = b + p + r
+        for j in range(r,-1,-1):
+
+            while X[j] <= U[i] and i > a:
+                Ubar[k] = U[i]
+                for row in range(0,mcol+1):
+                    Qwg[:,k-p-1,row] = Pwg[:,i-p-1,row]
+
+                k -= 1
+                i -= 1
+
+            for row in range(0,mcol+1):
+                Qwg[:,k-p-1,row] = Qwg[:,k-p,row]
+
+            for l in range(1,p+1):
+                ind = k - p + l
+                alpha = Ubar[k+l] - X[j]
+                if abs(alpha) < 1e-5:
+                    for row in range(0,mcol+1):
+                        Qwg[:,ind-1,row] = Qwg[:,ind,row]
+                else:
+                    alpha /= (Ubar[k+l] - U[i-p+l])
+                    for row in range(0,mcol+1):
+                        Qwg[:,ind-1,row] = alpha*Qwg[:,ind-1,row] + (1.0 - alpha)*Qwg[:,ind,row]
+
+            Ubar[k] = X[j]
             k -= 1
-            i -= 1
 
-        Qw[k-p-1,:] = Qw[k-p,:]
-        for l in range(1,p+1):
-            ind = k - p + l
-            alpha = Ubar[k+l] - X[j]
-            if abs(alpha) < 1e-5:
-                Qw[ind-1,:] = Qw[ind,:]
-            else:
-                alpha /= (Ubar[k+l] - U[i-p+l])
-                Qw[ind-1,:] = alpha*Qw[ind-1,:] + (1.0 - alpha)*Qw[ind,:]
+    if dir == "VDIR":
+        a = findKnotIndex(V,X[0])
+        b = findKnotIndex(V,X[-1])
+        b += 1
 
-        Ubar[k] = X[j]
-        k -= 1
+        n = Pwg.shape[2] - 1
+        r = len(X) - 1
+        m = n + q + 1
+        nrow = Pwg.shape[1] - 1
+        Qwg = np.zeros((Pwg.shape[0],Pwg.shape[1],n + 1 + r + 1))
+        Vbar = np.zeros(len(V) + r + 1)
 
-    return Qw,Ubar
+        #Initializing Ubar
+        for j in range(0,a+1):
+            Vbar[j] = U[j]
+
+        for j in range(b+p,m+1):
+            Vbar[j+r+1] = U[j]
+
+        #Copying U into Ubar
+        Ubar = U
+
+        #Save unaltered control points
+        for col in range(0,nrow+1):
+
+            for k in range(0,a-q+1):
+                Qwg[:,col,k] = Pwg[:,col,k]
+
+            for k in range(b-1,n+1):
+                Qwg[:,col,k+r+1] = Pwg[:,col,k]
+
+        i = b + q - 1
+        k = b + q + r
+        for j in range(r,-1,-1):
+
+            while X[j] <= V[i] and i > a:
+                Vbar[k] = V[i]
+                for col in range(0,nrow+1):
+                    Qwg[:,col,k-q-1] = Pwg[:,col,i-q-1]
+
+                k -= 1
+                i -= 1
+
+            for col in range(0,nrow+1):
+                Qwg[:,col,k-q-1] = Qwg[:,col,k-q]
+
+            for l in range(1,q+1):
+                ind = k - q + l
+                alpha = Vbar[k+l] - X[j]
+                if abs(alpha) < 1e-5:
+                    for col in range(0,nrow+1):
+                        Qwg[:,col,ind-1] = Qwg[:,col,ind]
+                else:
+                    alpha /= (Vbar[k+l] - V[i-q+l])
+                    for col in range(0,nrow+1):
+                        Qwg[:,col,ind-1] = alpha*Qwg[:,col,ind-1] + (1.0 - alpha)*Qwg[:,col,ind]
+
+            Vbar[k] = X[j]
+            k -= 1
+
+    return Ubar,Vbar,Qwg
 
 ################ Pre-SPLINE DECOMPOSITION FOR CURVE ####################
 

@@ -18,6 +18,31 @@ def geometricControlPoints(Pw):
     P = Pw[:,:-1]/w
     return P,w
 
+#Convert list of control points to a spatial grid
+def listToGridControlPoints(Pl,U,V,p,q):
+    #Number of control points in the U direction
+    NU = len(U) - p - 1
+
+    #Number of control points in the V direction
+    NV = len(V) - q - 1
+
+    Pg = np.zeros((Pl.shape[1],NU,NV))
+
+    Pg[0,:,:] = np.reshape(Pl[:,0],(NU,NV),order='F')
+    Pg[1,:,:] = np.reshape(Pl[:,1],(NU,NV),order='F')
+    Pg[2,:,:] = np.reshape(Pl[:,2],(NU,NV),order='F')
+
+    return Pg
+
+def gridToListControlPoints(Pg):
+    Pl = np.zeros((Pg.shape[1]*Pg.shape[2],Pg.shape[0]))
+
+    Pl[:,0] = np.reshape(Pg[0,:,:],(Pg.shape[1]*Pg.shape[2]),order='F')
+    Pl[:,1] = np.reshape(Pg[1,:,:],(Pg.shape[1]*Pg.shape[2]),order='F')
+    Pl[:,2] = np.reshape(Pg[2,:,:],(Pg.shape[1]*Pg.shape[2]),order='F')
+
+    return Pl
+
 ####################################################
 ######################NURBS#########################
 ####################################################
