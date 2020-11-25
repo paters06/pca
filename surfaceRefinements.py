@@ -175,7 +175,7 @@ def knotInsertion(unew,vnew,dir,U,V,p,q,Pwg):
 
     return Unew,Vnew,Qwg
 
-################ KNOT REFINEMENT FOR CURVE ####################
+################ KNOT REFINEMENT FOR SURFACE ####################
 
 def knotRefinement(X,dir,U,V,p,q,Pwg):
     if dir == "UDIR":
@@ -300,9 +300,9 @@ def knotRefinement(X,dir,U,V,p,q,Pwg):
 
     return Ubar,Vbar,Qwg
 
-################ Pre-SPLINE DECOMPOSITION FOR CURVE ####################
+################ Pre-SPLINE DECOMPOSITION FOR SURFACE ####################
 
-def preSplineDecomposition(U,p,Pw):
+def preSplineDecomposition(refdir,U,V,p,q,Pw):
     X = np.array([])
     multiVec = np.ones(p)
     for u in U:
@@ -310,127 +310,19 @@ def preSplineDecomposition(U,p,Pw):
             X = np.concatenate([X,u*multiVec])
 
     if len(X) > 0:
-        Qsplit,Usplit = knotRefinement(U,X,p,Pw)
+        # refdir = "UDIR"
+        Usplit,Vsplit,Qsplit = knotRefinement(X,refdir,U,V,p,q,Pw)
     else:
-        Qsplit = Pw
         Usplit = U
+        Vsplit = V
+        Qsplit = Pw
         print("The spline only has one element")
 
-    return Qsplit,Usplit
+    return Usplit,Vsplit,Qsplit
 
 ################ SPLINE DECOMPOSITION FOR CURVE ####################
 
-def splineSplitting(U,p,Pw):
-    n = Pw.shape[0] - 1
-    m = n + p + 1
-    a = p
-    b = p + 1
-    nb = 0
-    qList = []
-    numSegments = len(np.unique(U)) - 1
-    alphas = np.zeros(p-1)
-
-    for i in range(0,numSegments):
-        qList.append(np.zeros((p+1,Pw.shape[1])))
-
-    for i in range(0,p+1):
-        qList[nb][i,:] = Pw[i,:]
-
-    while b < m:
-        i = b
-        while b < m and abs(U[b+1] - U[b]) < 1e-5:
-            b += 1
-
-        mult = b - i + 1
-        if mult < p:
-            numer = U[b] - U[a]
-
-            for j in range(p,mult,-1):
-                alphas[j-mult-1] = numer/(U[a+j] - U[a])
-
-            r = p - mult
-            for j in range(1,r+1):
-                save = r - j
-                s = mult + j
-
-                for k in range(p,s-1,-1):
-                    alpha = alphas[k-s]
-                    qList[nb][k,:] = alpha*qList[nb][k,:] + (1.0 - alpha)*qList[nb][k-1,:]
-
-                if b < m:
-                    qList[nb+1][save,:] = qList[nb][p,:]
-
-        nb += 1
-        if b < m:
-            for i in range(p-mult,p+1):
-                qList[nb][i,:] = Pw[b-p+i,:]
-
-            a = b
-            b += 1
-
-    Qx = np.array([])
-    Qy = np.array([])
-    for q in qList:
-        Qx = np.concatenate([Qx,q[:,0]])
-        Qy = np.concatenate([Qy,q[:,1]])
-    Q = np.vstack((Qx,Qy))
-    return Q
-
-def splineSplittingv2(U,p,Pw):
-    n = len(Pw.shape[0]) - 1
-    m = n + p + 1
-    a = p
-    b = p + 1
-    alphas = np.zeros(p-1)
-
-    Qw = np.zeros((p+1,Pw.shape[1]))
-    NextQw = np.zeros((p-1,Pw.shape[1]))
-
-    for i in range(0,p+1):
-        Qw[i,:] = Pw[i,:]
-
-    while b < m:
-        i = b
-        while b < m and abs(U[b+1] - U[b]) < 1e-5:
-            b += 1
-
-        mult = b - i + 1
-        if mult < p:
-            #numerator of alpha
-            numer = U[b] - U[a]
-
-            #Compute and store alpha
-            for j in range(p,mult,-1):
-                alphas[j-mult-1] = numer/(U[a+j] - U[a])
-
-            r = p - mult
-            #Insert knot r times
-            for j in range(1,r+1):
-                save = r - j
-                s = mult + j #This many new points
-
-                for k in range(p,s-1,-1):
-                    alpha = alphas[k-s]
-                    Qw[k,:] = alpha*Qw[k,:] + (1.0 - alpha)*Qw[k-1,:]
-
-                if b < m:
-                    #Control point of the next segment
-                    NextQw[save,:] = Qw[p,:]
-
-        print('Bezier control points of the segment')
-        print(Qw)
-        if b < m:
-            #Initialize for next segment
-            for i in range(0,p-1):
-                Qw[i,:] = NextQw[i,:]
-
-            for i in range(p-mult,p+1):
-                Qw[i,:] = Pw[b-p+i,:]
-
-            a = b
-            b += 1
-
-################ DEGREE ELEVATION FOR CURVE ####################
+################ DEGREE ELEVATION FOR SURFACE ####################
 
 def binomialCoefficient(a,b):
     bc = 1.0
@@ -439,163 +331,335 @@ def binomialCoefficient(a,b):
 
     return bc
 
-def degreeElevation(U,p,Pw,t):
-    n = Pw.shape[0] - 1
-    m = n + p + 1
-    ph = p + t
-    ph2 = ph//2
+def surfaceDegreeElevation(dir,U,V,p,q,Pwg,tp,tq):
+    if dir == "UDIR":
+        n = Pwg.shape[1] - 1 #n is the number of rows of Pwg minus 1
+        mN = n + p + 1 #mN is the m value from the U knot vector
 
-    s0 = len(np.unique(U))-2
+        ph = p + tp
+        ph2 = ph//2
 
-    bezalfs = np.zeros((p+t+1,p+1))
-    bpts = np.zeros((p+1,Pw.shape[1]))
-    ebpts = np.zeros((p+t+1,Pw.shape[1]))
-    Nextbpts = np.zeros((p-1,Pw.shape[1]))
-    alfs = np.zeros(p-1)
-    Uh = np.zeros(len(U) + len(np.unique(U))*t)
-    Qw = np.zeros((len(Uh) - (p+t) - 1,Pw.shape[1]))
+        s0 = len(np.unique(U))-2
 
-    #Compute bezier degree elevation coefficients
-    bezalfs[0][0] = 1.0
-    bezalfs[ph][p] = 1.0
+        bezalfs = np.zeros((p+tp+1,p+1))
+        bpts = np.zeros((Pwg.shape[0],p+1,Pwg.shape[2]))
+        ebpts = np.zeros((Pwg.shape[0],p+tp+1,Pwg.shape[2]))
+        Nextbpts = np.zeros((Pwg.shape[0],p-1,Pwg.shape[2]))
+        alfs = np.zeros(p-1)
+        Uh = np.zeros(len(U) + len(np.unique(U))*tp)
+        Qwg = np.zeros((Pwg.shape[0],len(Uh) - (p+tp) - 1,Pwg.shape[2]))
 
-    for i in range(1,ph2+1):
-        inv = 1.0/binomialCoefficient(ph,i)
-        mpi = min(p,i)
-        for j in range(max(0,i-t),mpi+1):
-            bezalfs[i][j] = inv*binomialCoefficient(p,j)*binomialCoefficient(t,i-j)
+        Vh = V
+        qh = q
 
-    for i in range(ph2+1,ph):
-        mpi = min(p,i)
-        for j in range(max(0,i-t),mpi+1):
-            bezalfs[i][j] = bezalfs[ph-i][p-j]
+        #Compute bezier degree elevation coefficients
+        bezalfs[0][0] = 1.0
+        bezalfs[ph][p] = 1.0
 
-    mh = ph
-    kind = ph + 1
-    r = -1
-    a = p
-    b = p + 1
-    cind = 1
-    ua = Uh[0]
-    Qw[0,:] = Pw[0,:]
-
-    for i in range(0,ph+1):
-        Uh[i] = ua
-
-    #Initialize first bezier segment
-    for i in range(0,p+1):
-        bpts[i,:] = Pw[i,:]
-
-    #Big loop through knot vector
-    while b < m:
-        i = b
-        while b < m and abs(U[b+1] - U[b]) < 1e-5:
-            b += 1
-
-        mul = b - i + 1
-        mh += mul + t
-        ub = U[b]
-        oldr = r
-        r = p - mul
-        #Insert knot u(b) r times
-        if oldr > 0:
-            lbz = (oldr + 2)//2
-        else:
-            lbz = 1
-
-        if r > 0:
-            rbz = ph - (r + 1)//2
-        else:
-            rbz = ph
-
-        #Insert knot to get bezier segment
-        if r > 0:
-            numer = ub - ua
-            for k in range(p,mul,-1):
-                alfs[k-mul-1] = numer/(U[a+k] - ua)
-
-            for j in range(1,r+1):
-                save = r - j
-                s = mul + j
-                for k in range(p,s-1,-1):
-                    bpts[k,:] = alfs[k-s]*bpts[k,:] + (1.0 - alfs[k-s])*bpts[k-1,:]
-
-                Nextbpts[save,:] = bpts[p,:]
-
-        #End of insert knot
-        #Degree elevate bezier
-        #Only points lbz,...,ph are used below
-        # ebpts = np.zeros((2,p+t+1))
-        for i in range(lbz,ph+1):
-            ebpts[i,:] = np.zeros(Pw.shape[1])
+        for i in range(1,ph2+1):
+            inv = 1.0/binomialCoefficient(ph,i)
             mpi = min(p,i)
-            for j in range(max(0,i-t),mpi+1):
-                ebpts[i,:] += bezalfs[i][j]*bpts[j,:]
+            for j in range(max(0,i-tp),mpi+1):
+                bezalfs[i][j] = inv*binomialCoefficient(p,j)*binomialCoefficient(tp,i-j)
 
-        # print('Bezier + t control points of current segment')
-        # print(ebpts)
-        #End of degree elevating bezier
-        #Must remove knot u = U[a] oldr times
-        if oldr > 1:
-            first = kind - 2
-            last = kind
-            den = ub - ua
-            bet = (ub - Uh[kind-1])/den
-            #Knot removal loop
-            for tr in range(1,oldr):
-                i = first
-                j = last
-                kj = j - kind + 1
-                #Loop and compute the new
-                #Control points for one removal step
-                while (j - i) > tr:
-                    if i < cind:
-                        alf = (ub - Uh[i])/(ua - Uh[i])
-                        Qw[i,:] = alf*Qw[i,:] + (1.0 - alf)*Qw[i-1,:]
+        for i in range(ph2+1,ph):
+            mpi = min(p,i)
+            for j in range(max(0,i-tp),mpi+1):
+                bezalfs[i][j] = bezalfs[ph-i][p-j]
 
-                    if j >= lbz:
-                        if (j - tr) <= (kind - ph + oldr):
-                            gam = (ub - Uh[j - tr])/den
-                            ebpts[kj,:] = gam*ebpts[kj,:] + (1.0 - gam)*ebpts[kj+1,:]
-                        else:
-                            ebpts[kj,:] = bet*ebpts[kj,:] + (1.0 - bet)*ebpts[kj+1,:]
+        mh = ph
+        kind = ph + 1
+        r = -1
+        a = p
+        b = p + 1
+        cind = 1
+        ua = Uh[0]
+        # Qw[0,:] = Pw[0,:]
+        Qwg[:,0,:] = Pwg[:,0,:]
 
-                    i += 1
-                    j -= 1
-                    kj -= 1
+        for i in range(0,ph+1):
+            Uh[i] = ua
 
-                first -= 1
-                last += 1
+        #Initialize first bezier segment
+        for i in range(0,p+1):
+            # bpts[i,:] = Pw[i,:]
+            bpts[:,i,:] = Pwg[:,i,:]
 
-        #End of removing knot u = U[a]
-        #Load the knot ua
-        if a != p:
-            for i in range(0,ph-oldr):
-                Uh[kind] = ua
-                kind += 1
+        #Big loop through knot vector
+        while b < mN:
+            i = b
+            while b < mN and abs(U[b+1] - U[b]) < 1e-5:
+                b += 1
 
-        #Load control points into Qw
-        for j in range(lbz,rbz+1):
-            Qw[cind,:] = ebpts[j,:]
-            cind += 1
+            mul = b - i + 1
+            mh += mul + tp
+            ub = U[b]
+            oldr = r
+            r = p - mul
+            #Insert knot u(b) r times
+            if oldr > 0:
+                lbz = (oldr + 2)//2
+            else:
+                lbz = 1
 
-        if b < m:
-            #Set up for the next loop through
-            for j in range(0,r):
-                bpts[j,:] = Nextbpts[j,:]
+            if r > 0:
+                rbz = ph - (r + 1)//2
+            else:
+                rbz = ph
 
-            for j in range(r,p+1):
-                bpts[j,:] = Pw[b-p+j,:]
+            #Insert knot to get bezier segment
+            if r > 0:
+                numer = ub - ua
+                for k in range(p,mul,-1):
+                    alfs[k-mul-1] = numer/(U[a+k] - ua)
 
-            a = b
-            b += 1
-            ua = ub
-        else:
-            #End knot
-            for i in range(0,ph+1):
-                Uh[kind+i] = ub
+                for j in range(1,r+1):
+                    save = r - j
+                    s = mul + j
+                    for k in range(p,s-1,-1):
+                        bpts[:,k,:] = alfs[k-s]*bpts[:,k,:] + (1.0 - alfs[k-s])*bpts[:,k-1,:]
 
-    #End of while loop (b < m)
-    nh = mh - ph - 1
+                    Nextbpts[:,save,:] = bpts[:,p,:]
 
-    return Qw,Uh,ph
+            #End of insert knot
+            #Degree elevate bezier
+            #Only points lbz,...,ph are used below
+            # ebpts = np.zeros((2,p+t+1))
+            for i in range(lbz,ph+1):
+                ebpts[:,i,:] = np.zeros((Pwg.shape[0],Pwg.shape[2]))
+                mpi = min(p,i)
+                for j in range(max(0,i-tp),mpi+1):
+                    ebpts[:,i,:] += bezalfs[i][j]*bpts[:,j,:]
+
+            # print('Bezier + t control points of current segment')
+            # print(ebpts)
+            #End of degree elevating bezier
+            #Must remove knot u = U[a] oldr times
+            if oldr > 1:
+                first = kind - 2
+                last = kind
+                den = ub - ua
+                bet = (ub - Uh[kind-1])/den
+                #Knot removal loop
+                for tr in range(1,oldr):
+                    i = first
+                    j = last
+                    kj = j - kind + 1
+                    #Loop and compute the new
+                    #Control points for one removal step
+                    while (j - i) > tr:
+                        if i < cind:
+                            alf = (ub - Uh[i])/(ua - Uh[i])
+                            Qwg[:,i,:] = alf*Qwg[:,i,:] + (1.0 - alf)*Qwg[:,i-1,:]
+
+                        if j >= lbz:
+                            if (j - tr) <= (kind - ph + oldr):
+                                gam = (ub - Uh[j - tr])/den
+                                ebpts[:,kj,:] = gam*ebpts[:,kj,:] + (1.0 - gam)*ebpts[:,kj+1,:]
+                            else:
+                                ebpts[:,kj,:] = bet*ebpts[:,kj,:] + (1.0 - bet)*ebpts[:,kj+1,:]
+
+                        i += 1
+                        j -= 1
+                        kj -= 1
+
+                    first -= 1
+                    last += 1
+
+            #End of removing knot u = U[a]
+            #Load the knot ua
+            if a != p:
+                for i in range(0,ph-oldr):
+                    Uh[kind] = ua
+                    kind += 1
+
+            #Load control points into Qw
+            for j in range(lbz,rbz+1):
+                Qwg[:,cind,:] = ebpts[:,j,:]
+                cind += 1
+
+            if b < mN:
+                #Set up for the next loop through
+                for j in range(0,r):
+                    bpts[:,j,:] = Nextbpts[:,j,:]
+
+                for j in range(r,p+1):
+                    bpts[:,j,:] = Pwg[:,b-p+j,:]
+
+                a = b
+                b += 1
+                ua = ub
+            else:
+                #End knot
+                for i in range(0,ph+1):
+                    Uh[kind+i] = ub
+
+        #End of while loop (b < m)
+        nh = mh - ph - 1
+
+    if dir == "VDIR":
+        m = Pwg.shape[2] - 1 #m is the number of columns of Pwg minus 1
+        mM = m + q + 1 #mM is the m value from the V knot vector
+
+        qh = q + tq
+        qh2 = qh//2
+
+        s0 = len(np.unique(V))-2
+
+        bezalfs = np.zeros((q+tq+1,q+1))
+        bpts = np.zeros((Pwg.shape[0],Pwg.shape[1],q+1))
+        ebpts = np.zeros((Pwg.shape[0],Pwg.shape[1],q+tq+1))
+        Nextbpts = np.zeros((Pwg.shape[0],Pwg.shape[1],q-1))
+        alfs = np.zeros(q-1)
+        Vh = np.zeros(len(V) + len(np.unique(V))*tq)
+        Qwg = np.zeros((Pwg.shape[0],Pwg.shape[1],len(Vh) - (q+tq) - 1))
+
+        Uh = U
+        ph = p
+
+        #Compute bezier degree elevation coefficients
+        bezalfs[0][0] = 1.0
+        bezalfs[qh][q] = 1.0
+
+        for i in range(1,qh2+1):
+            inv = 1.0/binomialCoefficient(qh,i)
+            mqi = min(q,i)
+            for j in range(max(0,i-tq),mqi+1):
+                bezalfs[i][j] = inv*binomialCoefficient(q,j)*binomialCoefficient(tq,i-j)
+
+        for i in range(qh2+1,qh):
+            mqi = min(q,i)
+            for j in range(max(0,i-tq),mqi+1):
+                bezalfs[i][j] = bezalfs[qh-i][q-j]
+
+        mh = qh
+        kind = qh + 1
+        r = -1
+        a = q
+        b = q + 1
+        cind = 1
+        va = Vh[0]
+        # Qw[0,:] = Pw[0,:]
+        Qwg[:,:,0] = Pwg[:,:,0]
+
+        for i in range(0,qh+1):
+            Vh[i] = va
+
+        #Initialize first bezier segment
+        for i in range(0,q+1):
+            # bpts[i,:] = Pw[i,:]
+            bpts[:,:,i] = Pwg[:,:,i]
+
+        #Big loop through knot vector
+        while b < mM:
+            i = b
+            while b < mM and abs(V[b+1] - V[b]) < 1e-5:
+                b += 1
+
+            mul = b - i + 1
+            mh += mul + tq
+            vb = V[b]
+            oldr = r
+            r = q - mul
+            #Insert knot u(b) r times
+            if oldr > 0:
+                lbz = (oldr + 2)//2
+            else:
+                lbz = 1
+
+            if r > 0:
+                rbz = qh - (r + 1)//2
+            else:
+                rbz = qh
+
+            #Insert knot to get bezier segment
+            if r > 0:
+                numer = vb - va
+                for k in range(q,mul,-1):
+                    alfs[k-mul-1] = numer/(V[a+k] - va)
+
+                for j in range(1,r+1):
+                    save = r - j
+                    s = mul + j
+                    for k in range(q,s-1,-1):
+                        bpts[:,:,k] = alfs[k-s]*bpts[:,:,k] + (1.0 - alfs[k-s])*bpts[:,:,k-1]
+
+                    Nextbpts[:,:,save] = bpts[:,:,q]
+
+            #End of insert knot
+            #Degree elevate bezier
+            #Only points lbz,...,ph are used below
+            # ebpts = np.zeros((2,p+t+1))
+            for i in range(lbz,qh+1):
+                ebpts[:,:,i] = np.zeros((Pwg.shape[0],Pwg.shape[1]))
+                mqi = min(q,i)
+                for j in range(max(0,i-tq),mqi+1):
+                    ebpts[:,:,i] += bezalfs[i][j]*bpts[:,:,j]
+
+            # print('Bezier + t control points of current segment')
+            # print(ebpts)
+            #End of degree elevating bezier
+            #Must remove knot u = U[a] oldr times
+            if oldr > 1:
+                first = kind - 2
+                last = kind
+                den = vb - va
+                bet = (vb - Vh[kind-1])/den
+                #Knot removal loop
+                for tr in range(1,oldr):
+                    i = first
+                    j = last
+                    kj = j - kind + 1
+                    #Loop and compute the new
+                    #Control points for one removal step
+                    while (j - i) > tr:
+                        if i < cind:
+                            alf = (vb - Vh[i])/(va - Vh[i])
+                            Qwg[:,:,i] = alf*Qwg[:,:,i] + (1.0 - alf)*Qwg[:,:,i-1]
+
+                        if j >= lbz:
+                            if (j - tr) <= (kind - qh + oldr):
+                                gam = (vb - Vh[j - tr])/den
+                                ebpts[:,:,kj] = gam*ebpts[:,:,kj] + (1.0 - gam)*ebpts[:,:,kj+1]
+                            else:
+                                ebpts[:,:,kj] = bet*ebpts[:,:,kj] + (1.0 - bet)*ebpts[:,:,kj+1]
+
+                        i += 1
+                        j -= 1
+                        kj -= 1
+
+                    first -= 1
+                    last += 1
+
+            #End of removing knot v = V[a]
+            #Load the knot va
+            if a != q:
+                for i in range(0,qh-oldr):
+                    Vh[kind] = va
+                    kind += 1
+
+            #Load control points into Qw
+            for j in range(lbz,rbz+1):
+                Qwg[:,:,cind] = ebpts[:,:,j]
+                cind += 1
+
+            if b < mM:
+                #Set up for the next loop through
+                for j in range(0,r):
+                    bpts[:,:,j] = Nextbpts[:,:,j]
+
+                for j in range(r,q+1):
+                    bpts[:,:,j] = Pwg[:,:,b-q+j]
+
+                a = b
+                b += 1
+                va = vb
+            else:
+                #End knot
+                for i in range(0,qh+1):
+                    Vh[kind+i] = vb
+
+        #End of while loop (b < m)
+        nh = mh - qh - 1
+
+    return Uh,Vh,ph,qh,Qwg
