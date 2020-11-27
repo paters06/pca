@@ -88,7 +88,6 @@ def knotInsertion(U,p,Pw,unew):
         L = k-p+j
 
         for i in range(0,p-j-s+1):
-            print(i)
             alpha = (unew - U[L+i])/(U[i+k+1]- U[L+i])
             Rw[i,:] = alpha*Rw[i+1,:] + (1.0 - alpha)*Rw[i,:]
 
@@ -96,10 +95,8 @@ def knotInsertion(U,p,Pw,unew):
         Qw[k+r-j-s,:] = Rw[p-j-s,:]
 
     for i in range(L+1,k-s):
-        print("in")
         Qw[i,:] = Rw[i-L,:]
 
-    print(Qw)
     return Unew,Qw
 
 ################ KNOT REFINEMENT FOR CURVE ####################

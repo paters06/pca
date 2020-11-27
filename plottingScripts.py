@@ -231,6 +231,30 @@ def plotDegreeElevation(cx,cy,cxnew,cynew,P,Pnew,*argv):
     else:
         plt.show()
 
+def plotCurveRefinement(cx,cy,cxnew,cynew,P,Pnew,*argv):
+    fig,ax = plt.subplots(1,2,sharey=True,figsize=(8,4.8))
+    fig.suptitle('Curve refinement')
+
+    ax[0].set_title('Original')
+    ax[0].set_aspect('equal','box')
+    ax[0].plot(cx,cy)
+    ax[0].plot(P[:,0],P[:,1],'ro')
+    ax[0].plot(P[:,0],P[:,1],'k')
+
+    ax[1].set_title('After refinement')
+    ax[1].set_aspect('equal','box')
+    ax[1].plot(cxnew,cynew)
+    ax[1].plot(Pnew[:,0],Pnew[:,1],'ro')
+    ax[1].plot(Pnew[:,0],Pnew[:,1],'k')
+
+    if argv != ():
+        if argv[0] == 'yes':
+            plt.savefig(argv[1]+'.png')
+        else:
+            plt.show()
+    else:
+        plt.show()
+
 def plotSurfaceKnotInsertion(cx,cy,cxnew,cynew,P,Pnew,*argv):
     fig,ax = plt.subplots(1,2,sharey=True,figsize=(8,4.8))
     fig.suptitle('Knot insertion')
