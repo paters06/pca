@@ -102,5 +102,26 @@ qinp = 1
 Uinp = np.array([0,0,0,1,1,1])
 Vinp = np.array([0,0,1,1])
 
-option = 4
-numberToScript(Uinp,Vinp,pinp,qinp,Pinp,winp,option)
+# option = 4
+# numberToScript(Uinp,Vinp,pinp,qinp,Pinp,winp,option)
+
+# Uref,Vref,pref,qref,Pref,wref = srfn.hRefinement("V",Uinp,Vinp,pinp,qinp,Pinp,winp)
+# Uref,Vref,pref,qref,Pref,wref = srfn.pRefinement("V",Uinp,Vinp,pinp,qinp,Pinp,winp)
+# Uref,Vref,pref,qref,Pref,wref = srfn.kRefinement("U",Uinp,Vinp,pinp,qinp,Pinp,winp)
+
+# reflist = ['k']
+# dirlist = ['V']
+# reflist = ['p','k']
+# dirlist = ['V','V']
+reflist = ['k','k','h','h']
+dirlist = ['U','V','U','V']
+Uref,Vref,pref,qref,Pref,wref = srfn.surfaceRefinement(reflist,dirlist,Uinp,Vinp,pinp,qinp,Pinp,winp)
+# print(Uref)
+# print(Vref)
+
+cx,cy = rbs.nurbs2DField(Uinp,Vinp,pinp,qinp,Pinp,winp)
+cxref,cyref = rbs.nurbs2DField(Uref,Vref,pref,qref,Pref,wref)
+
+# plts.plotting2DField(cx,cy,np.zeros((cx.shape[0],cx.shape[1])),P)
+# plts.plotting2DField(cxref,cyref,np.zeros((cxref.shape[0],cxref.shape[1])),Pref)
+plts.plotSurfaceRefinement(cx,cy,cxref,cyref,Pinp,Pref)

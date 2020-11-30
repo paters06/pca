@@ -1,4 +1,5 @@
 import numpy as np
+import nurbs as rbs
 
 tol = 1e-5
 
@@ -13,41 +14,6 @@ def findKnotIndex(U,u):
     return kindex
 
 ############# SINGLE KNOT INSERTION FOR CURVE #################
-
-# def knotInsertion(U,p,Ph,unew):
-#     Pnew = np.zeros((Ph.shape[0] + 1,Ph.shape[1]))
-#     Unew = np.zeros(len(U) + 1)
-#
-#     for k in range(len(U)):
-#         if U[k] < (unew + tol) and (unew + tol) < (U[k+1]):
-#             kindex = k
-#
-#         if abs(unew - U.max())<tol:
-#             if U[k] < (unew - tol) and (unew - tol) < U[k+1]:
-#                 kindex = k
-#
-#     for i in range(len(Unew)):
-#         if i <= kindex:
-#             Unew[i] = U[i]
-#         elif i == kindex + 1:
-#             Unew[i] = unew
-#         elif i > kindex + 1:
-#             Unew[i] = U[i-1]
-#         else:
-#             print('Index error')
-#
-#     for i in range(Pnew.shape[0]):
-#         if i <= kindex - p:
-#             Pnew[i,:] = Ph[i,:]
-#         elif i >= kindex - p + 1 and i <= kindex:
-#             alpha_i = (unew - U[i])/(U[i+p] - U[i])
-#             Pnew[i,:] = alpha_i*Ph[i,:] + (1.0 - alpha_i)*Ph[i-1,:]
-#         elif i >= kindex + 1:
-#             Pnew[i,:] = Ph[i-1,:]
-#         else:
-#             print('Index error')
-#
-#     return Unew,Pnew
 
 def knotInsertion(U,p,Pw,unew):
 
@@ -449,4 +415,70 @@ def degreeElevation(U,p,Pw,t):
 
     return Qw,Uh,ph
 
-############# SINGLE KNOT INSERTION FOR SURFACE #################
+################ GENERAL REFINEMENT ####################
+
+#Knot refinement
+def hRefinement(U,p,P,w):
+    Pw = rbs.weightedControlPoints(P,w)
+
+    Ured = U[p:-p]
+    X = 0.5*(Ured[0:-1] + Ured[1:])
+
+    Qwh,Uh = knotRefinement(U,X,p,Pw)
+    Ph,wh = rbs.geometricControlPoints(Qwh)
+
+    ph = p
+
+    return Uh,ph,Ph,wh
+
+#Degree Elevation
+def pRefinement(U,p,P,w):
+    Pw = rbs.weightedControlPoints(P,w)
+    t = 1
+    Qp,Up,pp = degreeElevation(U,p,Pw,t)
+    Pp,wp = rbs.geometricControlPoints(Qp)
+
+    return Up,pp,Pp,wp
+
+def kRefinement(U,p,P,w):
+    Up,pp,Pp,wp = pRefinement(U,p,P,w)
+    Uk,pk,Pk,wk = hRefinement(Up,pp,Pp,wp)
+
+    return Uk,pk,Pk,wk
+
+def curveRefinement(refinementlist,U,p,P,w):
+    href = 0
+    pref = 0
+    kref = 0
+
+    Uin = U
+    pin = p
+    Pin = P
+    win = w
+
+    for rfnlist in refinementlist:
+        if rfnlist == 'h':
+            Uout,pout,Pout,wout = hRefinement(Uin,pin,Pin,win)
+            href += 1
+        elif rfnlist == 'p':
+            Uout,pout,Pout,wout = pRefinement(Uin,pin,Pin,win)
+            pref += 1
+        elif rfnlist == 'k':
+            Uout,pout,Pout,wout = kRefinement(Uin,pin,Pin,win)
+            kref += 1
+        else:
+            print("Invalid option")
+
+        Uin = Uout
+        pin = pout
+        Pin = Pout
+        win = wout
+
+    print('Number of h-refinements')
+    print(href)
+    print('Number of p-refinements')
+    print(pref)
+    print('Number of k-refinements')
+    print(kref)
+
+    return Uout,pout,Pout,wout

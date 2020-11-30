@@ -88,74 +88,6 @@ def numberToScript(U,p,P,w,argument):
     func = switcher.get(argument,lambda:"Invalid option")
     func(U,p,P,w)
 
-################ GENERAL REFINEMENT EXAMPLE ####################
-
-#Knot refinement
-def hRefinement(U,p,P,w):
-    Pw = rbs.weightedControlPoints(P,w)
-
-    Ured = U[p:-p]
-    X = 0.5*(Ured[0:-1] + Ured[1:])
-
-    Qwh,Uh = crfn.knotRefinement(U,X,p,Pw)
-    Ph,wh = rbs.geometricControlPoints(Qwh)
-
-    ph = p
-
-    return Uh,ph,Ph,wh
-
-#Degree Elevation
-def pRefinement(U,p,P,w):
-    Pw = rbs.weightedControlPoints(P,w)
-    t = 1
-    Qp,Up,pp = crfn.degreeElevation(U,p,Pw,t)
-    Pp,wp = rbs.geometricControlPoints(Qp)
-
-    return Up,pp,Pp,wp
-
-def kRefinement(U,p,P,w):
-    Up,pp,Pp,wp = pRefinement(U,p,P,w)
-    Uk,pk,Pk,wk = hRefinement(Up,pp,Pp,wp)
-
-    return Uk,pk,Pk,wk
-
-def curveRefinement(refinementlist,U,p,P,w):
-    href = 0
-    pref = 0
-    kref = 0
-
-    Uin = U
-    pin = p
-    Pin = P
-    win = w
-
-    for rfnlist in refinementlist:
-        if rfnlist == 'h':
-            Uout,pout,Pout,wout = hRefinement(Uin,pin,Pin,win)
-            href += 1
-        elif rfnlist == 'p':
-            Uout,pout,Pout,wout = pRefinement(Uin,pin,Pin,win)
-            pref += 1
-        elif rfnlist == 'k':
-            Uout,pout,Pout,wout = kRefinement(Uin,pin,Pin,win)
-            kref += 1
-        else:
-            print("Invalid option")
-
-        Uin = Uout
-        pin = pout
-        Pin = Pout
-        win = wout
-
-    print('Number of h-refinements')
-    print(href)
-    print('Number of p-refinements')
-    print(pref)
-    print('Number of k-refinements')
-    print(kref)
-
-    return Uout,pout,Pout,wout
-
 ####################################################
 ###################MAIN PROGRAM#####################
 ####################################################
@@ -170,9 +102,9 @@ Uinp = np.array([0,0,0,1,1,1])
 # numberToScript(Uinp,pinp,Pinp,winp,option)
 
 # reflist = ['k']
-# reflist = ['k','h']
-reflist = ['h','h','h']
-Uref,pref,Pref,wref = curveRefinement(reflist,Uinp,pinp,Pinp,winp)
+# reflist = ['h','p']
+# reflist = ['k','h','h']
+Uref,pref,Pref,wref = crfn.curveRefinement(reflist,Uinp,pinp,Pinp,winp)
 # print(Uref)
 # print(pref)
 

@@ -1,4 +1,5 @@
 import numpy as np
+import nurbs as rbs
 
 tol = 1e-5
 
@@ -252,10 +253,10 @@ def knotRefinement(X,dir,U,V,p,q,Pwg):
 
         #Initializing Ubar
         for j in range(0,a+1):
-            Vbar[j] = U[j]
+            Vbar[j] = V[j]
 
-        for j in range(b+p,m+1):
-            Vbar[j+r+1] = U[j]
+        for j in range(b+q,m+1):
+            Vbar[j+r+1] = V[j]
 
         #Copying U into Ubar
         Ubar = U
@@ -663,3 +664,104 @@ def surfaceDegreeElevation(dir,U,V,p,q,Pwg,tp,tq):
         nh = mh - qh - 1
 
     return Uh,Vh,ph,qh,Qwg
+
+################ GENERAL REFINEMENT ####################
+
+#Knot refinement
+def hRefinement(rfndir,U,V,p,q,P,w):
+    if rfndir == "U":
+        dir = "UDIR"
+        Ured = U[p:-p]
+        X = 0.5*(Ured[0:-1] + Ured[1:])
+    elif rfndir == "V":
+        dir = "VDIR"
+        Ured = V[q:-q]
+        X = 0.5*(Ured[0:-1] + Ured[1:])
+    else:
+        print("Wrong parameter direction")
+
+    Pw = rbs.weightedControlPoints(P,w)
+    Pwgrid = rbs.listToGridControlPoints(Pw,U,V,p,q)
+
+    Uh,Vh,Qwhgrid = knotRefinement(X,dir,U,V,p,q,Pwgrid)
+    Qw = rbs.gridToListControlPoints(Qwhgrid)
+    Ph,wh = rbs.geometricControlPoints(Qw)
+
+    ph = p
+    qh = q
+
+    return Uh,Vh,ph,qh,Ph,wh
+
+#Degree Elevation
+def pRefinement(rfndir,U,V,p,q,P,w):
+    if rfndir == "U":
+        dir = "UDIR"
+    elif rfndir == "V":
+        dir = "VDIR"
+    else:
+        print("Wrong parameter direction")
+
+    Pw = rbs.weightedControlPoints(P,w)
+    Pwgrid = rbs.listToGridControlPoints(Pw,U,V,p,q)
+
+    tp = 1
+    tq = 1
+    Up,Vp,pp,qp,Qwpgrid = surfaceDegreeElevation(dir,U,V,p,q,Pwgrid,tp,tq)
+    Qwp = rbs.gridToListControlPoints(Qwpgrid)
+    Pp,wp = rbs.geometricControlPoints(Qwp)
+
+    return Up,Vp,pp,qp,Pp,wp
+
+def kRefinement(rfndir,U,V,p,q,P,w):
+
+    Up,Vp,pp,qp,Pp,wp = pRefinement(rfndir,U,V,p,q,P,w)
+    Uk,Vk,pk,qk,Pk,wk = hRefinement(rfndir,Up,Vp,pp,qp,Pp,wp)
+
+    return Uk,Vk,pk,qk,Pk,wk
+
+def surfaceRefinement(refinementlist,directionlist,U,V,p,q,P,w):
+    href = 0
+    pref = 0
+    kref = 0
+
+    Uin = U
+    Vin = V
+    pin = p
+    qin = q
+    Pin = P
+    win = w
+
+    numindex = 0
+
+    for rfnlist in refinementlist:
+        dirlist = directionlist[numindex]
+        # print(dirlist)
+        if rfnlist == 'h':
+            Uout,Vout,pout,qout,Pout,wout = hRefinement(dirlist,Uin,Vin,pin,qin,Pin,win)
+            href += 1
+        elif rfnlist == 'p':
+            Uout,Vout,pout,qout,Pout,wout = pRefinement(dirlist,Uin,Vin,pin,qin,Pin,win)
+            pref += 1
+        elif rfnlist == 'k':
+            Uout,Vout,pout,qout,Pout,wout = kRefinement(dirlist,Uin,Vin,pin,qin,Pin,win)
+            kref += 1
+        else:
+            print("Invalid option")
+
+        Uin = Uout
+        Vin = Vout
+        pin = pout
+        qin = qout
+        Pin = Pout
+        win = wout
+
+        numindex += 1
+
+    print('Number of h-refinements')
+    print(href)
+    print('Number of p-refinements')
+    print(pref)
+    print('Number of k-refinements')
+    print(kref)
+
+    return Uout,Vout,pout,qout,Pout,wout

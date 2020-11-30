@@ -320,3 +320,25 @@ def plotSurfaceDegreeElevation(cx,cy,cxnew,cynew,P,Pnew,*argv):
             plt.show()
     else:
         plt.show()
+
+def plotSurfaceRefinement(cx,cy,cxnew,cynew,P,Pnew,*argv):
+    fig,ax = plt.subplots(1,2,sharey=True,figsize=(8,4.8))
+    fig.suptitle('Surface refinement')
+
+    ax[0].set_title('Original')
+    ax[0].set_aspect('equal','box')
+    ax[0].pcolormesh(cx,cy,np.zeros((cx.shape[0],cx.shape[1])))
+    ax[0].scatter(P[:,0],P[:,1])
+
+    ax[1].set_title('After refinement')
+    ax[1].set_aspect('equal','box')
+    ax[1].pcolormesh(cxnew,cynew,np.zeros((cxnew.shape[0],cxnew.shape[1])))
+    ax[1].scatter(Pnew[:,0],Pnew[:,1])
+
+    if argv != ():
+        if argv[0] == 'yes':
+            plt.savefig(argv[1]+'.png')
+        else:
+            plt.show()
+    else:
+        plt.show()
