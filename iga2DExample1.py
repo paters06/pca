@@ -18,14 +18,14 @@ def checkingSymmetricMatrix(A):
         print("The given matrix is not symmetric")
 
 def checkRankMatrix(A):
-    mRank = np.linalg.matrix_rank(Kred)
-    mRows = Kred.shape[0]
+    mRank = np.linalg.matrix_rank(A)
+    mRows = A.shape[0]
     print("Number of rows: ",mRows)
     print("Rank of matrix: ",mRank)
     if mRank == mRows:
         print("The matrix has full rank. It is invertible")
     else:
-        print("The matrix hast not full rank. It is not invertible")
+        print("The matrix has not full rank. It is not invertible")
 
 def plotSparsity(A):
     fig = plt.figure()

@@ -18,8 +18,8 @@ def checkingSymmetricMatrix(A):
         print("The given matrix is not symmetric")
 
 def checkRankMatrix(A):
-    mRank = np.linalg.matrix_rank(Kred)
-    mRows = Kred.shape[0]
+    mRank = np.linalg.matrix_rank(A)
+    mRows = A.shape[0]
     print("Number of rows: ",mRows)
     print("Rank of matrix: ",mRank)
     if mRank == mRows:
@@ -47,7 +47,7 @@ def geometricCoordinate(paramcoor,U,V,w,p,q,px,py):
     geomcoor[0][1] = ratFunc@py
     return geomcoor
 
-def jacobian(U,V,w,p,q,pta,ptb,px,py,parentgrad):
+def jacobian(U,V,w,p,q,pta,ptb,px,py,paramgrad):
     n2 = rbs.ratFunction(U,V,w,p,q,pta,ptb)
     dn2u = rbs.dRatdU(U,V,w,p,q,pta,ptb)
     dn2v = rbs.dRatdV(U,V,w,p,q,pta,ptb)
@@ -64,7 +64,7 @@ def jacobian(U,V,w,p,q,pta,ptb,px,py,parentgrad):
     jacob[1][0] = dYdu
     jacob[1][1] = dYdv
 
-    jacob = jacob@parentgrad
+    jacob = jacob@paramgrad
 
     return jacob
 
@@ -111,13 +111,13 @@ def shapeFunctionMatrix(U,V,w,p,q,pta,ptb):
 
 ################ WEAK FORM INTEGRALS ####################
 
-def localStiffnessMatrix(U,V,w,useg,vseg,p,q,px,py,gausspoints,gaussweights,parentgrad,dmat):
+def localStiffnessMatrix(U,V,w,p,q,px,py,gausspoints,gaussweights,paramgrad,apt,cpt,dmat):
     lke = np.zeros((2*px.shape[0],2*px.shape[0]))
     for qj in range(len(gausspoints)):
         for qi in range(len(gausspoints)):
-            coor = parametricCoordinate(useg[0],useg[1],vseg[0],vseg[1],gausspoints[qi],gausspoints[qj])
+            coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],gausspoints[qi],gausspoints[qj])
             # print(coor)
-            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,parentgrad)
+            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,paramgrad)
             wJac = weightedJacobian(jac,gaussweights,qi,qj)
             bMat = strainDisplacementMatrix(U,V,w,p,q,coor[0][0],coor[0][1],jac)
             lke += (bMat.T@dmat@bMat)*wJac
@@ -125,23 +125,22 @@ def localStiffnessMatrix(U,V,w,useg,vseg,p,q,px,py,gausspoints,gaussweights,pare
     # print(lke)
     return lke
 
-def localBodyVector(U,V,w,useg,vseg,p,q,px,py,gausspoints,gaussweights,parentgrad,rho):
+def localBodyVector(U,V,w,p,q,px,py,gausspoints,gaussweights,paramgrad,apt,cpt,rho):
     lbe = np.zeros((2*px.shape[0],1))
     bvec = np.zeros((2,1))
     bvec[1][0] = -rho*9.8
 
     for qj in range(len(gausspoints)):
         for qi in range(len(gausspoints)):
-            coor = parametricCoordinate(useg[0],useg[1],vseg[0],vseg[1],gausspoints[qi],gausspoints[qj])
-            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,parentgrad)
+            coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],gausspoints[qi],gausspoints[qj])
+            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,paramgrad)
             wJac = weightedJacobian(jac,gaussweights,qi,qj)
             nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
             lbe += (nMat.T@bvec)*wJac
 
     return lbe
 
-# def appliedLoadVector(U,V,w,uval,vseg,p,q,px,py,gausspoints,gaussweights,load):
-def appliedLoadVector(U,V,w,useg,vval,p,q,px,py,gausspoints,gaussweights,load):
+def appliedLoadVector(U,V,w,p,q,px,py,gausspoints,gaussweights,apt,bpt,load):
     lle = np.zeros((2*px.shape[0],1))
     tvec = np.zeros((2,1))
     tvec[0][0] = -load
@@ -149,91 +148,117 @@ def appliedLoadVector(U,V,w,useg,vval,p,q,px,py,gausspoints,gaussweights,load):
     for qj in range(len(gausspoints)):
         #The first gausspoints does not influence in the output due to uval
         # coor = parametricCoordinate(uval,uval,vseg[0],vseg[1],gausspoints[qj],gausspoints[qj])
-        coor = parametricCoordinate(useg[0],useg[1],vval,vval,gausspoints[qj],gausspoints[qj])
+        coor = parametricCoordinate(apt[0],bpt[0],apt[1],bpt[1],gausspoints[qj],gausspoints[qj])
         gcoor = geometricCoordinate(coor,U,V,w,p,q,px,py)
-        print("Geometric coor")
-        print(gcoor)
-        # jac2 = 0.5*(vseg[1] - vseg[0])
-        jac2 = 0.5*(useg[1] - useg[0])
+        # print("Geometric coor")
+        # print(gcoor)
+        # Extracting the unique non-zero value
+        jac2 = 0.5*float(np.extract((bpt-apt) > 1e-5, (bpt-apt)))
+        # print(jac2)
         du = rbs.dRatdU(U,V,w,p,q,coor[0][0],coor[0][1])
-        print(du)
+        # print(du)
         dxdu = du@px
         dydu = du@py
         jac1 = np.sqrt(dxdu**2 + dydu**2)
-        # print(dydu)
+        # print(jac1)
         nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
-        lle += (nMat.T@tvec)*4.0*jac2*gaussweights[qj]
+        lle += (nMat.T@tvec)*jac1*jac2*gaussweights[qj]
 
     return lle
 
-def elementArea(U,V,w,useg,vseg,p,q,px,py,gausspoints,gaussweights,parentgrad):
+def elementArea(U,V,w,p,q,px,py,gausspoints,gaussweights,paramgrad,apt,cpt):
     elemA = 0
     for qj in range(len(gausspoints)):
         for qi in range(len(gausspoints)):
-            coor = parametricCoordinate(useg[0],useg[1],vseg[0],vseg[1],gausspoints[qi],gausspoints[qj])
-            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,parentgrad)
+            coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],gausspoints[qi],gausspoints[qj])
+            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,paramgrad)
             wJac = weightedJacobian(jac,gaussweights,qi,qj)
             elemA += 1.0*wJac
 
     return elemA
 
-def elementLength(U,V,w,useg,vval,p,q,px,py,gausspoints,gaussweights):
+def elementLength(U,V,w,p,q,px,py,gausspoints,gaussweights,apt,bpt):
     elemL = 0
     for qj in range(len(gausspoints)):
         #The first gausspoints does not influence in the output due to uval
-        # coor = parametricCoordinate(uval,uval,vseg[0],vseg[1],gausspoints[qj],gausspoints[qj])
-        coor = parametricCoordinate(useg[0],useg[1],vval,vval,gausspoints[qj],gausspoints[qj])
+        coor = parametricCoordinate(apt[0],bpt[0],apt[1],bpt[1],gausspoints[qj],gausspoints[qj])
         gcoor = geometricCoordinate(coor,U,V,w,p,q,px,py)
-        print("Geometric coor")
-        print(gcoor)
-        # jac2 = 0.5*(vseg[1] - vseg[0])
-        jac2 = 0.5*(useg[1] - useg[0])
+        # print("Geometric coor")
+        # print(gcoor)
+        # Extracting the unique non-zero value
+        jac2 = 0.5*float(np.extract((bpt-apt) > 1e-5, (bpt-apt)))
+        # print(jac2)
         dxdu = rbs.dRatdU(U,V,w,p,q,coor[0][0],coor[0][1])@px
         dydu = rbs.dRatdU(U,V,w,p,q,coor[0][0],coor[0][1])@py
         jac1 = np.sqrt(dxdu**2 + dydu**2)
-        # print(dydu)
+        # print(jac1)
         elemL += 1.0*jac1*jac2*gaussweights[qj]
 
     return elemL
 
 ################ ISOGEOMETRIC ANALYSIS ####################
 
-def assemblyWeakForm(U,V,w,Ured,Vred,p,q,px,py,gaussquad,dmat,rho,uneu,vneu,load):
-    K = np.zeros((2*px.shape[0],2*px.shape[0]))
-    F = np.zeros((2*px.shape[0],1))
-    Fb = np.zeros((2*px.shape[0],1))
-    Fl = np.zeros((2*px.shape[0],1))
+def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadnodes,loadelems,load):
+    K = np.zeros((2*P.shape[0],2*P.shape[0]))
+    F = np.zeros((2*P.shape[0],1))
+    Fb = np.zeros((2*P.shape[0],1))
+    Fl = np.zeros((2*P.shape[0],1))
     totalArea = 0
     totalLength = 0
     gaussLegendrePoints = gaussquad[0]
     gaussLegendreWeights = gaussquad[1]
 
-    parentElemGrad = np.zeros((2,2))
-    numElems = 0
+    paramGrad = np.zeros((2,2))
+    numElems = nodeselem.shape[0]
 
-    for ji in range(len(Vred)-1):
-        for ii in range(len(Ured)-1):
-            #Inside each element
-            numElems += 1
+    px = np.reshape(P[:,0],(P.shape[0],1))
+    py = np.reshape(P[:,1],(P.shape[0],1))
 
-            parentElemGrad[0][0] = 0.5*(Ured[ii+1] - Ured[ii])
-            parentElemGrad[1][1] = 0.5*(Vred[ji+1] - Vred[ji])
+    for ielem in range(0,numElems):
+        """
+        - paramGrad is conformed by the difference between u values and v values
+        - The difference in u values is determined by paramnodes[C][0] - paramnodes[A][0]
+          where C and A stand for the corners of the parametric element ABCD and
+          0 stands for the u component
+        - C can be obtained as the 3rd element in a given row of the matrix nodeselem:
+        ielem -> [A B C D]
+                  0 1 2 3
+        - Likewise, A is the 1st element in a ielem row of nodeselem
+        - It means that uC = paramnodes[nodeselem[ielem][2]][0]
+                        uA = paramnodes[nodeselem[ielem][0]][0]
+                        vC = paramnodes[nodeselem[ielem][2]][1]
+                        vA = paramnodes[nodeselem[ielem][0]][1]
+        """
+        uC = paramnodes[nodeselem[ielem][2]][0]
+        uA = paramnodes[nodeselem[ielem][0]][0]
+        vC = paramnodes[nodeselem[ielem][2]][1]
+        vA = paramnodes[nodeselem[ielem][0]][1]
 
-            print("Element #",numElems)
-            print("U coor:",np.array([[Ured[ii],Ured[ii+1]]]))
-            print("V coor:",np.array([[Vred[ji],Vred[ji+1]]]))
-            print("---")
-            usegment = np.array([Ured[ii],Ured[ii+1]])
-            vsegment = np.array([Vred[ji],Vred[ji+1]])
-            K += localStiffnessMatrix(U,V,w,usegment,vsegment,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,parentElemGrad,dmat)
-            Fb += localBodyVector(U,V,w,usegment,vsegment,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,parentElemGrad,rho)
-            totalArea += elementArea(U,V,w,usegment,vsegment,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,parentElemGrad)
-            if Ured[ii] < uneu and abs(Vred[ji+1] - vneu) < 1e-5:
-                # Fl += appliedLoadVector(U,V,w,Ured[ii+1],vsegment,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,load)
-                Fl += appliedLoadVector(U,V,w,usegment,Vred[ji+1],p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,load)
-                # totalLength += elementLength(U,V,w,usegment,Vred[ji+1],p,q,px,py,gaussLegendrePoints,gaussLegendreWeights)
+        paramGrad[0][0] = 0.5*(uC - uA)
+        paramGrad[1][1] = 0.5*(vC - vA)
 
-            print("---")
+        aPoint = np.array([uA,vA])
+        cPoint = np.array([uC,vC])
+
+        print("---")
+        print("Element #",ielem)
+        K += localStiffnessMatrix(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,paramGrad,aPoint,cPoint,dmat)
+        Fb += localBodyVector(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,paramGrad,aPoint,cPoint,rho)
+        totalArea += elementArea(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,paramGrad,aPoint,cPoint)
+        if ielem in loadelems:
+            print('Included element')
+            uB = paramnodes[loadnodes[1]][0]
+            uA = paramnodes[loadnodes[0]][0]
+            vB = paramnodes[loadnodes[1]][1]
+            vA = paramnodes[loadnodes[0]][1]
+
+            aPoint = np.array([uA,vA])
+            bPoint = np.array([uB,vB])
+
+            Fl += appliedLoadVector(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,aPoint,bPoint,load)
+            totalLength += elementLength(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,aPoint,bPoint)
+
+        print("---")
 
     # print("Total Length")
     # print(totalLength)
@@ -328,14 +353,80 @@ def postProcessing(U,V,w,p,q,ured,vred,P,D,dtot,dmat):
     print(sx.max())
     print(sx.min())
 
+################ PREPROCESSING ####################
+
+def parametricGrid(U,V):
+    # Selecting the unique values of each array
+    uniqueU = np.unique(U)
+    uniqueV = np.unique(V)
+
+    # Creating the 2D mesh
+    ugrid, vgrid = np.meshgrid(uniqueU,uniqueV)
+
+    # Resizing the grid component matrix to column vectors
+    ucomp = np.reshape(ugrid,(ugrid.shape[0]*ugrid.shape[1],1))
+    vcomp = np.reshape(vgrid,(vgrid.shape[0]*vgrid.shape[1],1))
+
+    # Stacking the components of the parametric coordinates
+    paramnodes = np.hstack((ucomp,vcomp))
+
+    # Assembling the element matrix
+    numU = len(uniqueU)
+    numV = len(uniqueV)
+    numelems = (numU - 1)*(numV - 1)
+
+    elemmat = np.zeros((numelems,4),dtype=int)
+    elemIndex = 0
+
+    for j in range(0,numV-1):
+        for i in range(0,numU-1):
+            elemmat[elemIndex,0] = j*numU + i #A
+            elemmat[elemIndex,1] = j*numU + (i+1) #B
+            elemmat[elemIndex,2] = (j+1)*numU + (i+1) #C
+            elemmat[elemIndex,3] = (j+1)*numU + i #D
+
+            elemIndex += 1
+
+    return paramnodes,elemmat
+
+def loadPreprocessing(paramnodes,nodeselem,U,V,p,q,P,w,cload):
+    loadnodes = []
+    loadelements = []
+    px = np.reshape(P[:,0],(P.shape[0],1))
+    py = np.reshape(P[:,1],(P.shape[0],1))
+
+    for i in range(0,paramnodes.shape[0]):
+        ratFunc = rbs.ratFunction(U,V,w,p,q,paramnodes[i][0],paramnodes[i][1])
+        cx = ratFunc@px
+        if abs(cx - cload) < 1e-4:
+            loadnodes.append(i)
+
+    # print(loadnodes)
+    # print(paramnodes[loadnodes,:])
+
+    for i in range(0,nodeselem.shape[0]):
+        present = 0
+        for ln in loadnodes:
+            x = np.where(nodeselem[i,:] == ln)
+
+            # x is a tuple. where does not have as output a list
+            if len(x[0]) != 0:
+                present += 1
+
+        if present == 2:
+            loadelements.append(i)
+
+    # print(loadelements)
+    return loadnodes,loadelements
+
 ####################################################
-###################MAIN PROBLEM#####################
+################## MAIN PROBLEM ####################
 ####################################################
 
 #Data
 E = 1e5 #Pa
 nu = 0.31
-rho = 0 #kg/m3
+rho = 1000.0 #kg/m3
 u0 = 0.0
 tv = 10 #Pa
 uDirichlet = [1,4,5,8,9,12]
@@ -361,23 +452,23 @@ q = 2
 # cx,cy = rbs.nurbs2DField(Uinit,Vinit,p,q,P,w)
 # plts.plotting2DField(cx,cy,np.zeros((cx.shape[0],cx.shape[1])))
 
-Ured = Uinit[p:-p]
-Vred = Vinit[q:-q]
+parametricNodes,nodesInElement = parametricGrid(Uinit,Vinit)
+loadNodes,loadElements = loadPreprocessing(parametricNodes,nodesInElement,Uinit,Vinit,p,q,P,w,-4.0)
 
 dMat = elasticMatrix(E,nu)
-K,F,totalArea = assemblyWeakForm(Uinit,Vinit,w,Ured,Vred,p,q,P[:,0],P[:,1],gaussLegendreQuadrature,dMat,rho,uNeumann,vNeumann,tv)
-# print(F)
-# plotSparsity(K)
-
-Kred,Fred,removedDofs = boundaryConditionsEnforcement(K,F,uDirichlet,uAxis,u0)
-
-totaldofs = np.arange(2*P.shape[0])
-dtotal,dred = solveMatrixEquations(Kred,Fred,totaldofs,removedDofs)
-
-dx = dtotal[0::2]
-dy = dtotal[1::2]
-D = np.hstack((dx,dy))
-# print(P)
-# print(D)
-
-postProcessing(Uinit,Vinit,w,p,q,Ured,Vred,P,D,dtotal,dMat)
+K,F,totalArea = assemblyWeakForm(Uinit,Vinit,w,p,q,P,parametricNodes,nodesInElement,gaussLegendreQuadrature,dMat,rho,loadNodes,loadElements,tv)
+# # print(F)
+# # plotSparsity(K)
+#
+# Kred,Fred,removedDofs = boundaryConditionsEnforcement(K,F,uDirichlet,uAxis,u0)
+#
+# totaldofs = np.arange(2*P.shape[0])
+# dtotal,dred = solveMatrixEquations(Kred,Fred,totaldofs,removedDofs)
+#
+# dx = dtotal[0::2]
+# dy = dtotal[1::2]
+# D = np.hstack((dx,dy))
+# # print(P)
+# # print(D)
+#
+# postProcessing(Uinit,Vinit,w,p,q,Ured,Vred,P,D,dtotal,dMat)
