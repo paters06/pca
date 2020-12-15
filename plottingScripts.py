@@ -140,11 +140,13 @@ def plotting2DField(cx,cy,fz,*argv):
     colorbarstring = "value"
     field = ax.pcolormesh(cx,cy,fz)
     # field = ax.pcolormesh(cx,cy,fz,vmin=fz.min(),vmax=fz.max())
+    # field = ax.pcolormesh(cx,cy,fz,shading='gouraud')
     # field = ax.pcolormesh(cx,cy,fz,shading='gouraud',vmin=fz.min(),vmax=fz.max())
     if argv!= ():
         if len(argv) == 1:
             pts = argv[0]
         elif len(argv) == 2:
+            pts = argv[0]
             stringlegends = argv[1]
             titlestring = stringlegends[0]
             colorbarstring = stringlegends[1]

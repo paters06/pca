@@ -128,42 +128,6 @@ def nurbs2DField(U,V,p,q,P,w):
             cy[i,j] = ratFunc@py
     return cx,cy
 
-def displacementField(U,V,p,q,P,w):
-    numpoints = 21
-    urank = np.linspace(U.min(),U.max(),numpoints)
-    vrank = np.linspace(V.min(),V.max(),numpoints)
-
-    px = np.reshape(P[:,0],(len(P[:,0]),1))
-    py = np.reshape(P[:,1],(len(P[:,1]),1))
-
-    cx = np.zeros([len(urank),len(vrank)])
-    cy = np.zeros([len(urank),len(vrank)])
-    for j in range(len(vrank)):
-        for i in range(len(urank)):
-            ratFunc = ratFunction(U,V,w,p,q,urank[i],vrank[j])
-
-            cx[i,j] = ratFunc@px
-            cy[i,j] = ratFunc@py
-    return cx,cy
-
-def stressField(U,V,p,q,P,w,dMat):
-    numpoints = 21
-    urank = np.linspace(U.min(),U.max(),numpoints)
-    vrank = np.linspace(V.min(),V.max(),numpoints)
-
-    px = np.reshape(P[:,0],(len(P[:,0]),1))
-    py = np.reshape(P[:,1],(len(P[:,1]),1))
-
-    cx = np.zeros([len(urank),len(vrank)])
-    cy = np.zeros([len(urank),len(vrank)])
-    for j in range(len(vrank)):
-        for i in range(len(urank)):
-            ratFunc = ratFunction(U,V,w,p,q,urank[i],vrank[j])
-
-            cx[i,j] = ratFunc@px
-            cy[i,j] = ratFunc@py
-    return cx,cy
-
 def nurbsSurface(U,V,p,q,P,w):
     numpoints = 21
     urank = np.linspace(U.min(),U.max(),numpoints)
