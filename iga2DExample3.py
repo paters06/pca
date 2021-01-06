@@ -1,12 +1,11 @@
 import numpy as np
 from numpy.linalg import inv,det,solve
-# from scipy import linalg as la
+import numpy.linalg
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
 import pca_01 as pca
 import nurbs as rbs
-# import curveFitting as cfit
 import plottingScripts as plts
 import surfaceRefinements as srfn
 
@@ -17,21 +16,21 @@ def checkingSymmetricMatrix(A):
     else:
         print("The given matrix is not symmetric")
 
-def checkRankMatrix(A):
+def checkFullRankMatrix(A):
     mRank = np.linalg.matrix_rank(A)
     mRows = A.shape[0]
     print("Number of rows: ",mRows)
     print("Rank of matrix: ",mRank)
     if mRank == mRows:
-        print("The matrix has full rank. It is invertible")
+        return True
     else:
-        print("The matrix hast not full rank. It is not invertible")
+        return False
 
 def plotSparsity(A):
     fig = plt.figure()
-    # plt.spy(A,markersize=5)
-    plt.imshow(A,cmap=cm.viridis)
-    plt.colorbar()
+    plt.spy(A,markersize=5)
+    # plt.imshow(A,cmap=cm.viridis)
+    # plt.colorbar()
     plt.show()
 
 def parametricCoordinate(ua,ub,va,vb,gausspta,gaussptb):
@@ -47,7 +46,7 @@ def geometricCoordinate(paramcoor,U,V,w,p,q,px,py):
     geomcoor[0][1] = ratFunc@py
     return geomcoor
 
-def jacobian(U,V,w,p,q,pta,ptb,px,py,paramgrad):
+def jacobian(U,V,w,p,q,pta,ptb,px,py):
     n2 = rbs.ratFunction(U,V,w,p,q,pta,ptb)
     dn2u = rbs.dRatdU(U,V,w,p,q,pta,ptb)
     dn2v = rbs.dRatdV(U,V,w,p,q,pta,ptb)
@@ -64,31 +63,27 @@ def jacobian(U,V,w,p,q,pta,ptb,px,py,paramgrad):
     jacob[1][0] = dYdu
     jacob[1][1] = dYdv
 
-    jacob = jacob@paramgrad
-
     return jacob
 
-def weightedJacobian(jac,gwpts,ipta,iptb):
-    return abs(det(jac))*gwpts[ipta]*gwpts[iptb]
+def weightedJacobian(jac,paramgrad,gwpts,ipta,iptb):
+    return abs(np.linalg.det(jac))*abs(np.linalg.det(paramgrad))*gwpts[ipta]*gwpts[iptb]
 
 def strainDisplacementMatrix(U,V,w,p,q,pta,ptb,jacob):
     dN2u = rbs.dRatdU(U,V,w,p,q,pta,ptb)
     dN2v = rbs.dRatdV(U,V,w,p,q,pta,ptb)
 
-    # print(jacob)
     invJac = inv(jacob)
-    # print(invJac)
     dN2 = np.vstack((dN2u,dN2v))
     dN2dxi = invJac@dN2
 
     numpts = dN2dxi.shape[1]
     bMat = np.zeros((3,2*numpts))
     #dNx
-    bMat[0,0::2] = dN2dxi[0]
-    bMat[2,0::2] = dN2dxi[0]
+    bMat[0,0::2] = dN2dxi[0,:]
+    bMat[2,0::2] = dN2dxi[1,:]
     #dNy
-    bMat[1,1::2] = dN2dxi[1]
-    bMat[2,1::2] = dN2dxi[1]
+    bMat[1,1::2] = dN2dxi[1,:]
+    bMat[2,1::2] = dN2dxi[0,:]
     return bMat
 
 def elasticMatrix(E,nu):
@@ -116,13 +111,11 @@ def localStiffnessMatrix(U,V,w,p,q,px,py,gausspoints,gaussweights,paramgrad,apt,
     for qj in range(len(gausspoints)):
         for qi in range(len(gausspoints)):
             coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],gausspoints[qi],gausspoints[qj])
-            # print(coor)
-            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,paramgrad)
-            wJac = weightedJacobian(jac,gaussweights,qi,qj)
+            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py)
+            wJac = weightedJacobian(jac,paramgrad,gaussweights,qi,qj)
             bMat = strainDisplacementMatrix(U,V,w,p,q,coor[0][0],coor[0][1],jac)
             lke += (bMat.T@dmat@bMat)*wJac
 
-    # print(lke)
     return lke
 
 def localBodyVector(U,V,w,p,q,px,py,gausspoints,gaussweights,paramgrad,apt,cpt,rho):
@@ -133,8 +126,8 @@ def localBodyVector(U,V,w,p,q,px,py,gausspoints,gaussweights,paramgrad,apt,cpt,r
     for qj in range(len(gausspoints)):
         for qi in range(len(gausspoints)):
             coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],gausspoints[qi],gausspoints[qj])
-            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,paramgrad)
-            wJac = weightedJacobian(jac,gaussweights,qi,qj)
+            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py)
+            wJac = weightedJacobian(jac,paramgrad,gaussweights,qi,qj)
             nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
             lbe += (nMat.T@bvec)*wJac
 
@@ -147,22 +140,17 @@ def appliedLoadVector(U,V,w,p,q,px,py,gausspoints,gaussweights,apt,bpt,load):
 
     for qj in range(len(gausspoints)):
         #The first gausspoints does not influence in the output due to uval
-        # coor = parametricCoordinate(uval,uval,vseg[0],vseg[1],gausspoints[qj],gausspoints[qj])
         coor = parametricCoordinate(apt[0],bpt[0],apt[1],bpt[1],gausspoints[qj],gausspoints[qj])
         gcoor = geometricCoordinate(coor,U,V,w,p,q,px,py)
-        # print("Geometric coor")
-        # print(gcoor)
+        print("Geometric coor")
+        print(gcoor)
         # Extracting the unique non-zero value
         jac2 = 0.5*float(np.extract((bpt-apt) > 1e-5, (bpt-apt)))
-        # print(jac2)
         du = rbs.dRatdU(U,V,w,p,q,coor[0][0],coor[0][1])
-        # print(du)
         dxdu = du@px
         dydu = du@py
         jac1 = np.sqrt(dxdu**2 + dydu**2)
-        # print(jac1)
         nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
-        # lle += (nMat.T@tvec)*4.0*jac2*gaussweights[qj]
         lle += (nMat.T@tvec)*jac1*jac2*gaussweights[qj]
 
     return lle
@@ -172,8 +160,8 @@ def elementArea(U,V,w,p,q,px,py,gausspoints,gaussweights,paramgrad,apt,cpt):
     for qj in range(len(gausspoints)):
         for qi in range(len(gausspoints)):
             coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],gausspoints[qi],gausspoints[qj])
-            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py,paramgrad)
-            wJac = weightedJacobian(jac,gaussweights,qi,qj)
+            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py)
+            wJac = weightedJacobian(jac,paramgrad,gaussweights,qi,qj)
             elemA += 1.0*wJac
 
     return elemA
@@ -188,11 +176,10 @@ def elementLength(U,V,w,p,q,px,py,gausspoints,gaussweights,apt,bpt):
         # print(gcoor)
         # Extracting the unique non-zero value
         jac2 = 0.5*float(np.extract((bpt-apt) > 1e-5, (bpt-apt)))
-        # print(jac2)
-        dxdu = rbs.dRatdU(U,V,w,p,q,coor[0][0],coor[0][1])@px
-        dydu = rbs.dRatdU(U,V,w,p,q,coor[0][0],coor[0][1])@py
+        du = rbs.dRatdU(U,V,w,p,q,coor[0][0],coor[0][1])
+        dxdu = du@px
+        dydu = du@py
         jac1 = np.sqrt(dxdu**2 + dydu**2)
-        # print(jac1)
         elemL += 1.0*jac1*jac2*gaussweights[qj]
 
     return elemL
@@ -247,11 +234,17 @@ def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadnod
         Fb += localBodyVector(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,paramGrad,aPoint,cPoint,rho)
         totalArea += elementArea(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,paramGrad,aPoint,cPoint)
         if ielem in loadelems:
-            print('Included element')
-            uB = paramnodes[loadnodes[1]][0]
-            uA = paramnodes[loadnodes[0]][0]
-            vB = paramnodes[loadnodes[1]][1]
-            vA = paramnodes[loadnodes[0]][1]
+            print('Loaded element')
+
+            uB = paramnodes[nodeselem[ielem][2]][0]
+            uA = paramnodes[nodeselem[ielem][3]][0]
+            vB = paramnodes[nodeselem[ielem][2]][1]
+            vA = paramnodes[nodeselem[ielem][3]][1]
+
+            # uB = paramnodes[loadnodes[1]][0]
+            # uA = paramnodes[loadnodes[0]][0]
+            # vB = paramnodes[loadnodes[1]][1]
+            # vA = paramnodes[loadnodes[0]][1]
 
             aPoint = np.array([uA,vA])
             bPoint = np.array([uB,vB])
@@ -280,8 +273,8 @@ def boundaryConditionsEnforcement(K,F,udisp,axisrestrict,ucond):
     Kred = np.delete(K,remdofs,0)
 
     print("Modification of Freduced")
-    for u in udisp:
-        Kcol = Kred[:,u]
+    for rdof in remdofs:
+        Kcol = Kred[:,rdof]
         Kcol = np.reshape(Kcol,(Kcol.shape[0],1))
         Fred -= Kcol*ucond
 
@@ -291,7 +284,15 @@ def boundaryConditionsEnforcement(K,F,udisp,axisrestrict,ucond):
     return Kred,Fred,remdofs
 
 def solveMatrixEquations(Kred,Fred,totaldofs,remdofs):
-    dred = solve(Kred,Fred)
+    fullRank = checkFullRankMatrix(Kred)
+    # fullRank = True
+    if fullRank:
+        print("The matrix has full rank. It is invertible")
+        dred = solve(Kred,Fred)
+    else:
+        print("The matrix has not full rank. It is not invertible")
+        dred = np.linalg.lstsq(Kred,Fred,rcond=None)[0]
+
     reduceddofs = np.setdiff1d(totaldofs,remdofs)
     dtotal = np.zeros((totaldofs.shape[0],1))
     dtotal[reduceddofs,:] = dred
@@ -374,6 +375,11 @@ def stressField(numpoints,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem):
     sy = np.zeros((numelemsu*numpoints,numelemsv*numpoints))
     sxy = np.zeros((numelemsu*numpoints,numelemsv*numpoints))
 
+    maxSx = -1e20
+    maxu = 0
+    maxv = 0
+    maxelem = 0
+
     for ielem in range(0,numElems):
         uC = paramnodes[nodeselem[ielem][2]][0]
         uA = paramnodes[nodeselem[ielem][0]][0]
@@ -396,13 +402,13 @@ def stressField(numpoints,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem):
                     # print("Singularity")
                     # print(urank[i])
                     # print(vrank[j])
-                    xpcoor = 0.51
+                    xpcoor = 1.1*urank[i]
                     ypcoor = vrank[j]
 
                 paramgrad[0][0] = 0.5*(uC - uA)
                 paramgrad[1][1] = 0.5*(vC - vA)
 
-                jac = jacobian(U,V,w,p,q,xpcoor,ypcoor,P[:,0],P[:,1],paramgrad)
+                jac = jacobian(U,V,w,p,q,xpcoor,ypcoor,P[:,0],P[:,1])
                 bmat = strainDisplacementMatrix(U,V,w,p,q,xpcoor,ypcoor,jac)
 
                 svec = dmat@(bmat@dtot)
@@ -410,7 +416,68 @@ def stressField(numpoints,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem):
                 sy[iu*numpoints + i,jv*numpoints + j] = svec[1]
                 sxy[iu*numpoints + i,jv*numpoints + j] = svec[2]
 
+                if svec[0] > maxSx:
+                    maxu = xpcoor
+                    maxv = ypcoor
+                    maxelem = ielem
+                    maxSx = svec[0]
+                    print('----')
+                    print(maxu)
+                    print(maxv)
+                    print(maxSx)
+                    print('----')
+
+    print('Element with maximum value',maxelem)
+    print('u: ',maxu)
+    print('v: ',maxv)
+
+    # Maximum stress value
+    # maxSx = np.amax(sx)
+    # print('Maximum stress value',maxSx)
+    # # Index of the minimum stress value
+    # imaxSx = np.where(sx == np.amax(sx))
+    # listOfCordinates = list(zip(imaxSx[0], imaxSx[1]))
+    # for cord in listOfCordinates:
+    #     print(cord)
+
     return sx,sy,sxy
+
+def stressTensor(uval,vval,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem):
+    numElems = nodeselem.shape[0]
+
+    paramgrad = np.zeros((2,2))
+
+    # Finding the element
+    iu = pca.findKnotInterval(np.unique(U),uval)
+    jv = pca.findKnotInterval(np.unique(V),vval)
+
+    ielem = jv*len(np.unique(U)) + iu
+    print('# of element')
+    print(ielem)
+
+    uC = paramnodes[nodeselem[ielem][2]][0]
+    uA = paramnodes[nodeselem[ielem][0]][0]
+    vC = paramnodes[nodeselem[ielem][2]][1]
+    vA = paramnodes[nodeselem[ielem][0]][1]
+
+    if abs(uval - 0.5) > 1e-5:
+        xpcoor = uval
+        ypcoor = vval
+    else:
+        xpcoor = 1.05*uval
+        ypcoor = vval
+
+    print('u: ',xpcoor)
+    print('v: ',ypcoor)
+
+    paramgrad[0][0] = 0.5*(uC - uA)
+    paramgrad[1][1] = 0.5*(vC - vA)
+
+    jac = jacobian(U,V,w,p,q,xpcoor,ypcoor,P[:,0],P[:,1])
+    bmat = strainDisplacementMatrix(U,V,w,p,q,xpcoor,ypcoor,jac)
+    svec = dmat@(bmat@dtot)
+
+    return svec[0]
 
 def postProcessing(U,V,p,q,P,D,w,paramnodes,nodeselem,dtot,dmat):
     numpoints = 11
@@ -419,7 +486,7 @@ def postProcessing(U,V,p,q,P,D,w,paramnodes,nodeselem,dtot,dmat):
     sx,sy,sxy = stressField(numpoints,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem)
     # plts.plotting2DField(cx,cy,ux,P,["Ux Displacement Field","[m]"])
     plts.plotting2DField(cx,cy,sx,P,["Sx Component Stress Field","[Pa]"])
-    # print(sx.max())
+    # print(sx)
     # print(sx.min())
 
 ################ PREPROCESSING ####################
@@ -532,7 +599,7 @@ qinit = 2
 doRefinement = 'N'
 
 if doRefinement == 'Y':
-    reflist = ['k','k']
+    reflist = ['h','h']
     dirlist = ['U','V']
     Uinp,Vinp,pinp,qinp,Pinp,winp = srfn.surfaceRefinement(reflist,dirlist,Uinit,Vinit,pinit,qinit,Pinit,winit)
 else:
@@ -543,8 +610,8 @@ else:
     Pinp = Pinit
     winp = winit
 
-# cx,cy = rbs.nurbs2DField(Uinit,Vinit,p,q,P,w)
-# plts.plotting2DField(cx,cy,np.zeros((cx.shape[0],cx.shape[1])))
+# cx,cy = rbs.nurbs2DField(Uinit,Vinit,pinp,qinp,Pinp,winp)
+# plts.plotting2DField(cx,cy,np.zeros((cx.shape[0],cx.shape[1])),Pinp)
 
 parametricNodes,nodesInElement = parametricGrid(Uinp,Vinp)
 loadNodes,loadElements = loadPreprocessing(parametricNodes,nodesInElement,Uinp,Vinp,pinp,qinp,Pinp,winp,-4.0)
@@ -563,5 +630,9 @@ dtotal,dred = solveMatrixEquations(Kred,Fred,totaldofs,removedDofs)
 dx = dtotal[0::2]
 dy = dtotal[1::2]
 D = np.hstack((dx,dy))
+# print(D)
 
 postProcessing(Uinp,Vinp,pinp,qinp,Pinp,D,winp,parametricNodes,nodesInElement,dtotal,dMat)
+# sx = stressTensor(1.00,0.05,Uinp,Vinp,pinp,qinp,Pinp,winp,dtotal,dMat,parametricNodes,nodesInElement)
+# print('Sx')
+# print(sx)

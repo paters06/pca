@@ -108,7 +108,8 @@ def plotting3d(cx,cy,cz,*argv):
 def plottingSurface(cx,cy,cz,*argv):
     fig = plt.figure()
     ax = plt.axes(projection = '3d')
-    ax.contour3D(cx, cy, cz, 50, cmap = 'viridis')
+    # ax.contour3D(cx, cy, cz, 50, cmap = 'viridis')
+    ax.plot_surface(cx, cy, cz, cmap = 'viridis')
     if len(argv)==3:
         px = np.reshape(argv[0],(len(argv[0]),1))
         py = np.reshape(argv[1],(len(argv[1]),1))
@@ -123,8 +124,11 @@ def plotTangentSurface(cx,cy,cz,cpx,cpy,cpz,px,py,pz,*argv):
     fig = plt.figure()
     ax = plt.axes(projection = '3d')
     #ax.contour3D(cx, cy, cz, 50, cmap = 'binary')
+    px = np.reshape(px,(len(px),1))
+    py = np.reshape(py,(len(py),1))
+    pz = np.reshape(pz,(len(pz),1))
     ax.plot_wireframe(px,py,pz, color = 'red')
-    plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['k'],length = 1.0,normalize = True)
+    plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['k'],length = 0.07,normalize = True)
 
     if argv != ():
         ax.set_title(argv[0])
@@ -138,8 +142,8 @@ def plotting2DField(cx,cy,fz,*argv):
     ax = plt.axes()
     titlestring = ""
     colorbarstring = "value"
-    field = ax.pcolormesh(cx,cy,fz)
-    # field = ax.pcolormesh(cx,cy,fz,vmin=fz.min(),vmax=fz.max())
+    # field = ax.pcolormesh(cx,cy,fz)
+    field = ax.pcolormesh(cx,cy,fz,vmin=fz.min(),vmax=fz.max())
     # field = ax.pcolormesh(cx,cy,fz,shading='gouraud')
     # field = ax.pcolormesh(cx,cy,fz,shading='gouraud',vmin=fz.min(),vmax=fz.max())
     if argv!= ():

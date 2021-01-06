@@ -143,9 +143,29 @@ def nurbsSurface(U,V,p,q,P,w):
     for j in range(len(vrank)):
         for i in range(len(urank)):
             ratFunc = ratFunction(U,V,w,p,q,urank[i],vrank[j])
-            # ratFunc = (n2Func*w.T)/(n2Func@w)
 
             cx[i,j] = ratFunc@px
             cy[i,j] = ratFunc@py
             cz[i,j] = ratFunc@pz
     return cx,cy,cz
+
+def nurbsSurfaceTangent(U,V,p,q,P,w):
+    numpoints = 21
+    urank = np.linspace(U.min(),U.max(),numpoints)
+    vrank = np.linspace(V.min(),V.max(),numpoints)
+
+    px = np.reshape(P[:,0],(len(P[:,0]),1))
+    py = np.reshape(P[:,1],(len(P[:,1]),1))
+    pz = np.reshape(P[:,2],(len(P[:,2]),1))
+
+    cpx = np.zeros([len(urank),len(vrank)])
+    cpy = np.zeros([len(urank),len(vrank)])
+    cpz = np.zeros([len(urank),len(vrank)])
+    for j in range(len(vrank)):
+        for i in range(len(urank)):
+            dratFunc = dRatdU(U,V,w,p,q,urank[i],vrank[j])
+
+            cpx[i,j] = dratFunc@px
+            cpy[i,j] = dratFunc@py
+            cpz[i,j] = dratFunc@pz
+    return cpx,cpy,cpz

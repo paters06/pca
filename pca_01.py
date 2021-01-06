@@ -10,8 +10,6 @@ Modified on Sun Aug 02 15:29:17 2020
 #"NURBS"
 
 import numpy as np
-from mpl_toolkits import mplot3d
-import matplotlib.pyplot as plt
 import sys
 
 #tolerance for knot vector
