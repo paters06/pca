@@ -72,9 +72,9 @@ def strainDisplacementMatrix(U,V,w,p,q,pta,ptb,jacob):
     dN2u = rbs.dRatdU(U,V,w,p,q,pta,ptb)
     dN2v = rbs.dRatdV(U,V,w,p,q,pta,ptb)
 
-    invJac = inv(jacob)
+    invJac = np.linalg.inv(jacob)
     dN2 = np.vstack((dN2u,dN2v))
-    dN2dxi = invJac@dN2
+    dN2dxi = invJac.T@dN2
 
     numpts = dN2dxi.shape[1]
     bMat = np.zeros((3,2*numpts))
@@ -142,15 +142,22 @@ def appliedLoadVector(U,V,w,p,q,px,py,gausspoints,gaussweights,apt,bpt,load):
         #The first gausspoints does not influence in the output due to uval
         coor = parametricCoordinate(apt[0],bpt[0],apt[1],bpt[1],gausspoints[qj],gausspoints[qj])
         gcoor = geometricCoordinate(coor,U,V,w,p,q,px,py)
-        print("Geometric coor")
-        print(gcoor)
+        # print("Geometric coor")
+        # print(gcoor)
         # Extracting the unique non-zero value
         jac2 = 0.5*float(np.extract((bpt-apt) > 1e-5, (bpt-apt)))
         du = rbs.dRatdU(U,V,w,p,q,coor[0][0],coor[0][1])
         dxdu = du@px
         dydu = du@py
+        # print('----')
+        # print(dxdu)
+        # print(dydu)
+        # print('----')
         jac1 = np.sqrt(dxdu**2 + dydu**2)
         nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
+        # print('----')
+        # print(nMat.T@tvec)
+        # print('----')
         lle += (nMat.T@tvec)*jac1*jac2*gaussweights[qj]
 
     return lle
@@ -240,11 +247,6 @@ def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadnod
             uA = paramnodes[nodeselem[ielem][3]][0]
             vB = paramnodes[nodeselem[ielem][2]][1]
             vA = paramnodes[nodeselem[ielem][3]][1]
-
-            # uB = paramnodes[loadnodes[1]][0]
-            # uA = paramnodes[loadnodes[0]][0]
-            # vB = paramnodes[loadnodes[1]][1]
-            # vA = paramnodes[loadnodes[0]][1]
 
             aPoint = np.array([uA,vA])
             bPoint = np.array([uB,vB])
@@ -402,11 +404,8 @@ def stressField(numpoints,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem):
                     # print("Singularity")
                     # print(urank[i])
                     # print(vrank[j])
-                    xpcoor = 1.1*urank[i]
+                    xpcoor = 1.15*urank[i]
                     ypcoor = vrank[j]
-
-                paramgrad[0][0] = 0.5*(uC - uA)
-                paramgrad[1][1] = 0.5*(vC - vA)
 
                 jac = jacobian(U,V,w,p,q,xpcoor,ypcoor,P[:,0],P[:,1])
                 bmat = strainDisplacementMatrix(U,V,w,p,q,xpcoor,ypcoor,jac)
@@ -421,15 +420,15 @@ def stressField(numpoints,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem):
                     maxv = ypcoor
                     maxelem = ielem
                     maxSx = svec[0]
-                    print('----')
-                    print(maxu)
-                    print(maxv)
-                    print(maxSx)
-                    print('----')
+                    # print('----')
+                    # print(maxu)
+                    # print(maxv)
+                    # print(maxSx)
+                    # print('----')
 
-    print('Element with maximum value',maxelem)
-    print('u: ',maxu)
-    print('v: ',maxv)
+    # print('Element with maximum value',maxelem)
+    # print('u: ',maxu)
+    # print('v: ',maxv)
 
     # Maximum stress value
     # maxSx = np.amax(sx)
@@ -455,11 +454,6 @@ def stressTensor(uval,vval,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem):
     print('# of element')
     print(ielem)
 
-    uC = paramnodes[nodeselem[ielem][2]][0]
-    uA = paramnodes[nodeselem[ielem][0]][0]
-    vC = paramnodes[nodeselem[ielem][2]][1]
-    vA = paramnodes[nodeselem[ielem][0]][1]
-
     if abs(uval - 0.5) > 1e-5:
         xpcoor = uval
         ypcoor = vval
@@ -469,9 +463,6 @@ def stressTensor(uval,vval,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem):
 
     print('u: ',xpcoor)
     print('v: ',ypcoor)
-
-    paramgrad[0][0] = 0.5*(uC - uA)
-    paramgrad[1][1] = 0.5*(vC - vA)
 
     jac = jacobian(U,V,w,p,q,xpcoor,ypcoor,P[:,0],P[:,1])
     bmat = strainDisplacementMatrix(U,V,w,p,q,xpcoor,ypcoor,jac)
@@ -586,6 +577,10 @@ gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
 
 Pinit = np.array([[-1,0],[-1,np.sqrt(2)-1],[1-np.sqrt(2),1],[0,1],[-2.5,0],[-2.5,0.75],
               [-0.75,2.5],[0,2.5],[-4,0],[-4,4],[-4,4],[0,4]])
+
+# Pinit = np.array([[1,0,0],[1,np.sqrt(2)-1,0],[np.sqrt(2)-1,1,0],[0,1,0],[2.5,0,0],[2.5,0.75,0],
+#               [0.75,2.5,0],[0,2.5,0],[4,0,0],[4,4,0],[4,4,0],[0,4,0]])
+
 winit = np.array([[1],[0.5*(1+(1/np.sqrt(2)))],[0.5*(1+(1/np.sqrt(2)))],[1],[1],[1],
               [1],[1],[1],[1],[1],[1]])
 
@@ -596,11 +591,11 @@ Vinit = np.array([0,0,0,1,1,1])
 pinit = 2
 qinit = 2
 
-doRefinement = 'N'
+doRefinement = 'Y'
 
 if doRefinement == 'Y':
-    reflist = ['h','h']
-    dirlist = ['U','V']
+    reflist = ['h','h','h','h']
+    dirlist = ['U','V','U','V']
     Uinp,Vinp,pinp,qinp,Pinp,winp = srfn.surfaceRefinement(reflist,dirlist,Uinit,Vinit,pinit,qinit,Pinit,winit)
 else:
     Uinp = Uinit
@@ -610,19 +605,22 @@ else:
     Pinp = Pinit
     winp = winit
 
-# cx,cy = rbs.nurbs2DField(Uinit,Vinit,pinp,qinp,Pinp,winp)
-# plts.plotting2DField(cx,cy,np.zeros((cx.shape[0],cx.shape[1])),Pinp)
-
 parametricNodes,nodesInElement = parametricGrid(Uinp,Vinp)
 loadNodes,loadElements = loadPreprocessing(parametricNodes,nodesInElement,Uinp,Vinp,pinp,qinp,Pinp,winp,-4.0)
 dirichletCtrlPts,axisRestrictions = dirichletBCPreprocessing(Pinp,0.0)
+# print(loadNodes)
 # print(dirichletCtrlPts)
 # print(axisRestrictions)
+
+# cx,cy = rbs.nurbs2DField(Uinit,Vinit,pinp,qinp,Pinp,winp)
+# plts.plotting2DField(cx,cy,np.zeros((cx.shape[0],cx.shape[1])),Pinp)
 
 dMat = elasticMatrix(E,nu)
 K,F,totalArea = assemblyWeakForm(Uinp,Vinp,winp,pinp,qinp,Pinp,parametricNodes,nodesInElement,gaussLegendreQuadrature,dMat,rho,loadNodes,loadElements,tv)
 
 Kred,Fred,removedDofs = boundaryConditionsEnforcement(K,F,dirichletCtrlPts,axisRestrictions,u0)
+
+# print(dMat)
 
 totaldofs = np.arange(2*Pinp.shape[0])
 dtotal,dred = solveMatrixEquations(Kred,Fred,totaldofs,removedDofs)

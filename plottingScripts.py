@@ -128,7 +128,7 @@ def plotTangentSurface(cx,cy,cz,cpx,cpy,cpz,px,py,pz,*argv):
     py = np.reshape(py,(len(py),1))
     pz = np.reshape(pz,(len(pz),1))
     ax.plot_wireframe(px,py,pz, color = 'red')
-    plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['k'],length = 0.07,normalize = True)
+    plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['k'],length = 0.05,normalize = True)
 
     if argv != ():
         ax.set_title(argv[0])
@@ -156,7 +156,7 @@ def plotting2DField(cx,cy,fz,*argv):
             colorbarstring = stringlegends[1]
         else:
             print("More than 2 extra arguments")
-        ax.scatter(pts[:,0],pts[:,1])
+        # ax.scatter(pts[:,0],pts[:,1])
 
     cb = fig.colorbar(field)
     ax.set_xlabel('x')

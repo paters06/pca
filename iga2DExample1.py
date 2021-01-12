@@ -72,9 +72,9 @@ def strainDisplacementMatrix(U,V,w,p,q,pta,ptb,jacob):
     dN2u = rbs.dRatdU(U,V,w,p,q,pta,ptb)
     dN2v = rbs.dRatdV(U,V,w,p,q,pta,ptb)
 
-    invJac = inv(jacob)
+    invJac = np.linalg.inv(jacob)
     dN2 = np.vstack((dN2u,dN2v))
-    dN2dxi = invJac@dN2
+    dN2dxi = invJac.T@dN2
 
     numpts = dN2dxi.shape[1]
     bMat = np.zeros((3,2*numpts))
@@ -239,11 +239,6 @@ def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadnod
             uA = paramnodes[nodeselem[ielem][1]][0]
             vB = paramnodes[nodeselem[ielem][2]][1]
             vA = paramnodes[nodeselem[ielem][1]][1]
-
-            # uB = paramnodes[loadnodes[1]][0]
-            # uA = paramnodes[loadnodes[0]][0]
-            # vB = paramnodes[loadnodes[1]][1]
-            # vA = paramnodes[loadnodes[0]][1]
 
             aPoint = np.array([uA,vA])
             bPoint = np.array([uB,vB])
@@ -589,11 +584,13 @@ Pinit = np.array([[0,0],
 winit = np.array([[1],[1],[1],[1],[1],[1],[1],[1],[1]])
 
 #Isogeometric routines
-Uinit = np.array([0,0,0.5,1,1])
-Vinit = np.array([0,0,0.5,1,1])
+Uinit = np.array([0,0,0,1,1,1])
+Vinit = np.array([0,0,0,1,1,1])
+# Uinit = np.array([0,0,0.5,1,1])
+# Vinit = np.array([0,0,0.5,1,1])
 
-pinit = 1
-qinit = 1
+pinit = 2
+qinit = 2
 
 doRefinement = 'N'
 
