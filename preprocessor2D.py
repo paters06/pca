@@ -64,7 +64,19 @@ def loadPreprocessing(paramnodes,nodeselem,U,V,p,q,P,w,cload):
 
     return loadnodes,loadelements
 
+def checkColinearPoints(apt,bpt,cpt):
+    abdist = np.sqrt( (apt[0] - bpt[0])**2 + (apt[1] - bpt[1])**2 )
+    acdist = np.sqrt( (apt[0] - cpt[0])**2 + (apt[1] - cpt[1])**2 )
+    cbdist = np.sqrt( (cpt[0] - bpt[0])**2 + (cpt[1] - bpt[1])**2 )
+
+    # Check if AB = AC + CB
+    if abs(abdist - acdist - cbdist) < 1e-5:
+        return True
+    else:
+        return False
+
 def loadPreprocessingv2(paramnodes,nodeselem,neumannconditions):
+    loadednodes = []
     loadelements = []
     loadfaces = []
 
@@ -72,31 +84,34 @@ def loadPreprocessingv2(paramnodes,nodeselem,neumannconditions):
         apt = np.array(cond[0])
         bpt = np.array(cond[1])
 
+        # Check the other parametric nodes that belong to the
+        # neumann boundary condition
+        for inode in range(0,paramnodes.shape[0]):
+            if checkColinearPoints(apt,bpt,paramnodes[inode,:]):
+                loadednodes.append(inode)
+
+        # print(loadednodes)
         for ielem in range(0,nodeselem.shape[0]):
-            nodecounter = 0
+            # print(nodeselem[ielem,:])
+            commom_nodes = set.intersection(set(loadednodes),set(nodeselem[ielem,:]))
+            # commom_nodes = list(commom_nodes)
+            # print(len(commom_nodes))
+            if len(commom_nodes) == 2:
+                loadelements.append(ielem)
 
-            print("Element #",ielem)
-
+        # print(loadelements)
+        for ldnelm in loadelements:
             for j in range(0,4):
-                xpt = paramnodes[nodeselem[ielem][j]]
+                if j < 3:
+                    side_nodes = [nodeselem[ldnelm][j],nodeselem[ldnelm][j+1]]
+                else:
+                    side_nodes = [nodeselem[ldnelm][j],nodeselem[ldnelm][0]]
+                face = set.intersection(set(side_nodes),set(loadednodes))
+                if len(face) == 2:
+                    loadfaces.append(j)
+                    # print(j)
 
-                print('----')
-                print(apt)
-                print(bpt)
-                print(xpt)
-                print('----')
-
-                isAInSquare = ( (apt[0] - xpt[0])**2 + (apt[1] - xpt[1])**2 ) < 1e-4
-                isBInSquare = ( (bpt[0] - xpt[0])**2 + (bpt[1] - xpt[1])**2 ) < 1e-4
-
-                if isAInSquare or isBInSquare:
-                    print("Node In")
-                    nodecounter += 1
-
-                if nodecounter == 2:
-                    print("Element In")
-                    loadelements.append(ielem)
-                    loadfaces.append(j-1)
+        # print(loadfaces)
 
     return loadelements,loadfaces
 
