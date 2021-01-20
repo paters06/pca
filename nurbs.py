@@ -128,6 +128,42 @@ def nurbs2DField(U,V,p,q,P,w):
             cy[i,j] = ratFunc@py
     return cx,cy
 
+def nurbs2DBoundary(U,V,p,q,P,w):
+
+    px = np.reshape(P[:,0],(len(P[:,0]),1))
+    py = np.reshape(P[:,1],(len(P[:,1]),1))
+
+    boundarycoor = []
+
+    boundlimits = [[np.array([0.0,0.0]),np.array([1.0,0.0])],
+                  [np.array([1.0,0.0]),np.array([1.0,1.0])],
+                  [np.array([1.0,1.0]),np.array([0.0,1.0])],
+                  [np.array([0.0,1.0]),np.array([0.0,0.0])]]
+
+    numpt = 11
+    for bndlim in boundlimits:
+        parampath = np.linspace(bndlim[0],bndlim[1],numpt,endpoint=True)
+        coor = np.zeros((parampath.shape[0],2))
+        ipath = 0
+        for ppath in parampath:
+            ratFunc = ratFunction(U,V,w,p,q,ppath[0],ppath[1])
+
+            coor[ipath,0] = ratFunc@px
+            coor[ipath,1] = ratFunc@py
+            ipath += 1
+
+        boundarycoor.append(coor)
+
+    for bc in range(len(boundarycoor)):
+        if bc == 0:
+            boundarycoor1 = boundarycoor[bc]
+        else:
+            boundarycoor1 = np.vstack((boundarycoor1,boundarycoor[bc]))
+
+    cx = boundarycoor1[:,0]
+    cy = boundarycoor1[:,1]
+    return cx,cy
+
 def nurbsSurface(U,V,p,q,P,w):
     numpoints = 21
     urank = np.linspace(U.min(),U.max(),numpoints)

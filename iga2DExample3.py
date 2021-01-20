@@ -62,8 +62,7 @@ parametricNodes,nodesInElement = pre2D.parametricGrid(Uinp,Vinp)
 loadElements,loadFaces = pre2D.loadPreprocessingv2(parametricNodes,nodesInElement,neumannConditions)
 dirichletCtrlPts,axisRestrictions = pre2D.dirichletBCPreprocessing(Pinp,displacementConditions)
 
-# cx,cy = rbs.nurbs2DField(Uinit,Vinit,pinp,qinp,Pinp,winp)
-# plts.plotting2DField(cx,cy,np.zeros((cx.shape[0],cx.shape[1])),Pinp)
+# pre2D.plotGeometry(Uinp,Vinp,pinp,qinp,Pinp,winp,dirichletCtrlPts,displacementConditions,neumannConditions,parametricNodes,nodesInElement,loadElements,loadFaces,tv,"normal")
 
 dMat = linElastStat.elasticMatrix(E,nu)
 K,F = linElastStat.assemblyWeakForm(Uinp,Vinp,winp,pinp,qinp,Pinp,parametricNodes,nodesInElement,gaussLegendreQuadrature,dMat,rho,loadElements,loadFaces,tv,0)
@@ -73,4 +72,4 @@ Kred,Fred,removedDofs,totalDofs = linElastStat.boundaryConditionsEnforcement(K,F
 dtotal,D = linElastStat.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
 # print(D)
 
-post2D.postProcessing(Uinp,Vinp,pinp,qinp,Pinp,D,winp,parametricNodes,nodesInElement,dtotal,dMat)
+# post2D.postProcessing(Uinp,Vinp,pinp,qinp,Pinp,D,winp,parametricNodes,nodesInElement,dtotal,dMat)
