@@ -41,33 +41,6 @@ def parametricGrid(U,V):
 
     return paramnodes,elemmat
 
-# Improve this function
-def loadPreprocessing(paramnodes,nodeselem,U,V,p,q,P,w,cload):
-    loadnodes = []
-    loadelements = []
-    px = np.reshape(P[:,0],(P.shape[0],1))
-    py = np.reshape(P[:,1],(P.shape[0],1))
-
-    for i in range(0,paramnodes.shape[0]):
-        ratFunc = rbs.ratFunction(U,V,w,p,q,paramnodes[i][0],paramnodes[i][1])
-        cx = ratFunc@px
-        if abs(cx - cload) < 1e-4:
-            loadnodes.append(i)
-
-    for i in range(0,nodeselem.shape[0]):
-        present = 0
-        for ln in loadnodes:
-            x = np.where(nodeselem[i,:] == ln)
-
-            # x is a tuple. where does not have as output a list
-            if len(x[0]) != 0:
-                present += 1
-
-        if present == 2:
-            loadelements.append(i)
-
-    return loadnodes,loadelements
-
 def checkColinearPoints(apt,bpt,cpt):
     abdist = np.sqrt( (apt[0] - bpt[0])**2 + (apt[1] - bpt[1])**2 )
     acdist = np.sqrt( (apt[0] - cpt[0])**2 + (apt[1] - cpt[1])**2 )
@@ -87,6 +60,8 @@ def loadPreprocessingv2(paramnodes,nodeselem,neumannconditions):
     for cond in neumannconditions:
         apt = np.array(cond[0])
         bpt = np.array(cond[1])
+        loadtype = cond[2]
+        # print(loadtype)
 
         # Check the other parametric nodes that belong to the
         # neumann boundary condition
@@ -142,16 +117,13 @@ def dirichletBCPreprocessing(P,dirichletconditions):
 
     return dirichletctrlpts,axisrestrictions
 
-def plotGeometry(U,V,p,q,P,w,dirichletctrlpts,dirichletconditions,neumannconditions,paramnodes,nodeselem,loadelements,loadfaces,loadvalue,loadtype):
+def plotGeometry(U,V,p,q,P,w,dirichletctrlpts,dirichletconditions,neumannconditions,paramnodes,nodeselem,loadelements,loadfaces):
 
     fig = plt.figure()
     ax = plt.axes()
     plt.axis('equal')
     ax.use_sticky_edges = False
     titlestring = "Geometry with boundary conditions"
-
-    # plt.xticks([])
-    # plt.yticks([])
     ax.axis("off")
 
     px = np.reshape(P[:,0],(P.shape[0],1))
@@ -161,6 +133,9 @@ def plotGeometry(U,V,p,q,P,w,dirichletctrlpts,dirichletconditions,neumannconditi
     numpt = 5
     loadcoor = []
     loadfield = []
+
+    loadtype = neumannconditions[0][2]
+    loadvalue = neumannconditions[0][3]
 
     # Rotation matrix for -pi/2
     rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
@@ -196,6 +171,11 @@ def plotGeometry(U,V,p,q,P,w,dirichletctrlpts,dirichletconditions,neumannconditi
             startindex = 3
             endindex = 0
 
+        if paramside == 1 or paramside == 3:
+            paramaxis = 1
+        else:
+            paramaxis = 0
+
         uB = paramnodes[nodeselem[loadelements[ielem]][endindex]][0]
         uA = paramnodes[nodeselem[loadelements[ielem]][startindex]][0]
         vB = paramnodes[nodeselem[loadelements[ielem]][endindex]][1]
@@ -221,11 +201,6 @@ def plotGeometry(U,V,p,q,P,w,dirichletctrlpts,dirichletconditions,neumannconditi
             jmat[0][1] = dxdv
             jmat[1][0] = dydu
             jmat[1][1] = dydv
-
-            if paramside == 1 or paramside == 3:
-                paramaxis = 1
-            else:
-                paramaxis = 0
 
             jvec = jmat[:,paramaxis]
             normjvec = np.linalg.norm(jvec)
@@ -266,6 +241,9 @@ def plotGeometry(U,V,p,q,P,w,dirichletctrlpts,dirichletconditions,neumannconditi
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_title(titlestring)
-    plt.legend((dirichletplot,neumannplot),('Displacement restrictions','Load conditions'),loc='lower right',bbox_to_anchor=(1.2,0.0))
+    # Uncomment for example2
+    plt.legend((dirichletplot,neumannplot),('Displacement restrictions','Load conditions'),loc='upper right',bbox_to_anchor=(1.2,1.0))
+    # Uncomment for example3
+    # plt.legend((dirichletplot,neumannplot),('Displacement restrictions','Load conditions'),loc='lower right',bbox_to_anchor=(1.2,0.0))
     plt.tight_layout()
     plt.show()

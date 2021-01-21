@@ -102,14 +102,8 @@ def localBodyVector(U,V,w,p,q,px,py,gausspoints,gaussweights,paramgrad,apt,cpt,r
 
     return lbe
 
-def appliedLoadVector(U,V,w,p,q,px,py,gausspoints,gaussweights,apt,bpt,loadvalue,loaddir,paramside):
+def appliedLoadVector(U,V,w,p,q,px,py,gausspoints,gaussweights,apt,bpt,loadvalue,loadtype,paramaxis,rotmat):
     lle = np.zeros((2*px.shape[0],1))
-    tvec = np.zeros((2,1))
-    tvec[loaddir][0] = loadvalue
-    if paramside == 1 or paramside == 3:
-        paramaxis = 1
-    else:
-        paramaxis = 0
 
     for qj in range(len(gausspoints)):
         #The first gausspoints does not influence in the output due to uval
@@ -122,6 +116,20 @@ def appliedLoadVector(U,V,w,p,q,px,py,gausspoints,gaussweights,apt,bpt,loadvalue
         jac1 = np.linalg.norm(Jac[:,paramaxis])
         jac2 = 0.5*np.sum(bpt-apt)
 
+        if jac1 > 1e-6:
+            unitTangetVec = Jac[:,paramaxis]/jac1
+        else:
+            unitTangetVec = np.zeros((2,1))
+
+        if loadtype == "tangent":
+            tvec = (loadvalue/abs(loadvalue))*unitTangetVec
+        elif loadtype == "normal":
+            unitNormalVec = rotmat@unitTangetVec
+            tvec = (loadvalue/abs(loadvalue))*unitNormalVec
+        else:
+            print("Wrong load configuration")
+
+        tvec = np.reshape(tvec,(2,1))
         nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
         lle += (nMat.T@tvec)*jac1*jac2*gaussweights[qj]
 
@@ -129,7 +137,7 @@ def appliedLoadVector(U,V,w,p,q,px,py,gausspoints,gaussweights,apt,bpt,loadvalue
 
 ################ ISOGEOMETRIC ANALYSIS ####################
 
-def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadelems,loadfaces,loadvalue,loaddir):
+def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadelems,loadfaces,neumannconditions):
     K = np.zeros((2*P.shape[0],2*P.shape[0]))
     F = np.zeros((2*P.shape[0],1))
     Fb = np.zeros((2*P.shape[0],1))
@@ -142,6 +150,12 @@ def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadele
 
     px = np.reshape(P[:,0],(P.shape[0],1))
     py = np.reshape(P[:,1],(P.shape[0],1))
+
+    # Rotation matrix for -pi/2
+    rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
+
+    loadtype = neumannconditions[0][2]
+    loadvalue = neumannconditions[0][3]
 
     for ielem in range(0,numElems):
         """
@@ -190,6 +204,11 @@ def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadele
                 startindex = 3
                 endindex = 0
 
+            if paramside == 1 or paramside == 3:
+                paramaxis = 1
+            else:
+                paramaxis = 0
+
             uB = paramnodes[nodeselem[ielem][endindex]][0]
             uA = paramnodes[nodeselem[ielem][startindex]][0]
             vB = paramnodes[nodeselem[ielem][endindex]][1]
@@ -198,7 +217,7 @@ def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadele
             aPoint = np.array([uA,vA])
             bPoint = np.array([uB,vB])
 
-            Fl += appliedLoadVector(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,aPoint,bPoint,loadvalue,loaddir,paramside)
+            Fl += appliedLoadVector(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,aPoint,bPoint,loadvalue,loadtype,paramaxis,rotMat)
 
         print("---")
 
