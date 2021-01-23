@@ -3,7 +3,7 @@ import numpy.linalg
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
-import linearElastoStaticsSolver as linElastStat
+import src.linearElastoStaticsSolver as linElastStat
 
 def checkingSymmetricMatrix(A):
     check = np.allclose(A, A.T, rtol=1e-2, atol=1e-3)

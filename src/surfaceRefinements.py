@@ -1,5 +1,6 @@
 import numpy as np
-import nurbs as rbs
+
+import src.nurbs as rbs
 
 tol = 1e-5
 

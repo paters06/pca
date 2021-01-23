@@ -1,15 +1,18 @@
+# Python libraries
 import numpy as np
 import numpy.linalg
 import matplotlib.pyplot as plt
 
-import pca_01 as pca
-import nurbs as rbs
-import plottingScripts as plts
-import preprocessor2D as pre2D
-import linearElastoStaticsSolver as linElastStat
-import postprocessor2D as post2D
-import surfaceRefinements as srfn
-import debugScripts as dbg_scrpt
+# Local project
+import sys
+sys.path.append('/home/paters/pca/')
+
+import src.plottingScripts as plts
+import src.preprocessor2D as pre2D
+import src.linearElastoStaticsSolver as linElastStat
+import src.postprocessor2D as post2D
+import src.surfaceRefinements as srfn
+import src.debugScripts as dbg_scrpt
 
 ####################################################
 ################## MAIN PROBLEM ####################

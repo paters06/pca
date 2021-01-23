@@ -2,8 +2,8 @@ import numpy as np
 import numpy.linalg
 import matplotlib.pyplot as plt
 
-import nurbs as rbs
-import plottingScripts as plts
+import src.nurbs as rbs
+import src.plottingScripts as plts
 
 ################ PREPROCESSING ####################
 

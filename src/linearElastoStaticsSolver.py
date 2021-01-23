@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.linalg
-import nurbs as rbs
+
+import src.nurbs as rbs
 
 def parametricCoordinate(ua,ub,va,vb,gausspta,gaussptb):
     localpts = np.zeros((1,2))

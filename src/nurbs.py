@@ -1,5 +1,9 @@
 import numpy as np
-import pca_01 as pca
+
+import sys
+
+# from src import pca_01 as pca
+import src.pca_01 as pca
 
 #####################################################
 ##################CONTROL POINTS#####################

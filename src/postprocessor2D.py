@@ -1,6 +1,7 @@
 import numpy as np
-import nurbs as rbs
-import plottingScripts as plts
+
+import src.nurbs as rbs
+import src.plottingScripts as plts
 
 def jacobian(U,V,w,p,q,pta,ptb,px,py):
     n2 = rbs.ratFunction(U,V,w,p,q,pta,ptb)
