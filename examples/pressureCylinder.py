@@ -23,7 +23,7 @@ E = 1e5 #Pa
 nu = 0.31
 rho = 0.0 #kg/m3
 u0 = 0.0
-tv = -10 #Pa
+tv = 10 #Pa
 Rmax = 1.0
 Rmin = 0.7
 
@@ -55,19 +55,19 @@ else:
     Pinp = Pinit
     winp = winit
 
-displacementConditions = [[0.0,0,"S"],[0.0,1,"S"]]
+displacementConditions = [[[0.0,Rmin],[0.0,Rmax],"S",0.0],[[Rmin,0.0],[Rmax,0.0],"S",0.0]]
 neumannConditions = [[[0.0,0.0],[1.0,0.0],"normal",tv]]
 
 parametricNodes,nodesInElement = pre2D.parametricGrid(Uinp,Vinp)
-loadElements,loadFaces = pre2D.loadPreprocessingv2(parametricNodes,nodesInElement,neumannConditions)
-dirichletCtrlPts,axisRestrictions = pre2D.dirichletBCPreprocessing(Pinp,displacementConditions)
+loadElements,loadFaces = pre2D.loadPreprocessing(parametricNodes,nodesInElement,neumannConditions)
+dirichletBCList = pre2D.dirichletBCPreprocessingOnFaces(Pinp,displacementConditions)
 
-# pre2D.plotGeometry(Uinp,Vinp,pinp,qinp,Pinp,winp,dirichletCtrlPts,displacementConditions,neumannConditions,parametricNodes,nodesInElement,loadElements,loadFaces)
+# pre2D.plotGeometry(Uinp,Vinp,pinp,qinp,Pinp,winp,dirichletBCList,neumannConditions,parametricNodes,nodesInElement,loadElements,loadFaces)
 
 dMat = linElastStat.elasticMatrix(E,nu)
 K,F = linElastStat.assemblyWeakForm(Uinp,Vinp,winp,pinp,qinp,Pinp,parametricNodes,nodesInElement,gaussLegendreQuadrature,dMat,rho,loadElements,loadFaces,neumannConditions)
 
-Kred,Fred,removedDofs,totalDofs = linElastStat.boundaryConditionsEnforcement(K,F,dirichletCtrlPts,axisRestrictions,u0,displacementConditions[0][2])
+Kred,Fred,removedDofs,totalDofs = linElastStat.boundaryConditionsEnforcement(K,F,dirichletBCList)
 
 dtotal,D = linElastStat.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
 # print(D)

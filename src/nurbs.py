@@ -1,8 +1,7 @@
+# Python libraries
 import numpy as np
 
-import sys
-
-# from src import pca_01 as pca
+# Local project
 import src.pca_01 as pca
 
 #####################################################
@@ -61,37 +60,30 @@ def ratFunction(U,V,w,p,q,u,v):
     ratfunc = (n2*w.T)/(n2@w)
     return ratfunc
 
-def dRatdU(U,V,w,p,q,u,v):
+def rationalFunctionAndGradient(U,V,w,p,q,u,v):
     nVecU = pca.nFunction(U,p,u)
     nVecV = pca.nFunction(V,q,v)
     dnVecU = pca.derNFunction(U,p,u)
-
-    nunv = nVecV.T@nVecU
-    nunv = np.reshape(nunv,(1,nunv.shape[0]*nunv.shape[1]))
-    dnunv = nVecV.T@dnVecU
-    dnunv = np.reshape(dnunv,(1,dnunv.shape[0]*dnunv.shape[1]))
-
-    W = nunv@w
-    dW = dnunv@w
-
-    dratfunc = (w.T)*(dnunv*W - nunv*dW)/(W**2)
-    return dratfunc
-
-def dRatdV(U,V,w,p,q,u,v):
-    nVecU = pca.nFunction(U,p,u)
-    nVecV = pca.nFunction(V,q,v)
     dnVecV = pca.derNFunction(V,q,v)
 
     nunv = nVecV.T@nVecU
     nunv = np.reshape(nunv,(1,nunv.shape[0]*nunv.shape[1]))
+
+    dnunv = nVecV.T@dnVecU
+    dnunv = np.reshape(dnunv,(1,dnunv.shape[0]*dnunv.shape[1]))
+
     nudnv = dnVecV.T@nVecU
     nudnv = np.reshape(nudnv,(1,nudnv.shape[0]*nudnv.shape[1]))
 
     W = nunv@w
-    dW = nudnv@w
+    dWdu = dnunv@w
+    dWdv = nudnv@w
 
-    dratfunc = (w.T)*(nudnv*W - nunv*dW)/(W**2)
-    return dratfunc
+    Ruv = (nunv*w.T)/(nunv@w)
+    dRdu = (w.T)*(dnunv*W - nunv*dWdu)/(W**2)
+    dRdv = (w.T)*(nudnv*W - nunv*dWdv)/(W**2)
+
+    return Ruv,dRdu,dRdv
 
 ##################NURBS CURVES######################
 

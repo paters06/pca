@@ -1,6 +1,8 @@
+# Python libraries
 import numpy as np
 import numpy.linalg
 
+# Local project
 import src.nurbs as rbs
 
 def parametricCoordinate(ua,ub,va,vb,gausspta,gaussptb):
@@ -11,20 +13,19 @@ def parametricCoordinate(ua,ub,va,vb,gausspta,gaussptb):
 
 def geometricCoordinate(paramcoor,U,V,w,p,q,px,py):
     ratFunc = rbs.ratFunction(U,V,w,p,q,paramcoor[0][0],paramcoor[0][1])
+    # ratFunc,dn2du,dn2dv = rbs.rationalFunctionAndGradient(U,V,w,p,q,paramcoor[0][0],paramcoor[0][1])
     geomcoor = np.zeros((1,2))
     geomcoor[0][0] = ratFunc@px
     geomcoor[0][1] = ratFunc@py
     return geomcoor
 
 def jacobian(U,V,w,p,q,pta,ptb,px,py):
-    n2 = rbs.ratFunction(U,V,w,p,q,pta,ptb)
-    dn2u = rbs.dRatdU(U,V,w,p,q,pta,ptb)
-    dn2v = rbs.dRatdV(U,V,w,p,q,pta,ptb)
+    n2,dn2du,dn2dv = rbs.rationalFunctionAndGradient(U,V,w,p,q,pta,ptb)
 
-    dXdu = dn2u@px
-    dXdv = dn2v@px
-    dYdu = dn2u@py
-    dYdv = dn2v@py
+    dXdu = dn2du@px
+    dXdv = dn2dv@px
+    dYdu = dn2du@py
+    dYdv = dn2dv@py
 
     jacob = np.zeros((2,2))
 
@@ -39,11 +40,10 @@ def weightedJacobian(jac,paramgrad,gwpts,ipta,iptb):
     return abs(np.linalg.det(jac))*abs(np.linalg.det(paramgrad))*gwpts[ipta]*gwpts[iptb]
 
 def strainDisplacementMatrix(U,V,w,p,q,pta,ptb,jacob):
-    dN2u = rbs.dRatdU(U,V,w,p,q,pta,ptb)
-    dN2v = rbs.dRatdV(U,V,w,p,q,pta,ptb)
+    N2,dN2du,dN2dv = rbs.rationalFunctionAndGradient(U,V,w,p,q,pta,ptb)
 
     invJac = np.linalg.inv(jacob)
-    dN2 = np.vstack((dN2u,dN2v))
+    dN2 = np.vstack((dN2du,dN2dv))
     dN2dxi = invJac.T@dN2
 
     numpts = dN2dxi.shape[1]
@@ -68,6 +68,7 @@ def elasticMatrix(E,nu):
 
 def shapeFunctionMatrix(U,V,w,p,q,pta,ptb):
     N2 = rbs.ratFunction(U,V,w,p,q,pta,ptb)
+    # N2,dN2du,dN2dv = rbs.rationalFunctionAndGradient(U,V,w,p,q,pta,ptb)
     nMat = np.zeros((2,2*N2.shape[1]))
 
     nMat[0,0::2] = N2
@@ -227,38 +228,53 @@ def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadele
 
 ################ MATRIX EQUATION SOLUTION ####################
 
-def boundaryConditionsEnforcement(K,F,udisp,axisrestrict,ucond,restriction):
-    if restriction == "C":
-        print("Clamped condition")
-        remdofs = np.array(udisp) - 1
-        remdofs = np.hstack((2*remdofs,2*remdofs))
-        remdofs.sort()
-    elif restriction == "S":
-        print("Supported condition")
-        remdofs = 2*(np.array(udisp) - 1)
-    else:
-        print("Wrong restriction")
+def boundaryConditionsEnforcement(K,F,dirichletconds):
+    enforcednodes = []
+    restricteddofs = []
+    values = []
 
-    restricteddofs = np.array(axisrestrict)
-    remdofs = remdofs + restricteddofs
-    remdofs.sort()
+    for drchcond in dirichletconds:
+        inode = drchcond[0]
+        restriction = drchcond[1]
+        localdofs = drchcond[2]
+        value = drchcond[3]
+
+        if restriction == "C":
+            # On clamped condition, the node and the value
+            # are replicated as many spatial dimensions are
+            enforcednodes.append(2*inode)
+            enforcednodes.append(2*inode)
+            values.append(value)
+            values.append(value)
+        elif restriction == "S":
+            enforcednodes.append(2*inode)
+            values.append(value)
+        else:
+            print("Wrong restriction")
+
+        restricteddofs += localdofs
+
+    # Calculating the global dofs to be removed
+    enforcednodes = np.array(enforcednodes)
+    restricteddofs = np.array(restricteddofs)
+    restricteddofs += enforcednodes
 
     print("First reduction")
-    Fred = np.delete(F,remdofs,0)
-    Kred = np.delete(K,remdofs,0)
+    Fred = np.delete(F,restricteddofs,0)
+    Kred = np.delete(K,restricteddofs,0)
 
     print("Modification of Freduced")
-    for rdof in remdofs:
-        Kcol = Kred[:,rdof]
+    for i in range(len(restricteddofs)):
+        Kcol = Kred[:,restricteddofs[i]]
         Kcol = np.reshape(Kcol,(Kcol.shape[0],1))
-        Fred -= Kcol*ucond
+        Fred -= Kcol*values[i]
 
     print("Second reduction")
-    Kred = np.delete(Kred,remdofs,1)
+    Kred = np.delete(Kred,restricteddofs,1)
 
     totaldofs = np.arange(F.shape[0])
 
-    return Kred,Fred,remdofs,totaldofs
+    return Kred,Fred,restricteddofs,totaldofs
 
 def solveMatrixEquations(Kred,Fred,totaldofs,remdofs):
     # Checking full rank in matrix

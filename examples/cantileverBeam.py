@@ -46,15 +46,15 @@ def main():
     winit = np.array([[1],[1],[1],[1],[1],[1],[1],[1],[1]])
 
     #Isogeometric routines
-    # Uinit = np.array([0,0,0,1,1,1])
-    # Vinit = np.array([0,0,0,1,1,1])
-    Uinit = np.array([0,0,0.5,1,1])
-    Vinit = np.array([0,0,0.5,1,1])
+    Uinit = np.array([0,0,0,1,1,1])
+    Vinit = np.array([0,0,0,1,1,1])
+    # Uinit = np.array([0,0,0.5,1,1])
+    # Vinit = np.array([0,0,0.5,1,1])
 
-    pinit = 1
-    qinit = 1
+    pinit = 2
+    qinit = 2
 
-    doRefinement = 'N'
+    doRefinement = 'Y'
 
     if doRefinement == 'Y':
         reflist = ['h','h','h','h']
@@ -68,19 +68,19 @@ def main():
         Pinp = Pinit
         winp = winit
 
-    displacementConditions = [[0.0,0,"C"]]
+    displacementConditions = [[[0.0,0.0],[0.0,H],"C",0.0]]
     neumannConditions = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
 
     parametricNodes,nodesInElement = pre2D.parametricGrid(Uinp,Vinp)
-    loadElements,loadFaces = pre2D.loadPreprocessingv2(parametricNodes,nodesInElement,neumannConditions)
-    dirichletCtrlPts,axisRestrictions = pre2D.dirichletBCPreprocessing(Pinp,displacementConditions)
+    loadElements,loadFaces = pre2D.loadPreprocessing(parametricNodes,nodesInElement,neumannConditions)
+    dirichletBCList = pre2D.dirichletBCPreprocessingOnFaces(Pinp,displacementConditions)
 
-    # pre2D.plotGeometry(Uinp,Vinp,pinp,qinp,Pinp,winp,dirichletCtrlPts,displacementConditions,neumannConditions,parametricNodes,nodesInElement,loadElements,loadFaces)
+    # pre2D.plotGeometry(Uinp,Vinp,pinp,qinp,Pinp,winp,dirichletBCList,neumannConditions,parametricNodes,nodesInElement,loadElements,loadFaces)
 
     dMat = linElastStat.elasticMatrix(E,nu)
     K,F = linElastStat.assemblyWeakForm(Uinp,Vinp,winp,pinp,qinp,Pinp,parametricNodes,nodesInElement,gaussLegendreQuadrature,dMat,rho,loadElements,loadFaces,neumannConditions)
 
-    Kred,Fred,removedDofs,totalDofs = linElastStat.boundaryConditionsEnforcement(K,F,dirichletCtrlPts,axisRestrictions,u0,displacementConditions[0][2])
+    Kred,Fred,removedDofs,totalDofs = linElastStat.boundaryConditionsEnforcement(K,F,dirichletBCList)
 
     dtotal,D = linElastStat.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
     # print(D)

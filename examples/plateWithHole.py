@@ -3,10 +3,10 @@ import numpy as np
 import numpy.linalg
 import matplotlib.pyplot as plt
 
-# Local project
 import sys
 sys.path.append('/home/paters/pca/')
 
+# Local project
 import src.plottingScripts as plts
 import src.preprocessor2D as pre2D
 import src.linearElastoStaticsSolver as linElastStat
@@ -43,7 +43,7 @@ Vinit = np.array([0,0,0,1,1,1])
 pinit = 2
 qinit = 2
 
-doRefinement = 'N'
+doRefinement = 'Y'
 
 if doRefinement == 'Y':
     reflist = ['h','h','h','h']
@@ -57,19 +57,19 @@ else:
     Pinp = Pinit
     winp = winit
 
-displacementConditions = [[0.0,0,"S"],[0.0,1,"S"]]
+displacementConditions = [[[-R,0.0],[-L,0.0],"S",0.0],[[0.0,R],[0.0,L],"S",0.0]]
 neumannConditions = [[[0.0,1.0],[0.5,1.0],"normal",tv]]
 
 parametricNodes,nodesInElement = pre2D.parametricGrid(Uinp,Vinp)
-loadElements,loadFaces = pre2D.loadPreprocessingv2(parametricNodes,nodesInElement,neumannConditions)
-dirichletCtrlPts,axisRestrictions = pre2D.dirichletBCPreprocessing(Pinp,displacementConditions)
+loadElements,loadFaces = pre2D.loadPreprocessing(parametricNodes,nodesInElement,neumannConditions)
+dirichletBCList = pre2D.dirichletBCPreprocessingOnFaces(Pinp,displacementConditions)
 
-# pre2D.plotGeometry(Uinp,Vinp,pinp,qinp,Pinp,winp,dirichletCtrlPts,displacementConditions,neumannConditions,parametricNodes,nodesInElement,loadElements,loadFaces)
+# pre2D.plotGeometry(Uinp,Vinp,pinp,qinp,Pinp,winp,dirichletBCList,neumannConditions,parametricNodes,nodesInElement,loadElements,loadFaces)
 
 dMat = linElastStat.elasticMatrix(E,nu)
 K,F = linElastStat.assemblyWeakForm(Uinp,Vinp,winp,pinp,qinp,Pinp,parametricNodes,nodesInElement,gaussLegendreQuadrature,dMat,rho,loadElements,loadFaces,neumannConditions)
 
-Kred,Fred,removedDofs,totalDofs = linElastStat.boundaryConditionsEnforcement(K,F,dirichletCtrlPts,axisRestrictions,u0,displacementConditions[0][2])
+Kred,Fred,removedDofs,totalDofs = linElastStat.boundaryConditionsEnforcement(K,F,dirichletBCList)
 
 dtotal,D = linElastStat.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
 # print(D)

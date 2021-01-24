@@ -1,7 +1,9 @@
+# Python libraries
 import numpy as np
 import numpy.linalg
 import matplotlib.pyplot as plt
 
+# Local project
 import src.nurbs as rbs
 import src.plottingScripts as plts
 
@@ -52,7 +54,7 @@ def checkColinearPoints(apt,bpt,cpt):
     else:
         return False
 
-def loadPreprocessingv2(paramnodes,nodeselem,neumannconditions):
+def loadPreprocessing(paramnodes,nodeselem,neumannconditions):
     loadednodes = []
     loadelements = []
     loadfaces = []
@@ -94,31 +96,57 @@ def loadPreprocessingv2(paramnodes,nodeselem,neumannconditions):
 
     return loadelements,loadfaces
 
-def dirichletBCPreprocessing(P,dirichletconditions):
-    dirichletctrlpts = []
-    axisrestrictions = []
+def dirichletBCPreprocessingOnFaces(P,dirichletconditions):
+    dirichletconds = []
+
+    # Rotation matrix for -pi/2
+    rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
 
     for cond in dirichletconditions:
-        cdirichlet = cond[0]
-        axis = cond[1]
+        apt = np.array(cond[0])
+        bpt = np.array(cond[1])
         restriction = cond[2]
+        value = cond[3]
 
         for i in range(0,P.shape[0]):
-            if abs(P[i][axis] - cdirichlet) < 1e-4:
-                dirichletctrlpts.append(i+1)
+            nodecond = []
+
+            # Check the control points that belong to the
+            # Dirichlet boundary condition
+            if checkColinearPoints(apt,bpt,P[i,:]):
+                # Insertion of the node
+                nodecond.append(i)
+                # Insertion of the type of restriction
+                nodecond.append(restriction)
 
                 if restriction == "C":
-                    # Due to clamped condition
-                    axisrestrictions.append(0)
-                    axisrestrictions.append(1)
+                    # Clamped condition assumed
+                    # Insertion of the axis where the condition are applied
+                    nodecond.append([0,1])
                 else:
                     # Supported condition assumed
-                    axisrestrictions.append(axis)
+                    tangetVec = bpt - apt
+                    tangetVec = np.reshape(tangetVec,(len(tangetVec),1))
+                    unitTangetVec = tangetVec/np.linalg.norm(tangetVec)
 
-    return dirichletctrlpts,axisrestrictions
+                    unitNormalVec = rotMat@unitTangetVec
 
-def plotGeometry(U,V,p,q,P,w,dirichletctrlpts,dirichletconditions,neumannconditions,paramnodes,nodeselem,loadelements,loadfaces):
+                    for i in range(len(unitNormalVec)):
+                        if abs(unitNormalVec[i]) > 1e-5:
+                            axis = i
 
+                    # Insertion of the axis where the condition is applied
+                    nodecond.append([axis])
+
+                # Insertion of the enforced value
+                nodecond.append(value)
+
+                # Insertion of the whole package of conditions
+                dirichletconds.append(nodecond)
+
+    return dirichletconds
+
+def plotGeometry(U,V,p,q,P,w,dirichletconds,neumannconditions,paramnodes,nodeselem,loadelements,loadfaces):
     fig = plt.figure()
     ax = plt.axes()
     plt.axis('equal')
@@ -148,11 +176,13 @@ def plotGeometry(U,V,p,q,P,w,dirichletctrlpts,dirichletconditions,neumannconditi
     # ax.scatter(P[:,0],P[:,1])
 
     # Dirichlet Conditions
-    dirctrlpts = np.array(dirichletctrlpts) - 1
+    dirctrlpts = []
+    for drchcond in dirichletconds:
+        inode = drchcond[0]
+        dirctrlpts.append(inode)
 
-    for i in range(0,len(dirichletconditions)):
-        # print(dirichletconditions[i][2])
-        if dirichletconditions[i][2] == "C":
+    for i in range(0,len(dirichletconds)):
+        if dirichletconds[i][1] == "C":
             dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "r",marker = "^")
         else:
             dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "g",marker = "o")
@@ -189,13 +219,12 @@ def plotGeometry(U,V,p,q,P,w,dirichletctrlpts,dirichletconditions,neumannconditi
         fieldpatch = np.zeros((parampath.shape[0],2))
         ipath = 0
         for ppath in parampath:
-            dn2u = rbs.dRatdU(U,V,w,p,q,ppath[0],ppath[1])
-            dn2v = rbs.dRatdV(U,V,w,p,q,ppath[0],ppath[1])
+            ratFunc,dN2du,dN2dv = rbs.rationalFunctionAndGradient(U,V,w,p,q,ppath[0],ppath[1])
 
-            dxdu = dn2u@px
-            dxdv = dn2v@px
-            dydu = dn2u@py
-            dydv = dn2v@py
+            dxdu = dN2du@px
+            dxdv = dN2dv@px
+            dydu = dN2du@py
+            dydv = dN2dv@py
 
             jmat[0][0] = dxdu
             jmat[0][1] = dxdv
@@ -208,7 +237,7 @@ def plotGeometry(U,V,p,q,P,w,dirichletctrlpts,dirichletconditions,neumannconditi
             if normjvec > 1e-6:
                 unitTangetVec = jvec/normjvec
             else:
-                unitTangetVec = np.zeros((2,))
+                unitTangetVec = np.zeros((2,1))
 
             if loadtype == "tangent":
                 loadvec = (loadvalue/abs(loadvalue))*unitTangetVec
@@ -218,10 +247,10 @@ def plotGeometry(U,V,p,q,P,w,dirichletctrlpts,dirichletconditions,neumannconditi
             else:
                 print("Wrong load configuration")
 
-            ratFunc = rbs.ratFunction(U,V,w,p,q,ppath[0],ppath[1])
+            # ratFunc = rbs.ratFunction(U,V,w,p,q,ppath[0],ppath[1])
             geomcoor[ipath][0] = ratFunc@px
             geomcoor[ipath][1] = ratFunc@py
-            fieldpatch[ipath,:] = loadvec
+            fieldpatch[ipath,:] = loadvec.T
             ipath += 1
 
         loadcoor.append(geomcoor)
