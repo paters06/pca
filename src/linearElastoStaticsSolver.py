@@ -77,39 +77,40 @@ def shapeFunctionMatrix(U,V,w,p,q,pta,ptb):
 
 ################ WEAK FORM INTEGRALS ####################
 
-def localStiffnessMatrix(U,V,w,p,q,px,py,gausspoints,gaussweights,paramgrad,apt,cpt,dmat):
+def localStiffnessMatrix(U,V,w,p,q,px,py,numquad2d,paramgrad,apt,cpt,dmat):
     lke = np.zeros((2*px.shape[0],2*px.shape[0]))
-    for qj in range(len(gausspoints)):
-        for qi in range(len(gausspoints)):
-            coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],gausspoints[qi],gausspoints[qj])
-            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py)
-            wJac = weightedJacobian(jac,paramgrad,gaussweights,qi,qj)
-            bMat = strainDisplacementMatrix(U,V,w,p,q,coor[0][0],coor[0][1],jac)
-            lke += (bMat.T@dmat@bMat)*wJac
+
+    for iquad in range(numquad2d.shape[0]):
+        coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],numquad2d[iquad][0],numquad2d[iquad][1])
+        jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py)
+        # wJac = weightedJacobian(jac,paramgrad,gaussweights,qi,qj)
+        wJac = abs(np.linalg.det(jac))*abs(np.linalg.det(paramgrad))*numquad2d[iquad][2]
+        bMat = strainDisplacementMatrix(U,V,w,p,q,coor[0][0],coor[0][1],jac)
+        lke += (bMat.T@dmat@bMat)*wJac
 
     return lke
 
-def localBodyVector(U,V,w,p,q,px,py,gausspoints,gaussweights,paramgrad,apt,cpt,rho):
+def localBodyVector(U,V,w,p,q,px,py,numquad2d,paramgrad,apt,cpt,rho):
     lbe = np.zeros((2*px.shape[0],1))
     bvec = np.zeros((2,1))
     bvec[1][0] = -rho*9.8
 
-    for qj in range(len(gausspoints)):
-        for qi in range(len(gausspoints)):
-            coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],gausspoints[qi],gausspoints[qj])
-            jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py)
-            wJac = weightedJacobian(jac,paramgrad,gaussweights,qi,qj)
-            nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
-            lbe += (nMat.T@bvec)*wJac
+    for iquad in range(numquad2d.shape[0]):
+        coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],numquad2d[iquad][0],numquad2d[iquad][1])
+        jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py)
+        # wJac = weightedJacobian(jac,paramgrad,gaussweights,qi,qj)
+        wJac = abs(np.linalg.det(jac))*abs(np.linalg.det(paramgrad))*numquad2d[iquad][2]
+        nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
+        lbe += (nMat.T@bvec)*wJac
 
     return lbe
 
-def appliedLoadVector(U,V,w,p,q,px,py,gausspoints,gaussweights,apt,bpt,loadvalue,loadtype,paramaxis,rotmat):
+def appliedLoadVector(U,V,w,p,q,px,py,numquad1d,apt,bpt,loadvalue,loadtype,paramaxis,rotmat):
     lle = np.zeros((2*px.shape[0],1))
 
-    for qj in range(len(gausspoints)):
+    for iquad in range(numquad1d.shape[0]):
         #The first gausspoints does not influence in the output due to uval
-        coor = parametricCoordinate(apt[0],bpt[0],apt[1],bpt[1],gausspoints[qj],gausspoints[qj])
+        coor = parametricCoordinate(apt[0],bpt[0],apt[1],bpt[1],numquad1d[iquad][0],numquad1d[iquad][0])
         gcoor = geometricCoordinate(coor,U,V,w,p,q,px,py)
         # print("Geometric coor")
         # print(gcoor)
@@ -133,19 +134,19 @@ def appliedLoadVector(U,V,w,p,q,px,py,gausspoints,gaussweights,apt,bpt,loadvalue
 
         tvec = np.reshape(tvec,(2,1))
         nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
-        lle += (nMat.T@tvec)*jac1*jac2*gaussweights[qj]
+        lle += (nMat.T@tvec)*jac1*jac2*numquad1d[iquad][1]
 
     return lle
 
 ################ ISOGEOMETRIC ANALYSIS ####################
 
-def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadelems,loadfaces,neumannconditions):
+def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,numquad,dmat,rho,loadelems,loadfaces,neumannconditions):
     K = np.zeros((2*P.shape[0],2*P.shape[0]))
     F = np.zeros((2*P.shape[0],1))
     Fb = np.zeros((2*P.shape[0],1))
     Fl = np.zeros((2*P.shape[0],1))
-    gaussLegendrePoints = gaussquad[0]
-    gaussLegendreWeights = gaussquad[1]
+    numericalquadrature2d = numquad[0]
+    numericalquadrature1d = numquad[1]
 
     paramGrad = np.zeros((2,2))
     numElems = nodeselem.shape[0]
@@ -187,8 +188,8 @@ def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadele
 
         print("---")
         print("Element #",ielem)
-        K += localStiffnessMatrix(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,paramGrad,aPoint,cPoint,dmat)
-        Fb += localBodyVector(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,paramGrad,aPoint,cPoint,rho)
+        K += localStiffnessMatrix(U,V,w,p,q,px,py,numericalquadrature2d,paramGrad,aPoint,cPoint,dmat)
+        Fb += localBodyVector(U,V,w,p,q,px,py,numericalquadrature2d,paramGrad,aPoint,cPoint,rho)
 
         if ielem in loadelems:
             print('Loaded element')
@@ -219,7 +220,7 @@ def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,gaussquad,dmat,rho,loadele
             aPoint = np.array([uA,vA])
             bPoint = np.array([uB,vB])
 
-            Fl += appliedLoadVector(U,V,w,p,q,px,py,gaussLegendrePoints,gaussLegendreWeights,aPoint,bPoint,loadvalue,loadtype,paramaxis,rotMat)
+            Fl += appliedLoadVector(U,V,w,p,q,px,py,numericalquadrature1d,aPoint,bPoint,loadvalue,loadtype,paramaxis,rotMat)
 
         print("---")
 

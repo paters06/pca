@@ -146,6 +146,33 @@ def dirichletBCPreprocessingOnFaces(P,dirichletconditions):
 
     return dirichletconds
 
+def numericalIntegrationPreprocessing(numgauss):
+    numericalquadrature = np.polynomial.legendre.leggauss(numgauss)
+
+    quadraturepoints = numericalquadrature[0]
+    quadratureweights = numericalquadrature[1]
+
+    gausslegendre2d = np.zeros((numgauss*numgauss,3))
+    gausslegendre1d = np.zeros((numgauss,2))
+
+    igauss = 0
+    for i in range(numgauss):
+        gausslegendre1d[igauss][0] = quadraturepoints[i]
+        gausslegendre1d[igauss][1] = quadratureweights[i]
+        igauss += 1
+
+    igauss = 0
+    for j in range(numgauss):
+        for i in range(numgauss):
+            gausslegendre2d[igauss][0] = quadraturepoints[i]
+            gausslegendre2d[igauss][1] = quadraturepoints[j]
+            gausslegendre2d[igauss][2] = quadratureweights[i]*quadratureweights[j]
+            igauss += 1
+
+    numericalquad = [gausslegendre2d,gausslegendre1d]
+
+    return numericalquad
+
 def plotGeometry(U,V,p,q,P,w,dirichletconds,neumannconditions,paramnodes,nodeselem,loadelements,loadfaces):
     fig = plt.figure()
     ax = plt.axes()

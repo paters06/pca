@@ -156,83 +156,99 @@ def stressField(numpoints,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem):
 def plotDisplacementFields(cx,cy,ux,uy):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    # Uncomment for cantileverBeam.py
-    # fig, axs = plt.subplots(2,1,sharex='col',sharey='row')
+    xlength = np.amax(np.absolute(cx))
+    ylength = np.amax(np.absolute(cy))
 
-    # Uncomment for pressureCylinder.py and plateWithHole.py
-    fig, axs = plt.subplots(1,2,sharex='col',sharey='row')
+    aspectRatio = xlength/ylength
+
+    if aspectRatio > 1.5:
+        fig, (ax1,ax2) = plt.subplots(2,1,sharex='col',sharey='row')
+    else:
+        fig, (ax1,ax2) = plt.subplots(1,2,sharex='col',sharey='row')
 
     fig.suptitle('Displacement field components')
     fig.subplots_adjust(hspace=0.4, wspace=0.4)
 
-    field1 = axs[0].pcolormesh(cx,cy,ux,vmin=ux.min(),vmax=ux.max())
-    axs[0].set_title('Ux')
-    axs[0].set_xlabel('x')
-    axs[0].set_ylabel('y')
-    axs[0].set_aspect('equal')
-    divider = make_axes_locatable(axs[0])
+    field1 = ax1.pcolormesh(cx,cy,ux,vmin=ux.min(),vmax=ux.max())
+    ax1.set_title('Ux')
+    ax1.set_xlabel('x')
+    ax1.set_ylabel('y')
+    ax1.set_aspect('equal')
+    divider = make_axes_locatable(ax1)
     cax = divider.append_axes("right",size="5%",pad=0.1)
     cb1 = fig.colorbar(field1,cax=cax,label='[m]')
 
-    field2 = axs[1].pcolormesh(cx,cy,uy,vmin=uy.min(),vmax=uy.max())
-    axs[1].set_title('Uy')
-    axs[1].set_xlabel('x')
-    axs[1].set_ylabel('y')
-    axs[1].set_aspect('equal')
-    divider = make_axes_locatable(axs[1])
+    field2 = ax2.pcolormesh(cx,cy,uy,vmin=uy.min(),vmax=uy.max())
+    ax2.set_title('Uy')
+    ax2.set_xlabel('x')
+    ax2.set_ylabel('y')
+    ax2.set_aspect('equal')
+    divider = make_axes_locatable(ax2)
     cax = divider.append_axes("right",size="5%",pad=0.1)
     cb2 = fig.colorbar(field2,cax=cax,label='[m]')
 
+    plt.tight_layout()
     plt.show()
 
 def plotStressFields(cx,cy,sx,sy,sxy,svm):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+    xlength = np.amax(np.absolute(cx))
+    ylength = np.amax(np.absolute(cy))
+
+    aspectRatio = xlength/ylength
+
+    if aspectRatio > 1.5:
+        fig, (ax1,ax2,ax3,ax4) = plt.subplots(4,1,sharex='col',sharey='row')
+    else:
+        fig, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,sharex='col',sharey='row')
+
     # Uncomment for cantileverBeam.py
     # fig, axs = plt.subplots(4,1,sharex='col',sharey='row')
 
     # Uncomment for pressureCylinder.py and plateWithHole.py
-    fig, axs = plt.subplots(2,2,sharex='col',sharey='row')
+    # fig, axs = plt.subplots(2,2,sharex='col',sharey='row')
 
     fig.suptitle('Stress field components')
     fig.subplots_adjust(hspace=0.4, wspace=0.4)
 
-    field1 = axs[0,0].pcolormesh(cx,cy,sx,vmin=sx.min(),vmax=sx.max())
-    axs[0,0].set_title('Sx')
-    axs[0,0].set_xlabel('x')
-    axs[0,0].set_ylabel('y')
-    axs[0,0].set_aspect('equal')
-    divider = make_axes_locatable(axs[0,0])
+    field1 = ax1.pcolormesh(cx,cy,sx,vmin=sx.min(),vmax=sx.max())
+    ax1.set_title('Sx')
+    ax1.set_xlabel('x')
+    ax1.set_ylabel('y')
+    ax1.set_aspect('equal')
+    divider = make_axes_locatable(ax1)
     cax1 = divider.append_axes("right",size="5%",pad=0.1)
     cb1 = fig.colorbar(field1,cax=cax1,label='[Pa]')
 
-    field2 = axs[0,1].pcolormesh(cx,cy,sy,vmin=sy.min(),vmax=sy.max())
-    axs[0,1].set_title('Sy')
-    axs[0,1].set_xlabel('x')
-    axs[0,1].set_ylabel('y')
-    axs[0,1].set_aspect('equal')
-    divider = make_axes_locatable(axs[0,1])
+    field2 = ax2.pcolormesh(cx,cy,sy,vmin=sy.min(),vmax=sy.max())
+    ax2.set_title('Sy')
+    ax2.set_xlabel('x')
+    ax2.set_ylabel('y')
+    ax2.set_aspect('equal')
+    divider = make_axes_locatable(ax2)
     cax2 = divider.append_axes("right",size="5%",pad=0.1)
     cb2 = fig.colorbar(field2,cax=cax2,label='[Pa]')
 
-    field3 = axs[1,0].pcolormesh(cx,cy,sxy,vmin=sxy.min(),vmax=sxy.max())
-    axs[1,0].set_title('Sxy')
-    axs[1,0].set_xlabel('x')
-    axs[1,0].set_ylabel('y')
-    axs[1,0].set_aspect('equal')
-    divider = make_axes_locatable(axs[1,0])
+    field3 = ax3.pcolormesh(cx,cy,sxy,vmin=sxy.min(),vmax=sxy.max())
+    ax3.set_title('Sxy')
+    ax3.set_xlabel('x')
+    ax3.set_ylabel('y')
+    ax3.set_aspect('equal')
+    divider = make_axes_locatable(ax3)
     cax3 = divider.append_axes("right",size="5%",pad=0.1)
     cb3 = fig.colorbar(field3,cax=cax3,label='[Pa]')
 
-    field4 = axs[1,1].pcolormesh(cx,cy,svm,vmin=svm.min(),vmax=svm.max())
-    axs[1,1].set_title('Von Mises stress')
-    axs[1,1].set_xlabel('x')
-    axs[1,1].set_ylabel('y')
-    axs[1,1].set_aspect('equal')
-    divider = make_axes_locatable(axs[1,1])
+    field4 = ax4.pcolormesh(cx,cy,svm,vmin=svm.min(),vmax=svm.max())
+    ax4.set_title('Von Mises stress')
+    ax4.set_xlabel('x')
+    ax4.set_ylabel('y')
+    ax4.set_aspect('equal')
+    divider = make_axes_locatable(ax4)
     cax4 = divider.append_axes("right",size="5%",pad=0.1)
     cb4 = fig.colorbar(field4,cax=cax4,label='[Pa]')
 
+    plt.tight_layout()
     plt.show()
 
 def postProcessing(U,V,p,q,P,D,w,paramnodes,nodeselem,dtot,dmat):

@@ -26,9 +26,9 @@ u0 = 0.0
 tv = -10 #Pa
 L = 4.0
 R = 1.0
-
 numGaussPoints = 4
-gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
+
+# gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
 
 Pinit = np.array([[-R,0],[-R,R*(np.sqrt(2)-1)],[R*(1-np.sqrt(2)),R],[0,R],[-2.5,0],[-2.5,0.75],
               [-0.75,2.5],[0,2.5],[-L,0],[-L,L],[-L,L],[0,L]])
@@ -63,11 +63,13 @@ neumannConditions = [[[0.0,1.0],[0.5,1.0],"normal",tv]]
 parametricNodes,nodesInElement = pre2D.parametricGrid(Uinp,Vinp)
 loadElements,loadFaces = pre2D.loadPreprocessing(parametricNodes,nodesInElement,neumannConditions)
 dirichletBCList = pre2D.dirichletBCPreprocessingOnFaces(Pinp,displacementConditions)
+numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
+# print(numericalquadrature)
 
 # pre2D.plotGeometry(Uinp,Vinp,pinp,qinp,Pinp,winp,dirichletBCList,neumannConditions,parametricNodes,nodesInElement,loadElements,loadFaces)
 
 dMat = linElastStat.elasticMatrix(E,nu)
-K,F = linElastStat.assemblyWeakForm(Uinp,Vinp,winp,pinp,qinp,Pinp,parametricNodes,nodesInElement,gaussLegendreQuadrature,dMat,rho,loadElements,loadFaces,neumannConditions)
+K,F = linElastStat.assemblyWeakForm(Uinp,Vinp,winp,pinp,qinp,Pinp,parametricNodes,nodesInElement,numericalquadrature,dMat,rho,loadElements,loadFaces,neumannConditions)
 
 Kred,Fred,removedDofs,totalDofs = linElastStat.boundaryConditionsEnforcement(K,F,dirichletBCList)
 
