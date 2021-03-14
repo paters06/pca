@@ -1,157 +1,183 @@
 # Python libraries
-import numpy as np
+import math
 import matplotlib.pyplot as plt
+import numpy as np
+import numpy.linalg
 
 # Local project
+import src.basisFunctions as bfunc
 import src.nurbs as rbs
+from src.linearElastoStaticsSolver import elasticMatrix
 import src.plottingScripts as plts
-import src.linearElastoStaticsSolver as linElastStat
 
 ################ POSTPROCESSING ####################
 
-def displacementField(numpoints,U,V,p,q,P,D,w,paramnodes,nodeselem):
+def displacementField(numpoints,U,V,p,q,P,D,w,surfaceprep):
+    mu = len(U) - 1
+    mv = len(V) - 1
+    nu = mu - p - 1
+    nv = mv - q - 1
+    
+    # Extraction of surface preprocessing
+    nonzeroctrlpts = surfaceprep[0]
+    surfacespan = surfaceprep[1]
+    elementcorners = surfaceprep[2]
+    
+    numElems = len(elementcorners)
     numelemsu = len(np.unique(U)) - 1
     numelemsv = len(np.unique(V)) - 1
-    numElems = nodeselem.shape[0]
-
-    dx = np.reshape(D[:,0],(D.shape[0],1))
-    dy = np.reshape(D[:,1],(D.shape[0],1))
-
-    px = np.reshape(P[:,0],(P.shape[0],1))
-    py = np.reshape(P[:,1],(P.shape[0],1))
+    
+    Pwl = rbs.weightedControlPoints(P,w)
+    Pw = rbs.listToGridControlPoints(Pwl,U,V,p,q)
 
     # Geometric coordinates
-    cx = np.zeros((numelemsu*numpoints,numelemsv*numpoints))
-    cy = np.zeros((numelemsu*numpoints,numelemsv*numpoints))
+    cpts = np.zeros((2,numelemsu*numpoints,numelemsv*numpoints))
 
     # Displacements
-    ux = np.zeros((numelemsu*numpoints,numelemsv*numpoints))
-    uy = np.zeros((numelemsu*numpoints,numelemsv*numpoints))
+    upts = np.zeros((2,numelemsu*numpoints,numelemsv*numpoints))
 
     for ielem in range(0,numElems):
-        uC = paramnodes[nodeselem[ielem][2]][0]
-        uA = paramnodes[nodeselem[ielem][0]][0]
-        vC = paramnodes[nodeselem[ielem][2]][1]
-        vA = paramnodes[nodeselem[ielem][0]][1]
+        # Extracting the indices of the non-zero control points
+        idR = nonzeroctrlpts[ielem]
+        # Extracting the indices for the location of the parametric element
+        uspan = surfacespan[ielem][0]
+        vspan = surfacespan[ielem][1]
+        # Extracting the corners of the parametric element
+        apt = elementcorners[ielem][0]
+        cpt = elementcorners[ielem][1]
 
-        urank = np.linspace(uA,uC,numpoints)
-        vrank = np.linspace(vA,vC,numpoints)
+        urank = np.linspace(apt[0],cpt[0],numpoints)
+        vrank = np.linspace(apt[1],cpt[1],numpoints)
 
         jv = ielem//numelemsu
         iu = ielem%numelemsu
 
         for j in range(0,numpoints):
             for i in range(0,numpoints):
-                ratFunc = rbs.ratFunction(U,V,w,p,q,urank[i],vrank[j])
-                # ratFunc,dn2du,dn2dv = rbs.rationalFunctionAndGradient(U,V,w,p,q,urank[i],vrank[j])
+                R = rbs.bivariateRationalFunction(mu,mv,p,q,uspan,vspan,urank[i],vrank[j],U,V,Pw)
+                
+                upts[:,iu*numpoints + i,jv*numpoints + j] = R@D[idR,:]
+                cpts[:,iu*numpoints + i,jv*numpoints + j] = R@P[idR,:]
 
-                ux[iu*numpoints + i,jv*numpoints + j] = ratFunc@dx
-                uy[iu*numpoints + i,jv*numpoints + j] = ratFunc@dy
-
-                cx[iu*numpoints + i,jv*numpoints + j] = ratFunc@px
-                cy[iu*numpoints + i,jv*numpoints + j] = ratFunc@py
-
-    return ux,uy,cx,cy
+    return upts,cpts
 
 # Improve this function
-def stressField(numpoints,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem):
+def stressField(numpoints,U,V,p,q,P,w,dtot,matprop,surfaceprep):
+    mu = len(U) - 1
+    mv = len(V) - 1
+    nu = mu - p - 1
+    nv = mv - q - 1
+    
+    # Extraction of surface preprocessing
+    nonzeroctrlpts = surfaceprep[0]
+    surfacespan = surfaceprep[1]
+    elementcorners = surfaceprep[2]
+    
+    numElems = len(elementcorners)
     numelemsu = len(np.unique(U)) - 1
     numelemsv = len(np.unique(V)) - 1
-    numElems = nodeselem.shape[0]
-
+    
+    Pwl = rbs.weightedControlPoints(P,w)
+    Pw = rbs.listToGridControlPoints(Pwl,U,V,p,q)
+    
+    # Definition of the material matrix
+    E = matprop[0]
+    nu = matprop[1]
+    rho = matprop[2]
+    dMat = elasticMatrix(E,nu)
+    
     paramgrad = np.zeros((2,2))
-
-    sx = np.zeros((numelemsu*numpoints,numelemsv*numpoints))
-    sy = np.zeros((numelemsu*numpoints,numelemsv*numpoints))
-    sxy = np.zeros((numelemsu*numpoints,numelemsv*numpoints))
-
-    maxSx = -1e20
-    maxu = 0
-    maxv = 0
-    maxelem = 0
+    sigma = np.zeros((3,numelemsu*numpoints,numelemsv*numpoints))
+    nanArray = []
 
     for ielem in range(0,numElems):
-        uC = paramnodes[nodeselem[ielem][2]][0]
-        uA = paramnodes[nodeselem[ielem][0]][0]
-        vC = paramnodes[nodeselem[ielem][2]][1]
-        vA = paramnodes[nodeselem[ielem][0]][1]
+        # Extracting the indices of the non-zero control points
+        idR = nonzeroctrlpts[ielem]
+        # Extracting the indices for the location of the parametric element
+        uspan = surfacespan[ielem][0]
+        vspan = surfacespan[ielem][1]
+        # Extracting the corners of the parametric element
+        apt = elementcorners[ielem][0]
+        cpt = elementcorners[ielem][1]
 
-        urank = np.linspace(uA,uC,numpoints)
-        vrank = np.linspace(vA,vC,numpoints)
+        urank = np.linspace(apt[0],cpt[0],numpoints)
+        vrank = np.linspace(apt[1],cpt[1],numpoints)
+        
+        # Global degrees of freedom
+        globalDOF = np.zeros(2*len(idR),dtype=int)
+        dof0 = 2*np.array(idR)
+        dof1 = dof0 + 1
+        globalDOF[0::2] = dof0
+        globalDOF[1::2] = dof1
 
         jv = ielem//numelemsu
         iu = ielem%numelemsu
 
         for j in range(0,numpoints):
             for i in range(0,numpoints):
-
                 xpcoor = urank[i]
                 ypcoor = vrank[j]
+                
+                biRatGrad = rbs.bivariateRationalGradient(mu,mv,p,q,uspan,vspan,xpcoor,ypcoor,U,V,Pw)
 
-                jac = linElastStat.jacobian(U,V,w,p,q,xpcoor,ypcoor,P[:,0],P[:,1])
+                jac = (biRatGrad[1:3,:]@P[idR,:]).T
                 detJac = np.linalg.det(jac)
 
                 if abs(detJac) > 1e-5:
-                    bmat = linElastStat.strainDisplacementMatrix(U,V,w,p,q,xpcoor,ypcoor,jac)
-                    svec = dmat@(bmat@dtot)
+                    invJac = np.linalg.inv(jac)
+                    dN2 = biRatGrad[1:3,:]
+                    dN2dxi = invJac.T@dN2
+                    
+                    numpts = dN2dxi.shape[1]
+                    bmat = np.zeros((3,2*numpts))
+                    #dNx
+                    bmat[0,0::2] = dN2dxi[0,:]
+                    bmat[2,0::2] = dN2dxi[1,:]
+                    #dNy
+                    bmat[1,1::2] = dN2dxi[1,:]
+                    bmat[2,1::2] = dN2dxi[0,:]
+                    
+                    svec = dMat@(bmat@dtot[globalDOF,:])
                 else:
                     print("Singularity")
-                    print(detJac)
+                    print([iu*numpoints + i,jv*numpoints + j])
+                    svec = np.empty((3,1))
+                    svec[:] = np.NaN
+                    print(svec.shape)
+                    nanArray.append([iu*numpoints + i,jv*numpoints + j])
 
-                    xleft = urank[i] - 0.05
-                    xright = urank[i] + 0.05
-                    ydown = vrank[j] - 0.05
-                    yup = vrank[j] + 0.05
+                sigma[:,iu*numpoints + i,jv*numpoints + j] = svec.T
 
-                    if xleft < 1e-5:
-                        xleft = 0.0
+    xsize,ysize = numelemsu*numpoints,numelemsv*numpoints
+#    print(nanArray)
+    # Recomputing NaN values
+    for nanA in nanArray:
+        print("Recomputing NaN values")
+        iu = nanA[0]
+        jv = nanA[1]
+        
+        sumSigma = np.zeros((1,3))
+        numneigh = 0
+        
+        neighbors = [[iu-1,jv-1],
+                     [iu-1,jv],
+                     [iu-1,jv+1],
+                     [iu,jv-1],
+                     [iu,jv+1],
+                     [iu+1,jv-1],
+                     [iu+1,jv],
+                     [iu+1,jv+1]]
+        
+        for neigh in neighbors:
+            if neigh[0] >= 0 and neigh[0] <= xsize - 1:
+                if neigh[1] >= 0 and neigh[1] <= ysize - 1:
+                    if not np.any(np.isnan(sigma[:,neigh[0],neigh[1]])):
+                        sumSigma += sigma[:,neigh[0],neigh[1]]
+                        numneigh += 1
+        
+        sigma[:,iu,jv] = sumSigma/numneigh
 
-                    if xright > (1.0 + 1e-5):
-                        xright = 1.0
-
-                    if ydown < 1e-5:
-                        ydown = 0.0
-
-                    if yup > (1.0 + 1e-5):
-                        yup = 1.0
-
-                    apt = np.array([xleft,yup])
-                    bpt = np.array([xright,yup])
-                    cpt = np.array([xleft,ydown])
-                    dpt = np.array([xright,ydown])
-
-                    jaca = linElastStat.jacobian(U,V,w,p,q,apt[0],apt[1],P[:,0],P[:,1])
-                    bmata = linElastStat.strainDisplacementMatrix(U,V,w,p,q,apt[0],apt[1],jaca)
-                    sveca = dmat@(bmata@dtot)
-
-                    jacb = linElastStat.jacobian(U,V,w,p,q,bpt[0],bpt[1],P[:,0],P[:,1])
-                    bmatb = linElastStat.strainDisplacementMatrix(U,V,w,p,q,bpt[0],bpt[1],jacb)
-                    svecb = dmat@(bmatb@dtot)
-
-                    jacc = linElastStat.jacobian(U,V,w,p,q,cpt[0],cpt[1],P[:,0],P[:,1])
-                    bmatc = linElastStat.strainDisplacementMatrix(U,V,w,p,q,cpt[0],cpt[1],jacc)
-                    svecc = dmat@(bmatc@dtot)
-
-                    jacd = linElastStat.jacobian(U,V,w,p,q,dpt[0],dpt[1],P[:,0],P[:,1])
-                    bmatd = linElastStat.strainDisplacementMatrix(U,V,w,p,q,dpt[0],dpt[1],jacd)
-                    svecd = dmat@(bmatd@dtot)
-
-                    svec = 0.25*(sveca + svecb + svecc + svecd)
-
-                sx[iu*numpoints + i,jv*numpoints + j] = svec[0]
-                sy[iu*numpoints + i,jv*numpoints + j] = svec[1]
-                sxy[iu*numpoints + i,jv*numpoints + j] = svec[2]
-
-    # Maximum stress value
-    # maxSx = np.amax(sx)
-    # print('Maximum stress value',maxSx)
-    # # Index of the minimum stress value
-    # imaxSx = np.where(sx == np.amax(sx))
-    # listOfCordinates = list(zip(imaxSx[0], imaxSx[1]))
-    # for cord in listOfCordinates:
-    #     print(cord)
-
-    return sx,sy,sxy
+    return sigma
 
 def plotDisplacementFields(cx,cy,ux,uy):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -251,8 +277,10 @@ def plotStressFields(cx,cy,sx,sy,sxy,svm):
     plt.tight_layout()
     plt.show()
 
-def postProcessing(U,V,p,q,P,D,w,paramnodes,nodeselem,dtot,dmat):
-    numelems = nodeselem.shape[0]
+def postProcessing(U,V,p,q,P,D,w,dtot,surfaceprep,matprop):
+    elementcorners = surfaceprep[2]
+    numelems = len(elementcorners)
+#    numelems = nodeselem.shape[0]
 
     if numelems < 5:
         numpoints = 11
@@ -263,10 +291,10 @@ def postProcessing(U,V,p,q,P,D,w,paramnodes,nodeselem,dtot,dmat):
     else:
         numpoints = 5
 
-    ux,uy,cx,cy = displacementField(numpoints,U,V,p,q,P,D,w,paramnodes,nodeselem)
-    sx,sy,sxy = stressField(numpoints,U,V,p,q,P,w,dtot,dmat,paramnodes,nodeselem)
-    svm = np.sqrt( sx**2 - 2*sx*sy + sy**2 + 3*sxy**2 )
-    # plts.plotting2DField(cx,cy,ux,P,["Ux Displacement Field","[m]"])
-    # plts.plotting2DField(cx,cy,sx,P,["Sx Stress Field","[Pa]"])
-    # plotDisplacementFields(cx,cy,ux,uy)
-    plotStressFields(cx,cy,sx,sy,sxy,svm)
+    upts,cpts = displacementField(numpoints,U,V,p,q,P,D,w,surfaceprep)
+    sigmapts = stressField(numpoints,U,V,p,q,P,w,dtot,matprop,surfaceprep)
+    svm = np.sqrt( sigmapts[0,:,:]**2 - 2*sigmapts[0,:,:]*sigmapts[1,:,:] + sigmapts[1,:,:]**2 + 3*sigmapts[2,:,:]**2 )
+#    plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],upts[0,:,:],P,["Ux Displacement Field","[m]"])
+    plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],P,["Sx Stress Field","[Pa]"])
+#    plotDisplacementFields(cpts[0,:,:],cpts[1,:,:],upts[0,:,:],upts[1,:,:])
+#    plotStressFields(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],sigmapts[1,:,:],sigmapts[2,:,:],svm)

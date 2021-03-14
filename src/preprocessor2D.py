@@ -4,12 +4,13 @@ import numpy.linalg
 import matplotlib.pyplot as plt
 
 # Local project
+import src.basisFunctions as bfunc
 import src.nurbs as rbs
 import src.plottingScripts as plts
 
 ################ PREPROCESSING ####################
 
-def parametricGrid(U,V):
+def parametricGrid(U,V,p,q):
     # Selecting the unique values of each array
     uniqueU = np.unique(U)
     uniqueV = np.unique(V)
@@ -31,6 +32,14 @@ def parametricGrid(U,V):
 
     elemmat = np.zeros((numelems,4),dtype=int)
     elemIndex = 0
+    
+    """
+    - The diagonals of a given ABCD parametric element are given by points C and A 
+      which values can be found as paramnodes[C][0] and paramnodes[A][0] respectively.
+      Each corner is organized in the element as follows:
+      ielem -> [A B C D]
+                0 1 2 3
+     """
 
     for j in range(0,numV-1):
         for i in range(0,numU-1):
@@ -40,8 +49,54 @@ def parametricGrid(U,V):
             elemmat[elemIndex,3] = (j+1)*numU + i #D
 
             elemIndex += 1
+    
+    mu = len(U) - 1
+    mv = len(V) - 1
+    nu = mu - p - 1
+    nv = mv - q - 1
+    
+    nonzeroctrlpts = []
+    surfacespan = []
+    elementcorners = []
+    
+    """
+    - C can be obtained as the 3rd element in a given row of the matrix nodeselem
+    - Likewise, A is the 1st element in a ielem row of nodeselem
+    - It means that
+    
+      uC = paramnodes[C][0]
+      uA = paramnodes[A][0]
+      vC = paramnodes[C][1]
+      vA = paramnodes[A][1]
+          
+      where 
+      C = elemmat[ielem][2]
+      A = element[ielem][0]
+      [0] stands for the u component
+      [1] stands for the v component
+    """
+    
+    for ielem in range(0,elemIndex):
+        uC = paramnodes[elemmat[ielem][2]][0]
+        uA = paramnodes[elemmat[ielem][0]][0]
+        vC = paramnodes[elemmat[ielem][2]][1]
+        vA = paramnodes[elemmat[ielem][0]][1]
+        
+        apt = np.array([uA,vA])
+        cpt = np.array([uC,vC])
+        
+        uspan = bfunc.findKnotInterval(nu,p,0.5*(uC + uA),U)
+        vspan = bfunc.findKnotInterval(nv,q,0.5*(vC + vA),V)
+        
+        idR = rbs.nonZeroIndicesSurface(uspan,vspan,p,q,nu)
+        
+        nonzeroctrlpts.append(idR)
+        surfacespan.append([uspan,vspan])
+        elementcorners.append([apt,cpt])
+    
+    surfaceprep = [nonzeroctrlpts,surfacespan,elementcorners]
 
-    return paramnodes,elemmat
+    return paramnodes,elemmat,surfaceprep
 
 def checkColinearPoints(apt,bpt,cpt):
     abdist = np.sqrt( (apt[0] - bpt[0])**2 + (apt[1] - bpt[1])**2 )
@@ -54,33 +109,41 @@ def checkColinearPoints(apt,bpt,cpt):
     else:
         return False
 
-def loadPreprocessing(paramnodes,nodeselem,neumannconditions):
+def loadPreprocessing(paramnodes,nodeselem,neumannconditions,U,V,p,q):
     loadednodes = []
-    loadelements = []
     loadfaces = []
+    
+    mu = len(U) - 1
+    mv = len(V) - 1
+    nu = mu - p - 1
+    nv = mv - q - 1
+    
+    loadelements = []
+    boundaryspan = []
+    boundarycorners = []
+    axisselector = []
+    nonzeroctrlptsload = []
 
     for cond in neumannconditions:
-        apt = np.array(cond[0])
-        bpt = np.array(cond[1])
+        startpt = np.array(cond[0])
+        endpt = np.array(cond[1])
         loadtype = cond[2]
-        # print(loadtype)
 
         # Check the other parametric nodes that belong to the
         # neumann boundary condition
         for inode in range(0,paramnodes.shape[0]):
-            if checkColinearPoints(apt,bpt,paramnodes[inode,:]):
+            if checkColinearPoints(startpt,endpt,paramnodes[inode,:]):
                 loadednodes.append(inode)
 
-        # print(loadednodes)
+        # Check the nodes that have applied load and match them
+        # with the list of parametric elements
         for ielem in range(0,nodeselem.shape[0]):
-            # print(nodeselem[ielem,:])
             commom_nodes = set.intersection(set(loadednodes),set(nodeselem[ielem,:]))
-            # commom_nodes = list(commom_nodes)
-            # print(len(commom_nodes))
             if len(commom_nodes) == 2:
                 loadelements.append(ielem)
 
-        # print(loadelements)
+        # Check the sides of the loaded parametric elements that 
+        # belong t the neumann boundary condition
         for ldnelm in loadelements:
             for j in range(0,4):
                 if j < 3:
@@ -90,11 +153,51 @@ def loadPreprocessing(paramnodes,nodeselem,neumannconditions):
                 face = set.intersection(set(side_nodes),set(loadednodes))
                 if len(face) == 2:
                     loadfaces.append(j)
-                    # print(j)
+    
+    
+    for iface in range(0,len(loadfaces)):
+        elemface = loadfaces[iface]
+        ielem = loadelements[iface]
+        
+        # Selecting the axis where the jacobian 
+        # is not a zero vector on the boundary
+        if elemface == 1 or elemface == 3:
+           paramaxis = 1
+        else:
+           paramaxis = 0
+        
+        if elemface == 0 or elemface == 1:
+            startindex = elemface
+            endindex = elemface + 1
+        elif elemface == 2:
+            startindex = elemface + 1
+            endindex = elemface
+        else:
+            startindex = 3
+            endindex = 0
+        
+        uB = paramnodes[nodeselem[ielem][endindex]][0]
+        uA = paramnodes[nodeselem[ielem][startindex]][0]
+        vB = paramnodes[nodeselem[ielem][endindex]][1]
+        vA = paramnodes[nodeselem[ielem][startindex]][1]
 
-        # print(loadfaces)
+        # Computing the corners of the segment
+        apt = np.array([uA,vA])
+        bpt = np.array([uB,vB])
+        
+        uspan = bfunc.findKnotInterval(nu,p,0.5*(uB + uA),U)
+        vspan = bfunc.findKnotInterval(nv,q,0.5*(vB + vA),V)
+        
+        idR = rbs.nonZeroIndicesSurface(uspan,vspan,p,q,nu)
+        
+        boundarycorners.append([apt,bpt])
+        boundaryspan.append([uspan,vspan])
+        axisselector.append(paramaxis)
+        nonzeroctrlptsload.append(idR)
+    
+    boundaryprep = [nonzeroctrlptsload,boundaryspan,boundarycorners,axisselector]
 
-    return loadelements,loadfaces
+    return loadelements,boundaryprep
 
 def dirichletBCPreprocessingOnFaces(P,dirichletconditions):
     dirichletconds = []
@@ -131,9 +234,9 @@ def dirichletBCPreprocessingOnFaces(P,dirichletconditions):
 
                     unitNormalVec = rotMat@unitTangetVec
 
-                    for i in range(len(unitNormalVec)):
-                        if abs(unitNormalVec[i]) > 1e-5:
-                            axis = i
+                    for j in range(len(unitNormalVec)):
+                        if abs(unitNormalVec[j]) > 1e-5:
+                            axis = j
 
                     # Insertion of the axis where the condition is applied
                     nodecond.append([axis])
@@ -173,16 +276,13 @@ def numericalIntegrationPreprocessing(numgauss):
 
     return numericalquad
 
-def plotGeometry(U,V,p,q,P,w,dirichletconds,neumannconditions,paramnodes,nodeselem,loadelements,loadfaces):
+def plotGeometry(U,V,p,q,P,w,dirichletconds,neumannconditions,boundaryprep):
     fig = plt.figure()
     ax = plt.axes()
     plt.axis('equal')
     ax.use_sticky_edges = False
     titlestring = "Geometry with boundary conditions"
     ax.axis("off")
-
-    px = np.reshape(P[:,0],(P.shape[0],1))
-    py = np.reshape(P[:,1],(P.shape[0],1))
 
     jmat = np.zeros((2,2))
     numpt = 5
@@ -191,13 +291,19 @@ def plotGeometry(U,V,p,q,P,w,dirichletconds,neumannconditions,paramnodes,nodesel
 
     loadtype = neumannconditions[0][2]
     loadvalue = neumannconditions[0][3]
+    
+    # Extraction of boundary preprocessing
+    nonzeroctrlptsload = boundaryprep[0]
+    boundaryspan = boundaryprep[1]
+    boundarycorners = boundaryprep[2]
+    axisselector = boundaryprep[3]
 
     # Rotation matrix for -pi/2
     rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
 
     # Boundary Geometry
-    cxb,cyb = rbs.nurbs2DBoundary(U,V,p,q,P,w)
-    fieldplot = ax.fill(cxb,cyb,facecolor='none',edgecolor='black',linewidth=1.5)
+    cbpts = rbs.nurbs2DBoundary(U,V,p,q,P,w)
+    fieldplot = ax.fill(cbpts[:,0],cbpts[:,1],facecolor='none',edgecolor='black',linewidth=1.5)
 
     # Control Points
     # ax.scatter(P[:,0],P[:,1])
@@ -214,49 +320,36 @@ def plotGeometry(U,V,p,q,P,w,dirichletconds,neumannconditions,paramnodes,nodesel
         else:
             dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "g",marker = "o")
 
+    mu = len(U) - 1
+    mv = len(V) - 1
+    
+    idxu = np.arange(0,p+1)
+    idxv = np.arange(0,q+1)
+    
+    Pwl = rbs.weightedControlPoints(P,w)
+    Pw = rbs.listToGridControlPoints(Pwl,U,V,p,q)
+
     # Neumann Conditions
-    for ielem in range(0,len(loadelements)):
-
-        paramside = loadfaces[ielem]
-        if paramside == 0 or paramside == 1:
-            startindex = paramside
-            endindex = paramside + 1
-        elif paramside == 2:
-            startindex = paramside + 1
-            endindex = paramside
-        else:
-            startindex = 3
-            endindex = 0
-
-        if paramside == 1 or paramside == 3:
-            paramaxis = 1
-        else:
-            paramaxis = 0
-
-        uB = paramnodes[nodeselem[loadelements[ielem]][endindex]][0]
-        uA = paramnodes[nodeselem[loadelements[ielem]][startindex]][0]
-        vB = paramnodes[nodeselem[loadelements[ielem]][endindex]][1]
-        vA = paramnodes[nodeselem[loadelements[ielem]][startindex]][1]
-
-        startpt = np.array([uA,vA])
-        endpt = np.array([uB,vB])
+    for iload in range(0,len(boundarycorners)):
+        # Extracting the indices of the non-zero control points of the loaded elements
+        idR = nonzeroctrlptsload[iload]
+        # Extracting the indices for the location of the parametric segment
+        uspan = boundaryspan[iload][0]
+        vspan = boundaryspan[iload][1]
+        # Extracting the corners of the parametric segment
+        startpt = boundarycorners[iload][0]
+        endpt = boundarycorners[iload][1]
+        # Extracting the non-zero column index of the boundary jacobian
+        paramaxis = axisselector[iload]
 
         parampath = np.linspace(startpt,endpt,numpt,endpoint=True)
         geomcoor = np.zeros((parampath.shape[0],2))
         fieldpatch = np.zeros((parampath.shape[0],2))
         ipath = 0
         for ppath in parampath:
-            ratFunc,dN2du,dN2dv = rbs.rationalFunctionAndGradient(U,V,w,p,q,ppath[0],ppath[1])
+            biRatGrad = rbs.bivariateRationalGradient(mu,mv,p,q,uspan,vspan,ppath[0],ppath[1],U,V,Pw)
 
-            dxdu = dN2du@px
-            dxdv = dN2dv@px
-            dydu = dN2du@py
-            dydv = dN2dv@py
-
-            jmat[0][0] = dxdu
-            jmat[0][1] = dxdv
-            jmat[1][0] = dydu
-            jmat[1][1] = dydv
+            jmat = (biRatGrad[1:3,:]@P[idR,:]).T
 
             jvec = jmat[:,paramaxis]
             normjvec = np.linalg.norm(jvec)
@@ -274,9 +367,7 @@ def plotGeometry(U,V,p,q,P,w,dirichletconds,neumannconditions,paramnodes,nodesel
             else:
                 print("Wrong load configuration")
 
-            # ratFunc = rbs.ratFunction(U,V,w,p,q,ppath[0],ppath[1])
-            geomcoor[ipath][0] = ratFunc@px
-            geomcoor[ipath][1] = ratFunc@py
+            geomcoor[ipath,:] = biRatGrad[0,:]@P[idR,:]
             fieldpatch[ipath,:] = loadvec.T
             ipath += 1
 
@@ -303,3 +394,4 @@ def plotGeometry(U,V,p,q,P,w,dirichletconds,neumannconditions,paramnodes,nodesel
     # plt.legend((dirichletplot,neumannplot),('Displacement restrictions','Load conditions'),loc='lower right',bbox_to_anchor=(1.2,0.0))
     plt.tight_layout()
     plt.show()
+    

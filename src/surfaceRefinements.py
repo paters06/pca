@@ -766,3 +766,44 @@ def surfaceRefinement(refinementlist,directionlist,U,V,p,q,P,w):
     print(kref)
 
     return Uout,Vout,pout,qout,Pout,wout
+
+def localPatchRefinement(patchlist,reflist,dirlist,mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,localctrlpts):
+    for idpatch in range(len(patchlist)):
+        print('Patch #',idpatch)
+        
+        idPatchToRefine = patchlist[idpatch]
+        # Select info of the desired patch to refine
+        Uinit = mulU[idPatchToRefine]
+        Vinit = mulV[idPatchToRefine]
+        pinit = mulp[idPatchToRefine]
+        qinit = mulq[idPatchToRefine]
+        Pinit = fullP[idctrlpts[idPatchToRefine]]
+        winit = fullw[idctrlpts[idPatchToRefine]]
+
+        Uinp,Vinp,pinp,qinp,Pinp,winp = \
+        surfaceRefinement(reflist[idPatchToRefine],dirlist[idPatchToRefine],Uinit,Vinit,pinit,qinit,Pinit,winit)
+        
+        # Removing the rows of the refined patch
+        Premain_n = np.delete(fullP,idctrlpts[idPatchToRefine],0)
+        wremain_n = np.delete(fullw,idctrlpts[idPatchToRefine],0)
+
+        # Insert new information about refined patch
+        mulU[idPatchToRefine] = Uinp
+        mulV[idPatchToRefine] = Vinp
+        mulp[idPatchToRefine] = pinp
+        mulq[idPatchToRefine] = qinp
+        localctrlpts[idPatchToRefine] = Pinp
+        fullP = np.vstack((Pinp,Premain_n))
+        fullw = np.vstack((winp,wremain_n))
+        
+        # Calculate the new global indexing in each patch
+        for idpatch in range(len(idctrlpts)):
+            idctrlpts[idpatch] = []
+            
+            for pt in localctrlpts[idpatch]:
+                ''' How to find the index of a row in a 2d numpy array:
+                    https://stackoverflow.com/questions/18927475/numpy-array-get-row-index-searching-by-a-row '''
+                row_idx = np.where(np.all(fullP==pt,axis=1))[0][0]
+                idctrlpts[idpatch].append(row_idx)
+    
+    return mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,localctrlpts

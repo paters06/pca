@@ -3,6 +3,7 @@ import numpy as np
 import numpy.linalg
 
 # Local project
+import src.basisFunctions as bfunc
 import src.nurbs as rbs
 
 def parametricCoordinate(ua,ub,va,vb,gausspta,gaussptb):
@@ -10,51 +11,6 @@ def parametricCoordinate(ua,ub,va,vb,gausspta,gaussptb):
     localpts[0][0] = 0.5*(ub - ua)*gausspta + 0.5*(ub + ua)
     localpts[0][1] = 0.5*(vb - va)*gaussptb + 0.5*(vb + va)
     return localpts
-
-def geometricCoordinate(paramcoor,U,V,w,p,q,px,py):
-    ratFunc = rbs.ratFunction(U,V,w,p,q,paramcoor[0][0],paramcoor[0][1])
-    # ratFunc,dn2du,dn2dv = rbs.rationalFunctionAndGradient(U,V,w,p,q,paramcoor[0][0],paramcoor[0][1])
-    geomcoor = np.zeros((1,2))
-    geomcoor[0][0] = ratFunc@px
-    geomcoor[0][1] = ratFunc@py
-    return geomcoor
-
-def jacobian(U,V,w,p,q,pta,ptb,px,py):
-    n2,dn2du,dn2dv = rbs.rationalFunctionAndGradient(U,V,w,p,q,pta,ptb)
-
-    dXdu = dn2du@px
-    dXdv = dn2dv@px
-    dYdu = dn2du@py
-    dYdv = dn2dv@py
-
-    jacob = np.zeros((2,2))
-
-    jacob[0][0] = dXdu
-    jacob[0][1] = dXdv
-    jacob[1][0] = dYdu
-    jacob[1][1] = dYdv
-
-    return jacob
-
-def weightedJacobian(jac,paramgrad,gwpts,ipta,iptb):
-    return abs(np.linalg.det(jac))*abs(np.linalg.det(paramgrad))*gwpts[ipta]*gwpts[iptb]
-
-def strainDisplacementMatrix(U,V,w,p,q,pta,ptb,jacob):
-    N2,dN2du,dN2dv = rbs.rationalFunctionAndGradient(U,V,w,p,q,pta,ptb)
-
-    invJac = np.linalg.inv(jacob)
-    dN2 = np.vstack((dN2du,dN2dv))
-    dN2dxi = invJac.T@dN2
-
-    numpts = dN2dxi.shape[1]
-    bMat = np.zeros((3,2*numpts))
-    #dNx
-    bMat[0,0::2] = dN2dxi[0,:]
-    bMat[2,0::2] = dN2dxi[1,:]
-    #dNy
-    bMat[1,1::2] = dN2dxi[1,:]
-    bMat[2,1::2] = dN2dxi[0,:]
-    return bMat
 
 def elasticMatrix(E,nu):
     dmat = np.zeros((3,3))
@@ -66,242 +22,400 @@ def elasticMatrix(E,nu):
     dmat *= E/((1+nu)*(1-2*nu))
     return dmat
 
-def shapeFunctionMatrix(U,V,w,p,q,pta,ptb):
-    N2 = rbs.ratFunction(U,V,w,p,q,pta,ptb)
-    # N2,dN2du,dN2dv = rbs.rationalFunctionAndGradient(U,V,w,p,q,pta,ptb)
-    nMat = np.zeros((2,2*N2.shape[1]))
-
-    nMat[0,0::2] = N2
-    nMat[1,1::2] = N2
-    return nMat
-
-################ WEAK FORM INTEGRALS ####################
-
-def localStiffnessMatrix(U,V,w,p,q,px,py,numquad2d,paramgrad,apt,cpt,dmat):
-    lke = np.zeros((2*px.shape[0],2*px.shape[0]))
-
-    for iquad in range(numquad2d.shape[0]):
-        coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],numquad2d[iquad][0],numquad2d[iquad][1])
-        jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py)
-        # wJac = weightedJacobian(jac,paramgrad,gaussweights,qi,qj)
-        wJac = abs(np.linalg.det(jac))*abs(np.linalg.det(paramgrad))*numquad2d[iquad][2]
-        bMat = strainDisplacementMatrix(U,V,w,p,q,coor[0][0],coor[0][1],jac)
-        lke += (bMat.T@dmat@bMat)*wJac
-
-    return lke
-
-def localBodyVector(U,V,w,p,q,px,py,numquad2d,paramgrad,apt,cpt,rho):
-    lbe = np.zeros((2*px.shape[0],1))
-    bvec = np.zeros((2,1))
-    bvec[1][0] = -rho*9.8
-
-    for iquad in range(numquad2d.shape[0]):
-        coor = parametricCoordinate(apt[0],cpt[0],apt[1],cpt[1],numquad2d[iquad][0],numquad2d[iquad][1])
-        jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py)
-        # wJac = weightedJacobian(jac,paramgrad,gaussweights,qi,qj)
-        wJac = abs(np.linalg.det(jac))*abs(np.linalg.det(paramgrad))*numquad2d[iquad][2]
-        nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
-        lbe += (nMat.T@bvec)*wJac
-
-    return lbe
-
-def appliedLoadVector(U,V,w,p,q,px,py,numquad1d,apt,bpt,loadvalue,loadtype,paramaxis,rotmat):
-    lle = np.zeros((2*px.shape[0],1))
-
-    for iquad in range(numquad1d.shape[0]):
-        #The first gausspoints does not influence in the output due to uval
-        coor = parametricCoordinate(apt[0],bpt[0],apt[1],bpt[1],numquad1d[iquad][0],numquad1d[iquad][0])
-        gcoor = geometricCoordinate(coor,U,V,w,p,q,px,py)
-        # print("Geometric coor")
-        # print(gcoor)
-
-        Jac = jacobian(U,V,w,p,q,coor[0][0],coor[0][1],px,py)
-        jac1 = np.linalg.norm(Jac[:,paramaxis])
-        jac2 = 0.5*np.sum(bpt-apt)
-
-        if jac1 > 1e-6:
-            unitTangetVec = Jac[:,paramaxis]/jac1
-        else:
-            unitTangetVec = np.zeros((2,1))
-
-        if loadtype == "tangent":
-            tvec = (loadvalue/abs(loadvalue))*unitTangetVec
-        elif loadtype == "normal":
-            unitNormalVec = rotmat@unitTangetVec
-            tvec = (loadvalue/abs(loadvalue))*unitNormalVec
-        else:
-            print("Wrong load configuration")
-
-        tvec = np.reshape(tvec,(2,1))
-        nMat = shapeFunctionMatrix(U,V,w,p,q,coor[0][0],coor[0][1])
-        lle += (nMat.T@tvec)*jac1*jac2*numquad1d[iquad][1]
-
-    return lle
-
 ################ ISOGEOMETRIC ANALYSIS ####################
 
-def assemblyWeakForm(U,V,w,p,q,P,paramnodes,nodeselem,numquad,dmat,rho,loadelems,loadfaces,neumannconditions):
+def assemblyWeakForm(U,V,w,p,q,P,surfaceprep,numquad,matprop,boundaryprep,neumannconditions):
     K = np.zeros((2*P.shape[0],2*P.shape[0]))
     F = np.zeros((2*P.shape[0],1))
     Fb = np.zeros((2*P.shape[0],1))
     Fl = np.zeros((2*P.shape[0],1))
-    numericalquadrature2d = numquad[0]
-    numericalquadrature1d = numquad[1]
+    
+    numquad2d = numquad[0]
+    numquad1d = numquad[1]
+    
+    # Extraction of surface preprocessing
+    nonzeroctrlpts = surfaceprep[0]
+    surfacespan = surfaceprep[1]
+    elementcorners = surfaceprep[2]
+    
+    # Extraction of boundary preprocessing
+    nonzeroctrlptsload = boundaryprep[0]
+    boundaryspan = boundaryprep[1]
+    boundarycorners = boundaryprep[2]
+    axisselector = boundaryprep[3]
 
     paramGrad = np.zeros((2,2))
-    numElems = nodeselem.shape[0]
+    numElems = len(elementcorners)
+    numLoadedElems = len(boundarycorners)
 
-    px = np.reshape(P[:,0],(P.shape[0],1))
-    py = np.reshape(P[:,1],(P.shape[0],1))
+    Pwl = rbs.weightedControlPoints(P,w)
+    Pw = rbs.listToGridControlPoints(Pwl,U,V,p,q)
 
     # Rotation matrix for -pi/2
     rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
 
     loadtype = neumannconditions[0][2]
     loadvalue = neumannconditions[0][3]
-
+    
+    # Definition of the material matrix
+    E = matprop[0]
+    nu = matprop[1]
+    rho = matprop[2]
+    dMat = elasticMatrix(E,nu)
+    
+    bvec = np.zeros((2,1))
+    bvec[1][0] = -rho*9.8
+    
+    # Precomputing info for the nurbs derivatives
+    mU = len(U) - 1
+    mV = len(V) - 1
+    nU = mU - p - 1
+    nV = mV - q - 1
+    
+    # Strain-energy and body force integrals
+    print('Computing the strain-energy and body forces integrals')
     for ielem in range(0,numElems):
-        """
-        - paramGrad is conformed by the difference between u values and v values
-        - The difference in u values is determined by paramnodes[C][0] - paramnodes[A][0]
-          where C and A stand for the corners of the parametric element ABCD and
-          0 stands for the u component
-        - C can be obtained as the 3rd element in a given row of the matrix nodeselem:
-        ielem -> [A B C D]
-                  0 1 2 3
-        - Likewise, A is the 1st element in a ielem row of nodeselem
-        - It means that uC = paramnodes[nodeselem[ielem][2]][0]
-                        uA = paramnodes[nodeselem[ielem][0]][0]
-                        vC = paramnodes[nodeselem[ielem][2]][1]
-                        vA = paramnodes[nodeselem[ielem][0]][1]
-        """
-        uC = paramnodes[nodeselem[ielem][2]][0]
-        uA = paramnodes[nodeselem[ielem][0]][0]
-        vC = paramnodes[nodeselem[ielem][2]][1]
-        vA = paramnodes[nodeselem[ielem][0]][1]
+        # Extracting the indices of the non-zero control points
+        idR = nonzeroctrlpts[ielem]
+        # Extracting the indices for the location of the parametric element
+        uspan = surfacespan[ielem][0]
+        vspan = surfacespan[ielem][1]
+        # Extracting the corners of the parametric element
+        aPoint = elementcorners[ielem][0]
+        cPoint = elementcorners[ielem][1]
+        
+        # Computing the parametric gradient and its determinant
+        paramGrad[0][0] = 0.5*(cPoint[0] - aPoint[0])
+        paramGrad[1][1] = 0.5*(cPoint[1] - aPoint[1])
+        detJac2 = abs(np.linalg.det(paramGrad))
+        
+        # Global degrees of freedom
+        globalDOF = np.zeros(2*len(idR),dtype=int)
+        dof0 = 2*np.array(idR)
+        dof1 = dof0 + 1
+        globalDOF[0::2] = dof0
+        globalDOF[1::2] = dof1
+            
+        globalDOFx,globalDOFy = np.meshgrid(globalDOF,globalDOF,indexing='xy')
 
-        paramGrad[0][0] = 0.5*(uC - uA)
-        paramGrad[1][1] = 0.5*(vC - vA)
+        # K stiffness matrix
+        for iquad in range(numquad2d.shape[0]):
+            coor = parametricCoordinate(aPoint[0],cPoint[0],aPoint[1],cPoint[1],numquad2d[iquad][0],numquad2d[iquad][1])
+            
+            # NURBS gradient
+            biRatGrad = rbs.bivariateRationalGradient(mU,mV,p,q,uspan,vspan,coor[0][0],coor[0][1],U,V,Pw)
+            
+            # Jacobian
+            jac = (biRatGrad[1:3,:]@P[idR,:]).T
+            wJac = abs(np.linalg.det(jac))*detJac2*numquad2d[iquad][2]
+            
+            # Strain displacement matrix
+            invJac = np.linalg.inv(jac)
+            dN2 = biRatGrad[1:3,:]
+            dN2dxi = invJac.T@dN2
+            
+            bMat = np.zeros((3,2*dN2dxi.shape[1]))
+            #dNx
+            bMat[0,0::2] = dN2dxi[0,:]
+            bMat[2,0::2] = dN2dxi[1,:]
+            #dNy
+            bMat[1,1::2] = dN2dxi[1,:]
+            bMat[2,1::2] = dN2dxi[0,:]
+            
+            # Global indexing
+            K[globalDOFx,globalDOFy] += (bMat.T@dMat@bMat)*wJac
+        
+            # Body forces integral
+            if abs(rho) > 1e-5:
+                nMat = np.zeros((2,2*biRatGrad.shape[1]))
+                nMat[0,0::2] = biRatGrad[0,:]
+                nMat[1,1::2] = biRatGrad[0,:]
+                
+                Fb[globalDOF] += (nMat.T@bvec)*wJac
+    
+    # Load integrals
+    print('Computing the load integrals')
+    for iload in range(0,numLoadedElems):
+        # Extracting the indices of the non-zero control points of the loaded elements
+        idR = nonzeroctrlptsload[iload]
+        # Extracting the indices for the location of the parametric segment
+        uspan = boundaryspan[iload][0]
+        vspan = boundaryspan[iload][1]
+        # Extracting the corners of the parametric segment
+        aPoint = boundarycorners[iload][0]
+        bPoint = boundarycorners[iload][1]
+        # Extracting the non-zero column index of the boundary jacobian
+        paramaxis = axisselector[iload]
+        
+        # Global degrees of freedom
+        globalDOF = np.zeros(2*len(idR),dtype=int)
+        dof0 = 2*np.array(idR)
+        dof1 = dof0 + 1
+        globalDOF[0::2] = dof0
+        globalDOF[1::2] = dof1
+        
+        for iquad in range(numquad1d.shape[0]):
+            coor = parametricCoordinate(aPoint[0],bPoint[0],aPoint[1],bPoint[1],numquad1d[iquad][0],numquad1d[iquad][0])
 
-        aPoint = np.array([uA,vA])
-        cPoint = np.array([uC,vC])
+            biRatGrad = rbs.bivariateRationalGradient(mU,mV,p,q,uspan,vspan,coor[0][0],coor[0][1],U,V,Pw)
+            Jac = (biRatGrad[1:3,:]@P[idR,:]).T
+            jac1 = np.linalg.norm(Jac[:,paramaxis])
+            jac2 = 0.5*np.sum(bPoint-aPoint)
 
-        print("---")
-        print("Element #",ielem)
-        K += localStiffnessMatrix(U,V,w,p,q,px,py,numericalquadrature2d,paramGrad,aPoint,cPoint,dmat)
-        Fb += localBodyVector(U,V,w,p,q,px,py,numericalquadrature2d,paramGrad,aPoint,cPoint,rho)
-
-        if ielem in loadelems:
-            print('Loaded element')
-
-            iside = loadelems.index(ielem)
-            paramside = loadfaces[iside]
-
-            if paramside == 0 or paramside == 1:
-                startindex = paramside
-                endindex = paramside + 1
-            elif paramside == 2:
-                startindex = paramside + 1
-                endindex = paramside
+            if jac1 > 1e-6:
+                unitTangetVec = Jac[:,paramaxis]/jac1
             else:
-                startindex = 3
-                endindex = 0
+                unitTangetVec = np.zeros((2,1))
 
-            if paramside == 1 or paramside == 3:
-                paramaxis = 1
+            if loadtype == "tangent":
+#                tvec = (loadvalue/abs(loadvalue))*unitTangetVec
+                tvec = loadvalue*unitTangetVec
+            elif loadtype == "normal":
+                unitNormalVec = rotMat@unitTangetVec
+#                tvec = (loadvalue/abs(loadvalue))*unitNormalVec
+                tvec = loadvalue*unitNormalVec
             else:
-                paramaxis = 0
+                print("Wrong load configuration")
 
-            uB = paramnodes[nodeselem[ielem][endindex]][0]
-            uA = paramnodes[nodeselem[ielem][startindex]][0]
-            vB = paramnodes[nodeselem[ielem][endindex]][1]
-            vA = paramnodes[nodeselem[ielem][startindex]][1]
+            tvec = np.reshape(tvec,(2,1))
+            nMat = np.zeros((2,2*biRatGrad.shape[1]))
 
-            aPoint = np.array([uA,vA])
-            bPoint = np.array([uB,vB])
+            nMat[0,0::2] = biRatGrad[0,:]
+            nMat[1,1::2] = biRatGrad[0,:]
+            
+            Fl[globalDOF] += (nMat.T@tvec)*jac1*jac2*numquad1d[iquad][1]
 
-            Fl += appliedLoadVector(U,V,w,p,q,px,py,numericalquadrature1d,aPoint,bPoint,loadvalue,loadtype,paramaxis,rotMat)
-
-        print("---")
 
     F = Fb + Fl
     return K,F
 
-################ MATRIX EQUATION SOLUTION ####################
+def assemblyMultipatchWeakForm(mulU,mulV,fullw,mulp,mulq,fullP,idctrlpts,surfaceprep,numquad,matprop,boundaryprep):
+    Ktotal = np.zeros((2*fullP.shape[0],2*fullP.shape[0]))
+    Ftotal = np.zeros((2*fullP.shape[0],1))
+    Fbtotal = np.zeros((2*fullP.shape[0],1))
+    Fltotal = np.zeros((2*fullP.shape[0],1))
+    
+    numquad2d = numquad[0]
+    numquad1d = numquad[1]
+    
+    # Definition of the material matrix
+    E = matprop[0]
+    nu = matprop[1]
+    rho = matprop[2]
+    dMat = elasticMatrix(E,nu)
+    
+    # Rotation matrix for -pi/2
+    rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
+    
+    paramGrad = np.zeros((2,2))
+    
+    bvec = np.zeros((2,1))
+    bvec[1][0] = -rho*9.8
+    
+    numpatches = len(mulU)
+    
+    # Patch loop
+    print('Computing the strain-energy and body forces integrals')
+    for ipatch in range(0,numpatches):
+        Ui = mulU[ipatch]
+        Vi = mulV[ipatch]
+        
+        pi = mulp[ipatch]
+        qi = mulq[ipatch]
+        
+        Pi = fullP[idctrlpts[ipatch],:]
+        wi = fullw[idctrlpts[ipatch],:]
+        
+        Kpatch = np.zeros((2*Pi.shape[0],2*Pi.shape[0]))
+        Fbpatch = np.zeros((2*Pi.shape[0],1))
+        
+        # Extraction of surface preprocessing
+        nonzeroctrlpts = surfaceprep[ipatch][0]
+        surfacespan = surfaceprep[ipatch][1]
+        elementcorners = surfaceprep[ipatch][2]
+        numElems = len(elementcorners)
+        
+        Pwl = rbs.weightedControlPoints(Pi,wi)
+        Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
+        
+        # Precomputing info for the nurbs derivatives
+        mU = len(Ui) - 1
+        mV = len(Vi) - 1
+        nU = mU - pi - 1
+        nV = mV - qi - 1
+        
+        # Global degrees of freedom
+        globalDOF = np.zeros(2*len(idctrlpts[ipatch]),dtype=int)
+        dof0 = 2*np.array(idctrlpts[ipatch])
+        dof1 = dof0 + 1
+        globalDOF[0::2] = dof0
+        globalDOF[1::2] = dof1
+        
+        globalDOFx,globalDOFy = np.meshgrid(globalDOF,globalDOF,indexing='xy')
+        
+        # Strain-energy and body force integrals
+        for ielem in range(0,numElems):
+            # Extracting the indices of the non-zero control points
+            idR = nonzeroctrlpts[ielem]
+            # Extracting the indices for the location of the parametric element
+            uspan = surfacespan[ielem][0]
+            vspan = surfacespan[ielem][1]
+            # Extracting the corners of the parametric element
+            aPoint = elementcorners[ielem][0]
+            cPoint = elementcorners[ielem][1]
+            
+            # Computing the parametric gradient and its determinant
+            paramGrad[0][0] = 0.5*(cPoint[0] - aPoint[0])
+            paramGrad[1][1] = 0.5*(cPoint[1] - aPoint[1])
+            detJac2 = abs(np.linalg.det(paramGrad))
+            
+            # Patch degrees of freedom
+            patchDOF = np.zeros(2*len(idR),dtype=int)
+            dof0 = 2*np.array(idR)
+            dof1 = dof0 + 1
+            patchDOF[0::2] = dof0
+            patchDOF[1::2] = dof1
+                
+            patchDOFx,patchDOFy = np.meshgrid(patchDOF,patchDOF,indexing='xy')
 
-def boundaryConditionsEnforcement(K,F,dirichletconds):
-    enforcednodes = []
-    restricteddofs = []
-    values = []
+            # K stiffness matrix
+            for iquad in range(numquad2d.shape[0]):
+                coor = parametricCoordinate(aPoint[0],cPoint[0],aPoint[1],cPoint[1],numquad2d[iquad][0],numquad2d[iquad][1])
+                
+                # NURBS gradient
+                biRatGrad = rbs.bivariateRationalGradient(mU,mV,pi,qi,uspan,vspan,coor[0][0],coor[0][1],Ui,Vi,Pwi)
+                
+                # Jacobian
+                jac = (biRatGrad[1:3,:]@Pi[idR,:]).T
+                wJac = abs(np.linalg.det(jac))*detJac2*numquad2d[iquad][2]
+                
+                # Strain displacement matrix
+                invJac = np.linalg.inv(jac)
+                dN2 = biRatGrad[1:3,:]
+                dN2dxi = invJac.T@dN2
+                
+                bMat = np.zeros((3,2*dN2dxi.shape[1]))
+                #dNx
+                bMat[0,0::2] = dN2dxi[0,:]
+                bMat[2,0::2] = dN2dxi[1,:]
+                #dNy
+                bMat[1,1::2] = dN2dxi[1,:]
+                bMat[2,1::2] = dN2dxi[0,:]
+                
+                # Patch indexing
+                Kpatch[patchDOFx,patchDOFy] += (bMat.T@dMat@bMat)*wJac
+            
+                # Body forces integral
+                if abs(rho) > 1e-5:
+                    nMat = np.zeros((2,2*biRatGrad.shape[1]))
+                    nMat[0,0::2] = biRatGrad[0,:]
+                    nMat[1,1::2] = biRatGrad[0,:]
+                    
+                    Fbpatch[patchDOF] += (nMat.T@bvec)*wJac
+            # End of quadrature loop
+        # End of element loop
+        Ktotal[globalDOFx,globalDOFy] += Kpatch
+        Fbtotal[globalDOF] += Fbpatch
+    # End of patch loop
+    
+    # Load conditions loop
+    # Extraction of boundary preprocessing
+    loadedpatches = boundaryprep[0]
+    nonzeroctrlptsload = boundaryprep[1]
+    boundaryspan = boundaryprep[2]
+    boundarycorners = boundaryprep[3]
+    axisselector = boundaryprep[4]
+    valuesload = boundaryprep[5]
+    loadtype = boundaryprep[6]
 
-    for drchcond in dirichletconds:
-        inode = drchcond[0]
-        restriction = drchcond[1]
-        localdofs = drchcond[2]
-        value = drchcond[3]
+    numLoadedElems = len(boundarycorners)
 
-        if restriction == "C":
-            # On clamped condition, the node and the value
-            # are replicated as many spatial dimensions are
-            enforcednodes.append(2*inode)
-            enforcednodes.append(2*inode)
-            values.append(value)
-            values.append(value)
-        elif restriction == "S":
-            enforcednodes.append(2*inode)
-            values.append(value)
-        else:
-            print("Wrong restriction")
+    # Load integrals
+    print('Computing the load integrals')
+    for iload in range(0,numLoadedElems):
+        # Extracting the indices of the patch
+        ipatch = loadedpatches[iload]
+        # Extracting the indices of the non-zero control points of the loaded elements
+        idR = nonzeroctrlptsload[iload]
+        # Extracting the indices for the location of the parametric segment
+        uspan = boundaryspan[iload][0]
+        vspan = boundaryspan[iload][1]
+        # Extracting the corners of the parametric segment
+        aPoint = boundarycorners[iload][0]
+        bPoint = boundarycorners[iload][1]
+        # Extracting the non-zero column index of the boundary jacobian
+        paramaxis = axisselector[iload]
+        # Extracting the value of the load in the face
+        load = valuesload[iload]
+        
+        Ui = mulU[ipatch]
+        Vi = mulV[ipatch]
+        
+        pi = mulp[ipatch]
+        qi = mulq[ipatch]
+        
+        Pi = fullP[idctrlpts[ipatch],:]
+        wi = fullw[idctrlpts[ipatch],:]
+        
+        Flpatch = np.zeros((2*Pi.shape[0],1))
+        
+        mu = len(Ui) - 1
+        mv = len(Vi) - 1
+        
+        Pwl = rbs.weightedControlPoints(Pi,wi)
+        Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
+        
+        # Global degrees of freedom
+        globalDOF = np.zeros(2*len(idctrlpts[ipatch]),dtype=int)
+        dof0 = 2*np.array(idctrlpts[ipatch])
+        dof1 = dof0 + 1
+        globalDOF[0::2] = dof0
+        globalDOF[1::2] = dof1
+        
+        globalDOFx,globalDOFy = np.meshgrid(globalDOF,globalDOF,indexing='xy')
+        
+        # Patch degrees of freedom
+        patchDOF = np.zeros(2*len(idR),dtype=int)
+        dof0 = 2*np.array(idR)
+        dof1 = dof0 + 1
+        patchDOF[0::2] = dof0
+        patchDOF[1::2] = dof1
+        
+        patchDOFx,patchDOFy = np.meshgrid(patchDOF,patchDOF,indexing='xy')
+        
+        for iquad in range(numquad1d.shape[0]):
+            coor = parametricCoordinate(aPoint[0],bPoint[0],aPoint[1],bPoint[1],numquad1d[iquad][0],numquad1d[iquad][0])
 
-        restricteddofs += localdofs
+            biRatGrad = rbs.bivariateRationalGradient(mU,mV,pi,qi,uspan,vspan,coor[0][0],coor[0][1],Ui,Vi,Pwi)
+            Jac = (biRatGrad[1:3,:]@Pi[idR,:]).T
+            jac1 = np.linalg.norm(Jac[:,paramaxis])
+            jac2 = 0.5*np.sum(bPoint-aPoint)
 
-    # Calculating the global dofs to be removed
-    enforcednodes = np.array(enforcednodes)
-    restricteddofs = np.array(restricteddofs)
-    restricteddofs += enforcednodes
+            if jac1 > 1e-6:
+                unitTangetVec = Jac[:,paramaxis]/jac1
+            else:
+                unitTangetVec = np.zeros((2,1))
 
-    print("First reduction")
-    Fred = np.delete(F,restricteddofs,0)
-    Kred = np.delete(K,restricteddofs,0)
+            if loadtype[iload] == "tangent":
+#                tvec = (loadvalue/abs(loadvalue))*unitTangetVec
+                tvec = load*unitTangetVec
+            elif loadtype[iload] == "normal":
+                unitNormalVec = rotMat@unitTangetVec
+#                tvec = (loadvalue/abs(loadvalue))*unitNormalVec
+                tvec = load*unitNormalVec
+            else:
+                print("Wrong load configuration")
 
-    print("Modification of Freduced")
-    for i in range(len(restricteddofs)):
-        Kcol = Kred[:,restricteddofs[i]]
-        Kcol = np.reshape(Kcol,(Kcol.shape[0],1))
-        Fred -= Kcol*values[i]
+            tvec = np.reshape(tvec,(2,1))
+            nMat = np.zeros((2,2*biRatGrad.shape[1]))
 
-    print("Second reduction")
-    Kred = np.delete(Kred,restricteddofs,1)
+            nMat[0,0::2] = biRatGrad[0,:]
+            nMat[1,1::2] = biRatGrad[0,:]
+            
+            Flpatch[patchDOF] += (nMat.T@tvec)*jac1*jac2*numquad1d[iquad][1]
+        # End quadrature loop
+        Fltotal[globalDOF] += Flpatch
+    # End load loop
 
-    totaldofs = np.arange(F.shape[0])
-
-    return Kred,Fred,restricteddofs,totaldofs
-
-def solveMatrixEquations(Kred,Fred,totaldofs,remdofs):
-    # Checking full rank in matrix
-    mRank = np.linalg.matrix_rank(Kred)
-    mRows = Kred.shape[0]
-    print("Number of rows: ",mRows)
-    print("Rank of matrix: ",mRank)
-    if mRank == mRows:
-        fullRank = True
-    else:
-        fullRank = False
-
-    # fullRank = True
-    if fullRank:
-        print("The matrix has full rank. It is invertible")
-        dred = np.linalg.solve(Kred,Fred)
-    else:
-        print("The matrix has not full rank. It is not invertible")
-        dred = np.linalg.lstsq(Kred,Fred,rcond=None)[0]
-
-    reduceddofs = np.setdiff1d(totaldofs,remdofs)
-    dtotal = np.zeros((totaldofs.shape[0],1))
-    dtotal[reduceddofs,:] = dred
-
-    dx = dtotal[0::2]
-    dy = dtotal[1::2]
-    D = np.hstack((dx,dy))
-
-    return dtotal,D
+    Ftotal = Fbtotal + Fltotal
+    return Ktotal,Ftotal
