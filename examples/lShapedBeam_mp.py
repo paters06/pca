@@ -1,7 +1,5 @@
 # Python libraries
 import numpy as np
-import numpy.linalg
-import matplotlib.pyplot as plt
 
 #######################################################################
 # DO NOT REMOVE THIS SEGMENT
@@ -9,16 +7,12 @@ import os
 import sys
 
 # Get current working directory
-dir1 = os.getcwd()
-print(dir1)
+# Command found in https://note.nkmk.me/en/python-script-file-path/
+dir1 = os.path.dirname(os.path.abspath(__file__))
 # Insert .. command to go to the upper directory
 dir2 = dir1 + '/..'
-# Change directory
-os.chdir(dir2)
-# Get the new current working directory
-dir3 = os.getcwd()
 # Setting the package directory path for the modules execution
-sys.path.append(dir3)
+sys.path.append(dir2)
 #######################################################################
 
 # Local project
@@ -84,8 +78,8 @@ def mainProgram():
     fullSurfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
     multipatchpre2D.problemPreprocessing(multiU,multiV,multip,multiq,fullP,idcontrolpoints,displacementConditions,neumannConditions)
 
-    multipatchpre2D.plotMultipatchGeometry(multiU,multiV,multip,multiq,fullP,fullw,\
-                                           idcontrolpoints,dirichletBCList,boundaryPreprocessing)
+    # multipatchpre2D.plotMultipatchGeometry(multiU,multiV,multip,multiq,fullP,fullw,\
+    #                                        idcontrolpoints,dirichletBCList,boundaryPreprocessing)
 
     K,F = linElastStat.assemblyMultipatchWeakForm(multiU,multiV,fullw,multip,multiq,fullP,idcontrolpoints, \
           fullSurfacePreprocessing,numericalquadrature,materialProperties,boundaryPreprocessing)
@@ -94,8 +88,8 @@ def mainProgram():
 
     dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
 
-    multipatchpost2D.postProcessing(multiU,multiV,multip,multiq,fullP,D,fullw,dtotal, \
-                                    idcontrolpoints,fullSurfacePreprocessing,materialProperties)
+    # multipatchpost2D.postProcessing(multiU,multiV,multip,multiq,fullP,D,fullw,dtotal, \
+    #                                 idcontrolpoints,fullSurfacePreprocessing,materialProperties)
 
 mainProgram()
 

@@ -112,19 +112,19 @@ kb = 0.5*np.sqrt(2)
 # kw = cos(pi/8)
 kw = 0.5*np.sqrt(2 + np.sqrt(2))
 
-#P = np.array([[0,Ra,4],
-#              [Ra*ka,Ra,4],
-#              [Ra*kb,Ra*kb,4],
-#              [0,Rb,4],
-#              [Rb*ka,Rb,4],
-#              [Rb,Rb,4]])
+P = np.array([[0,Ra,4],
+              [Ra*ka,Ra,4],
+              [Ra*kb,Ra*kb,4],
+              [0,Rb,4],
+              [Rb*ka,Rb,4],
+              [Rb,Rb,4]])
 
-P = np.array([[Ra*kb,Ra*kb,4],
-              [Ra,Ra*ka,4],
-              [Ra,0,4],
-              [Rb,Rb,4],
-              [Rb,Rb*ka,4],
-              [Rb,0,4]])
+#P = np.array([[Ra*kb,Ra*kb,4],
+#              [Ra,Ra*ka,4],
+#              [Ra,0,4],
+#              [Rb,Rb,4],
+#              [Rb,Rb*ka,4],
+#              [Rb,0,4]])
 
 w = np.array([[1],[kw],[1],[1],[kw],[1]])
 
@@ -135,11 +135,8 @@ U = np.array([0,0,0,1,1,1])
 V = np.array([0,0,1,1])
 
 
-#Pwl = rbs.weightedControlPoints(P,w)
-#Pw = rbs.listToGridControlPoints(Pwl,U,V,p,q)
-
-cpts = rbs.nurbsSurface(U,V,p,q,P,w)
-cpu,cpv = rbs.nurbsSurfaceTangent(U,V,p,q,P,w)
-plts.plottingSurface(cpts[0,:,:],cpts[1,:,:],cpts[2,:,:])
-#plts.plotTangentSurface(cpts[0,:,:],cpts[1,:,:],cpts[2,:,:],cpu[0,:,:],cpu[1,:,:],cpu[2,:,:])
-#plts.plotTangentSurface(cpts[0,:,:],cpts[1,:,:],cpts[2,:,:],cpv[0,:,:],cpv[1,:,:],cpv[2,:,:])
+surface1 = rbs.NURBSSurface(U,V,p,q,P,w)
+cpts = surface1.createSurface()
+cpu,cpv = surface1.createTangentSurface()
+#surface1.plotSurface()
+surface1.plotTangentSurface("v")

@@ -179,7 +179,7 @@ def knotInsertion(unew,vnew,dir,U,V,p,q,Pwg):
 
 ################ KNOT REFINEMENT FOR SURFACE ####################
 
-def knotRefinement(X,dir,U,V,p,q,Pwg):
+def knotRefinement(dir,X,U,V,p,q,Pwg):
     if dir == "UDIR":
         a = findKnotIndex(U,X[0])
         b = findKnotIndex(U,X[-1])
@@ -321,8 +321,6 @@ def preSplineDecomposition(refdir,U,V,p,q,Pw):
         print("The spline only has one element")
 
     return Usplit,Vsplit,Qsplit
-
-################ SPLINE DECOMPOSITION FOR CURVE ####################
 
 ################ DEGREE ELEVATION FOR SURFACE ####################
 
@@ -668,59 +666,27 @@ def surfaceDegreeElevation(dir,U,V,p,q,Pwg,tp,tq):
 
 ################ GENERAL REFINEMENT ####################
 
-#Knot refinement
-def hRefinement(rfndir,U,V,p,q,P,w):
-    if rfndir == "U":
-        dir = "UDIR"
-        Ured = U[p:-p]
-        X = 0.5*(Ured[0:-1] + Ured[1:])
-    elif rfndir == "V":
-        dir = "VDIR"
-        Ured = V[q:-q]
-        X = 0.5*(Ured[0:-1] + Ured[1:])
-    else:
-        print("Wrong parameter direction")
+# Knot refinement
+def hRefinement(dir,X,U,V,p,q,Pwg):
+    Uh,Vh,Qwhg = knotRefinement(dir,X,U,V,p,q,Pwg)
+    return Uh,Vh,p,q,Qwhg
 
-    Pw = rbs.weightedControlPoints(P,w)
-    Pwgrid = rbs.listToGridControlPoints(Pw,U,V,p,q)
-
-    Uh,Vh,Qwhgrid = knotRefinement(X,dir,U,V,p,q,Pwgrid)
-    Qw = rbs.gridToListControlPoints(Qwhgrid)
-    Ph,wh = rbs.geometricControlPoints(Qw)
-
-    ph = p
-    qh = q
-
-    return Uh,Vh,ph,qh,Ph,wh
-
-#Degree Elevation
-def pRefinement(rfndir,U,V,p,q,P,w):
-    if rfndir == "U":
-        dir = "UDIR"
-    elif rfndir == "V":
-        dir = "VDIR"
-    else:
-        print("Wrong parameter direction")
-
-    Pw = rbs.weightedControlPoints(P,w)
-    Pwgrid = rbs.listToGridControlPoints(Pw,U,V,p,q)
-
+# Degree Elevation
+def pRefinement(dir,U,V,p,q,Pwg):
     tp = 1
     tq = 1
-    Up,Vp,pp,qp,Qwpgrid = surfaceDegreeElevation(dir,U,V,p,q,Pwgrid,tp,tq)
-    Qwp = rbs.gridToListControlPoints(Qwpgrid)
-    Pp,wp = rbs.geometricControlPoints(Qwp)
+    Up,Vp,pp,qp,Qwpg = surfaceDegreeElevation(dir,U,V,p,q,Pwg,tp,tq)
 
-    return Up,Vp,pp,qp,Pp,wp
+    return Up,Vp,pp,qp,Qwpg
 
-def kRefinement(rfndir,U,V,p,q,P,w):
+# K refinement
+def kRefinement(dir,X,U,V,p,q,Pwg):
+    Up,Vp,pp,qp,Pwpg = pRefinement(dir,U,V,p,q,Pwg)
+    Uk,Vk,pk,qk,Pwkg = hRefinement(dir,X,Up,Vp,pp,qp,Pwpg)
 
-    Up,Vp,pp,qp,Pp,wp = pRefinement(rfndir,U,V,p,q,P,w)
-    Uk,Vk,pk,qk,Pk,wk = hRefinement(rfndir,Up,Vp,pp,qp,Pp,wp)
+    return Uk,Vk,pk,qk,Pwkg
 
-    return Uk,Vk,pk,qk,Pk,wk
-
-def surfaceRefinement(refinementlist,directionlist,U,V,p,q,P,w):
+def defaultSurfaceRefinement(refinementlist,directionlist,U,V,p,q,P,w):
     href = 0
     pref = 0
     kref = 0
@@ -736,18 +702,99 @@ def surfaceRefinement(refinementlist,directionlist,U,V,p,q,P,w):
 
     for rfnlist in refinementlist:
         dirlist = directionlist[numindex]
-        # print(dirlist)
+
+        Pw = rbs.weightedControlPoints(Pin,win)
+        Pwgrid = rbs.listToGridControlPoints(Pw,Uin,Vin,pin,qin)
+
+        if dirlist == "U":
+            dir = "UDIR"
+            Ured = Uin[pin:-pin]
+            X = 0.5*(Ured[0:-1] + Ured[1:])
+        elif dirlist == "V":
+            dir = "VDIR"
+            Vred = Vin[qin:-qin]
+            X = 0.5*(Vred[0:-1] + Vred[1:])
+        else:
+            print("Wrong parameter direction")
+
         if rfnlist == 'h':
-            Uout,Vout,pout,qout,Pout,wout = hRefinement(dirlist,Uin,Vin,pin,qin,Pin,win)
+            Uout,Vout,pout,qout,Qwout = hRefinement(dir,X,Uin,Vin,pin,qin,Pwgrid)
             href += 1
         elif rfnlist == 'p':
-            Uout,Vout,pout,qout,Pout,wout = pRefinement(dirlist,Uin,Vin,pin,qin,Pin,win)
+            Uout,Vout,pout,qout,Qwout = pRefinement(dir,Uin,Vin,pin,qin,Pwgrid)
             pref += 1
         elif rfnlist == 'k':
-            Uout,Vout,pout,qout,Pout,wout = kRefinement(dirlist,Uin,Vin,pin,qin,Pin,win)
+            Uout,Vout,pout,qout,Qwout = kRefinement(dir,X,Uin,Vin,pin,qin,Pwgrid)
             kref += 1
         else:
             print("Invalid option")
+
+        Qw = rbs.gridToListControlPoints(Qwout)
+        Pout,wout = rbs.geometricControlPoints(Qw)
+
+        Uin = Uout
+        Vin = Vout
+        pin = pout
+        qin = qout
+        Pin = Pout
+        win = wout
+
+        numindex += 1
+
+    print('Number of h-refinements')
+    print(href)
+    print('Number of p-refinements')
+    print(pref)
+    print('Number of k-refinements')
+    print(kref)
+
+    return Uout,Vout,pout,qout,Pout,wout
+
+def customizedSurfaceRefinement(paramlist,refinementlist,directionlist,U,V,p,q,P,w):
+    href = 0
+    pref = 0
+    kref = 0
+
+    Uin = U
+    Vin = V
+    pin = p
+    qin = q
+    Pin = P
+    win = w
+
+    numindex = 0
+
+    for rfnlist in refinementlist:
+        dirlist = directionlist[numindex]
+        # [paramstart,paramend,numknots]
+        parlist = paramlist[numindex]
+
+        Pw = rbs.weightedControlPoints(Pin,win)
+        Pwgrid = rbs.listToGridControlPoints(Pw,Uin,Vin,pin,qin)
+
+        X = np.linspace(parlist[0],parlist[1],parlist[2])
+
+        if dirlist == "U":
+            dir = "UDIR"
+        elif dirlist == "V":
+            dir = "VDIR"
+        else:
+            print("Wrong parameter direction")
+
+        if rfnlist == 'h':
+            Uout,Vout,pout,qout,Qwout = hRefinement(dir,X,Uin,Vin,pin,qin,Pwgrid)
+            href += 1
+        elif rfnlist == 'p':
+            Uout,Vout,pout,qout,Qwout = pRefinement(dir,Uin,Vin,pin,qin,Pwgrid)
+            pref += 1
+        elif rfnlist == 'k':
+            Uout,Vout,pout,qout,Qwout = kRefinement(dir,X,Uin,Vin,pin,qin,Pwgrid)
+            kref += 1
+        else:
+            print("Invalid option")
+
+        Qw = rbs.gridToListControlPoints(Qwout)
+        Pout,wout = rbs.geometricControlPoints(Qw)
 
         Uin = Uout
         Vin = Vout
@@ -770,7 +817,7 @@ def surfaceRefinement(refinementlist,directionlist,U,V,p,q,P,w):
 def localPatchRefinement(patchlist,reflist,dirlist,mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,localctrlpts):
     for idpatch in range(len(patchlist)):
         print('Patch #',idpatch)
-        
+
         idPatchToRefine = patchlist[idpatch]
         # Select info of the desired patch to refine
         Uinit = mulU[idPatchToRefine]
@@ -781,8 +828,8 @@ def localPatchRefinement(patchlist,reflist,dirlist,mulU,mulV,mulp,mulq,fullP,ful
         winit = fullw[idctrlpts[idPatchToRefine]]
 
         Uinp,Vinp,pinp,qinp,Pinp,winp = \
-        surfaceRefinement(reflist[idPatchToRefine],dirlist[idPatchToRefine],Uinit,Vinit,pinit,qinit,Pinit,winit)
-        
+        defaultSurfaceRefinement(reflist[idPatchToRefine],dirlist[idPatchToRefine],Uinit,Vinit,pinit,qinit,Pinit,winit)
+
         # Removing the rows of the refined patch
         Premain_n = np.delete(fullP,idctrlpts[idPatchToRefine],0)
         wremain_n = np.delete(fullw,idctrlpts[idPatchToRefine],0)
@@ -795,15 +842,15 @@ def localPatchRefinement(patchlist,reflist,dirlist,mulU,mulV,mulp,mulq,fullP,ful
         localctrlpts[idPatchToRefine] = Pinp
         fullP = np.vstack((Pinp,Premain_n))
         fullw = np.vstack((winp,wremain_n))
-        
+
         # Calculate the new global indexing in each patch
         for idpatch in range(len(idctrlpts)):
             idctrlpts[idpatch] = []
-            
+
             for pt in localctrlpts[idpatch]:
                 ''' How to find the index of a row in a 2d numpy array:
                     https://stackoverflow.com/questions/18927475/numpy-array-get-row-index-searching-by-a-row '''
                 row_idx = np.where(np.all(fullP==pt,axis=1))[0][0]
                 idctrlpts[idpatch].append(row_idx)
-    
+
     return mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,localctrlpts

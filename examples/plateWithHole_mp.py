@@ -1,7 +1,5 @@
 # Python libraries
 import numpy as np
-import numpy.linalg
-import matplotlib.pyplot as plt
 
 #######################################################################
 # DO NOT REMOVE THIS SEGMENT
@@ -9,15 +7,12 @@ import os
 import sys
 
 # Get current working directory
-dir1 = os.getcwd()
+# Command found in https://note.nkmk.me/en/python-script-file-path/
+dir1 = os.path.dirname(os.path.abspath(__file__))
 # Insert .. command to go to the upper directory
 dir2 = dir1 + '/..'
-# Change directory
-os.chdir(dir2)
-# Get the new current working directory
-dir3 = os.getcwd()
 # Setting the package directory path for the modules execution
-sys.path.append(dir3)
+sys.path.append(dir2)
 #######################################################################
 
 # Local project
@@ -35,7 +30,7 @@ import src.debugScripts as dbg_scrpt
 
 def mainProgram():
     #Data
-    
+
     Ra = 2.0
     Rb = 4.0
     # ka = cos(pi/2 - pi/8)
@@ -61,7 +56,7 @@ def mainProgram():
 
     multiU = [np.array([0,0,0,1,1,1]),np.array([0,0,0,1,1,1])]
     multiV = [np.array([0,0,1,1]),np.array([0,0,1,1])]
-    
+
     E = 2e5 #Pa
     nu = 0.31
     rho = 0.0 #kg/m3
@@ -90,13 +85,13 @@ def mainProgram():
     displacementConditions = [[0,[0.0,Ra],[0.0,Rb],"S",0.0],[1,[Ra,0.0],[Rb,0.0],"S",0.0]]
     #neumann_i = [id patch,startpt,endpt,type_load,value]
     neumannConditions = [[1,[0.0,1.0],[1.0,1.0],"normal",tv]]
-    
+
     fullSurfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
     multipatchpre2D.problemPreprocessing(multiU,multiV,multip,multiq,fullP,idcontrolpoints,displacementConditions,neumannConditions)
-    
+
 #    multipatchpre2D.plotMultipatchGeometry(multiU,multiV,multip,multiq,fullP,fullw,\
 #                                           idcontrolpoints,dirichletBCList,boundaryPreprocessing)
-    
+
     K,F = linElastStat.assemblyMultipatchWeakForm(multiU,multiV,fullw,multip,multiq,fullP,idcontrolpoints, \
           fullSurfacePreprocessing,numericalquadrature,materialProperties,boundaryPreprocessing)
 

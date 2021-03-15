@@ -1,9 +1,24 @@
+# Python libraries
 import numpy as np
-import pca_01 as pca
-import nurbs as rbs
-import plottingScripts as plts
-import matplotlib.pyplot as plt
-import surfaceRefinements as srfn
+
+#######################################################################
+# DO NOT REMOVE THIS SEGMENT
+import os
+import sys
+
+# Get current working directory
+# Command found in https://note.nkmk.me/en/python-script-file-path/
+dir1 = os.path.dirname(os.path.abspath(__file__))
+# Insert .. command to go to the upper directory
+dir2 = dir1 + '/..'
+# Setting the package directory path for the modules execution
+sys.path.append(dir2)
+#######################################################################
+
+# Local project
+import src.nurbs as rbs
+import src.plottingScripts as plts
+import src.surfaceRefinements as srfn
 
 ############# SINGLE KNOT INSERTION EXAMPLE #################
 def singleKnotInsertionScript(U,V,p,q,P,w):
@@ -109,19 +124,23 @@ Vinp = np.array([0,0,1,1])
 # Uref,Vref,pref,qref,Pref,wref = srfn.pRefinement("V",Uinp,Vinp,pinp,qinp,Pinp,winp)
 # Uref,Vref,pref,qref,Pref,wref = srfn.kRefinement("U",Uinp,Vinp,pinp,qinp,Pinp,winp)
 
-# reflist = ['k']
-# dirlist = ['V']
-# reflist = ['p','k']
-# dirlist = ['V','V']
-reflist = ['k','k','h','h']
-dirlist = ['U','V','U','V']
-Uref,Vref,pref,qref,Pref,wref = srfn.surfaceRefinement(reflist,dirlist,Uinp,Vinp,pinp,qinp,Pinp,winp)
+# reflist = ['h']
+# dirlist = ['U']
+reflist = ['h','h']
+dirlist = ['U','U']
+# reflist = ['k','k','h','h']
+# dirlist = ['U','V','U','V']
+paramlist = [[0.1,0.2,5],[0.3,0.5,3]]
+# Uref,Vref,pref,qref,Pref,wref = srfn.defaultSurfaceRefinement(reflist,dirlist,Uinp,Vinp,pinp,qinp,Pinp,winp)
+Uref,Vref,pref,qref,Pref,wref = srfn.customizedSurfaceRefinement(paramlist,reflist,dirlist,Uinp,Vinp,pinp,qinp,Pinp,winp)
 # print(Uref)
 # print(Vref)
 
-cx,cy = rbs.nurbs2DField(Uinp,Vinp,pinp,qinp,Pinp,winp)
-cxref,cyref = rbs.nurbs2DField(Uref,Vref,pref,qref,Pref,wref)
+# cx,cy = rbs.nurbs2DField(Uinp,Vinp,pinp,qinp,Pinp,winp)
+# cxref,cyref = rbs.nurbs2DField(Uref,Vref,pref,qref,Pref,wref)
+cpts = rbs.nurbsSurface(Uinp,Vinp,pinp,qinp,Pinp,winp)
+cptsref = rbs.nurbsSurface(Uref,Vref,pref,qref,Pref,wref)
 
-# plts.plotting2DField(cx,cy,np.zeros((cx.shape[0],cx.shape[1])),P)
-# plts.plotting2DField(cxref,cyref,np.zeros((cxref.shape[0],cxref.shape[1])),Pref)
-plts.plotSurfaceRefinement(cx,cy,cxref,cyref,Pinp,Pref)
+# plts.plottingSurface(cpts[0,:,:],cpts[1,:,:],np.zeros((cpts.shape[1],cpts.shape[2])))
+# plts.plottingSurface(cptsref[0,:,:],cptsref[1,:,:],np.zeros((cptsref.shape[1],cptsref.shape[2])))
+plts.plotSurfaceRefinement(cpts[0,:,:],cpts[1,:,:],cptsref[0,:,:],cptsref[1,:,:],Pinp,Pref)

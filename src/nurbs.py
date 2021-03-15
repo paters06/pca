@@ -1,5 +1,6 @@
 # Python libraries
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Local project
 import src.basisFunctions as bfunc
@@ -11,8 +12,256 @@ def binomial(a,b):
 
     return bc
 
+#######################################################
+################# CLASS DEFINITION ####################
+#######################################################
+
+class NURBSCurve:
+    """
+    A class that represent a nurbs curve
+    
+    """
+    def __init__(self,U,p,P,w):
+        """
+        Initialize the nurbs object with the control points
+        and their respective weights,the degree of the spline,
+        and the knot vector
+        
+        """
+        self.U = U
+        self.p = p
+        self.P = P
+        self.w = w
+    
+    def createCurve(self):
+        """
+        Create a nurbs curve for further plotting
+        
+        """
+        numpoints = 41
+        urank = np.linspace(self.U.min(),self.U.max(),numpoints)
+
+        self.cpts = np.zeros((numpoints,2))
+
+        mu = len(self.U) - 1
+        nu = mu - self.p - 1
+        idx = np.arange(0,self.p+1)
+
+        for i in range(len(urank)):
+            uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
+            idxU = uspan + idx - self.p
+            nbas = bfunc.basisFunction(uspan,urank[i],mu,self.p,self.U)
+            
+            nbas = np.reshape(nbas,(1,len(nbas)))
+            
+            ratFunc = (nbas*self.w[idxU,:].T)/(nbas@self.w[idxU,:])
+            
+            self.cpts[i,:] = ratFunc@self.P[idxU,:]
+        # End for loop
+        return self.cpts
+    
+    def createTangentCurve(self):
+        """
+        Create a nurbs tangent curve for further plotting
+        
+        """
+        numpoints = 41
+        urank = np.linspace(self.U.min(),self.U.max(),numpoints)
+
+        self.cppts = np.zeros((numpoints,2))
+        
+        Pw = weightedControlPoints(self.P,self.w)
+
+        mu = len(self.U) - 1
+        nu = mu - self.p - 1
+        idx = np.arange(0,self.p+1)
+        
+        # Derivative order
+        d = 1
+        
+        for i in range(len(urank)):
+            uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
+            idxU = uspan + idx - self.p
+            nbas = bfunc.basisFunction(uspan,urank[i],mu,self.p,self.U)
+            dnbasU = bfunc.derBasisFunction(uspan,urank[i],mu,self.p,self.U,d)
+            
+            # Hughes' way
+            Aders = dnbasU*Pw[idxU,-1].T
+            wders = dnbasU@Pw[idxU,-1]
+            dRatdU = univariateRationalDerivative(Aders,wders,d)
+            Ck = dRatdU@self.P[idxU,:]
+            
+            self.cppts[i,:] = Ck[d,:]
+        # End for loop
+        return self.cppts
+    
+    def plotCurve(self):
+        """
+        Plot the curve
+        
+        """
+        fig,ax = plt.subplots()
+        plt.plot(self.cpts[:,0],self.cpts[:,1])
+        ax.set_aspect('equal','box')
+        plt.plot(self.P[:,0],self.P[:,1],'ro')
+        plt.plot(self.P[:,0],self.P[:,1])
+        plt.show()
+    
+    def plotTangentCurve(self):
+        """
+        Plot the tangent curve
+        
+        """
+        fig = plt.figure()
+        plt.plot(self.P[:,0],self.P[:,1],'ro')
+        plt.plot(self.P[:,0],self.P[:,1])
+        plt.plot(self.cpts[:,0],self.cpts[:,1])
+        plt.quiver(self.cpts[:,0],self.cpts[:,1],self.cppts[:,0],self.cppts[:,1],color=['k'])
+        plt.show()
+
+class NURBSSurface:
+    """
+    A class that represent a nurbs surface
+    """
+    def __init__(self,U,V,p,q,P,w):
+        """
+        Initialize the nurbs object with the control points
+        and their respective weights,the degree of the spline,
+        and the knot vector for both parametric directions
+        
+        """
+        self.U = U
+        self.V = V
+        self.p = p
+        self.q = q
+        self.P = P
+        self.w = w
+    
+    def createSurface(self):
+        """
+        Create a nurbs surface for further plotting
+        
+        """
+        numpoints = 41
+        urank = np.linspace(self.U.min(),self.U.max(),numpoints)
+        vrank = np.linspace(self.V.min(),self.V.max(),numpoints)
+        
+        Pwl = weightedControlPoints(self.P,self.w)
+        Pw = listToGridControlPoints(Pwl,self.U,self.V,self.p,self.q)
+        
+        mu = len(self.U) - 1
+        mv = len(self.V) - 1
+        nu = mu - self.p - 1
+        nv = mv - self.q - 1
+        
+        idxu = np.arange(0,self.p+1)
+        idxv = np.arange(0,self.q+1)
+        
+        self.cpts = np.zeros((self.P.shape[1],len(urank),len(vrank)))
+        
+        for j in range(len(vrank)):
+            for i in range(len(urank)):
+                uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
+                vspan = bfunc.findKnotInterval(nv,self.q,vrank[j],self.V)
+                
+                idR = nonZeroIndicesSurface(uspan,vspan,self.p,self.q,nu)
+                
+                R = bivariateRationalFunction(mu,mv,self.p,self.q,uspan,vspan,urank[i],vrank[j],self.U,self.V,Pw)
+                S = R@self.P[idR,:]
+
+                self.cpts[:,i,j] = S
+            # End i loop
+        # End j loop
+        return self.cpts
+    
+    def createTangentSurface(self):
+        """
+        Create a nurbs tangent surface for further plotting
+        
+        """
+        numpoints = 41
+        urank = np.linspace(self.U.min(),self.U.max(),numpoints)
+        vrank = np.linspace(self.V.min(),self.V.max(),numpoints)
+
+        Pwl = weightedControlPoints(self.P,self.w)
+        Pw = listToGridControlPoints(Pwl,self.U,self.V,self.p,self.q)
+        
+        mu = len(self.U) - 1
+        mv = len(self.V) - 1
+        nu = mu - self.p - 1
+        nv = mv - self.q - 1
+        
+        idxu = np.arange(0,self.p+1)
+        idxv = np.arange(0,self.q+1)
+
+        self.cpu = np.zeros((self.P.shape[1],len(urank),len(vrank)))
+        self.cpv = np.zeros((self.P.shape[1],len(urank),len(vrank)))
+        
+        for j in range(len(vrank)):
+            for i in range(len(urank)):
+                uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
+                vspan = bfunc.findKnotInterval(nv,self.q,vrank[j],self.V)
+                
+                idR = nonZeroIndicesSurface(uspan,vspan,self.p,self.q,nu)
+                
+                Ralph = bivariateRationalGradient(mu,mv,self.p,self.q,uspan,vspan,urank[i],vrank[j],self.U,self.V,Pw)
+                dS = Ralph@self.P[idR,:]
+
+                self.cpu[:,i,j] = dS[1,:]
+                self.cpv[:,i,j] = dS[2,:]
+            # End i loop
+        # End j loop
+        
+        return self.cpu,self.cpv
+    
+    def plotSurface(self):
+        """
+        Plot the surface
+        
+        """
+        cx = self.cpts[0,:,:]
+        cy = self.cpts[1,:,:]
+        cz = self.cpts[2,:,:]
+        
+        fig = plt.figure()
+        ax = plt.axes(projection = '3d')
+        # ax.contour3D(cx,cy,cz,cmap='viridis')
+        ax.plot_surface(cx,cy,cz,cmap='viridis')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        plt.show()
+    
+    def plotTangentSurface(self,component):
+        """
+        Plot the tangent surface
+        
+        """
+        cx = self.cpts[0,:,:]
+        cy = self.cpts[1,:,:]
+        cz = self.cpts[2,:,:]
+        
+        if component == "u":
+            cpx = self.cpu[0,:,:]
+            cpy = self.cpu[1,:,:]
+            cpz = self.cpu[2,:,:]
+        else:
+            cpx = self.cpv[0,:,:]
+            cpy = self.cpv[1,:,:]
+            cpz = self.cpv[2,:,:]
+        
+        fig = plt.figure()
+        ax = plt.axes(projection = '3d')
+        # ax.contour3D(cx,cy,cz,cmap='viridis')
+        ax.plot_surface(cx,cy,cz,cmap='viridis')
+        plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['k'],length = 0.01,normalize = True)
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        plt.show()
+
 #####################################################
-##################CONTROL POINTS#####################
+################# CONTROL POINTS ####################
 #####################################################
 
 #Convert from real control points to homogeneous ones

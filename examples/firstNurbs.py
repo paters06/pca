@@ -17,15 +17,12 @@ import os
 import sys
 
 # Get current working directory
-dir1 = os.getcwd()
+# Command found in https://note.nkmk.me/en/python-script-file-path/
+dir1 = os.path.dirname(os.path.abspath(__file__))
 # Insert .. command to go to the upper directory
 dir2 = dir1 + '/..'
-# Change directory
-os.chdir(dir2)
-# Get the new current working directory
-dir3 = os.getcwd()
 # Setting the package directory path for the modules execution
-sys.path.append(dir3)
+sys.path.append(dir2)
 #######################################################################
 
 # Local project
@@ -37,14 +34,9 @@ U = np.array([0,0,0,1,2,3,3,3])
 w = np.array([[1],[1],[1],[1],[1]])
 p = 2
 
-cpts = rbs.nurbsCurve(U,p,P,w)
-cppts = rbs.nurbsCurveTangent(U,p,P,w)
-cppts_norm = np.sqrt(cppts[:,0]**2 + cppts[:,1]**2)
-cppts_norm = np.reshape(cppts_norm,(len(cppts_norm),1))
-cppts_unit = cppts/cppts_norm
+curve1 = rbs.NURBSCurve(U,p,P,w)
+cpts = curve1.createCurve()
+cppts = curve1.createTangentCurve()
+#curve1.plotCurve()
+curve1.plotTangentCurve()
 
-#print(np.hstack((cpts,cppts)))
-
-#plts.plotCurve2d(cpts,P,"no")
-plts.plotTangentCurve2d(cpts,cppts_unit,P,"no")
-#plts.plotTangentCurve2d(cpts,cppts,P,"no")

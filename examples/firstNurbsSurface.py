@@ -16,15 +16,12 @@ import os
 import sys
 
 # Get current working directory
-dir1 = os.getcwd()
+# Command found in https://note.nkmk.me/en/python-script-file-path/
+dir1 = os.path.dirname(os.path.abspath(__file__))
 # Insert .. command to go to the upper directory
 dir2 = dir1 + '/..'
-# Change directory
-os.chdir(dir2)
-# Get the new current working directory
-dir3 = os.getcwd()
 # Setting the package directory path for the modules execution
-sys.path.append(dir3)
+sys.path.append(dir2)
 #######################################################################
 
 # Local project
@@ -61,9 +58,9 @@ q = 1
 U = np.array([0,0,1,1])
 V = np.array([0,0,1,1])
 
-#cpts = rbs.nurbsSurface(U,V,p,q,P,w)
-cpts = rbs.nurbsSurface(U,V,p,q,P,w)
-#cpu,cpv = rbs.nurbsSurfaceTangent(U,V,p,q,P,w)
-plts.plottingSurface(cpts[0,:,:],cpts[1,:,:],cpts[2,:,:])
-#plts.plotTangentSurface(cpts[0,:,:],cpts[1,:,:],cpts[2,:,:],cpu[0,:,:],cpu[1,:,:],cpu[2,:,:])
-#plts.plotTangentSurface(cpts[0,:,:],cpts[1,:,:],cpts[2,:,:],cpv[0,:,:],cpv[1,:,:],cpv[2,:,:])
+surface1 = rbs.NURBSSurface(U,V,p,q,P,w)
+cpts = surface1.createSurface()
+cpu,cpv = surface1.createTangentSurface()
+#surface1.plotSurface()
+surface1.plotTangentSurface("v")
+
