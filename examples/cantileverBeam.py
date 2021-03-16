@@ -9,19 +9,17 @@ import os
 import sys
 
 # Get current working directory
-dir1 = os.getcwd()
+# Command found in https://note.nkmk.me/en/python-script-file-path/
+dir1 = os.path.dirname(os.path.abspath(__file__))
 # Insert .. command to go to the upper directory
 dir2 = dir1 + '/..'
-# Change directory
-os.chdir(dir2)
-# Get the new current working directory
-dir3 = os.getcwd()
 # Setting the package directory path for the modules execution
-sys.path.append(dir3)
+sys.path.append(dir2)
 #######################################################################
 
 # Local project
 import src.plottingScripts as plts
+import src.nurbs as rbs
 import src.preprocessor2D as pre2D
 import src.linearElastoStaticsSolver as linElastStat
 import src.matrixEquationSolver as matEqnSol
@@ -70,38 +68,32 @@ def mainProgram():
     pinit = 2
     qinit = 2
 
+    geomsurface = rbs.NURBSSurface(Uinit,Vinit,pinit,qinit,Pinit,winit)
+
     doRefinement = 'Y'
 
     if doRefinement == 'Y':
         reflist = ['h','h','h','h']
         dirlist = ['U','V','U','V']
-        Uinp,Vinp,pinp,qinp,Pinp,winp = srfn.surfaceRefinement(reflist,dirlist,Uinit,Vinit,pinit,qinit,Pinit,winit)
-    else:
-        Uinp = Uinit
-        Vinp = Vinit
-        pinp = pinit
-        qinp = qinit
-        Pinp = Pinit
-        winp = winit
+        srfn.defaultSurfaceRefinement(geomsurface,reflist,dirlist)
 
     displacementConditions = [[[0.0,0.0],[0.0,H],"C",0.0]]
     neumannConditions = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
 
-    parametricNodes,nodesInElement,surfacePreprocessing = pre2D.parametricGrid(Uinp,Vinp,pinp,qinp)
-    loadElements,boundaryPreprocessing = pre2D.loadPreprocessing(parametricNodes,nodesInElement,neumannConditions,Uinp,Vinp,pinp,qinp)
-    dirichletBCList = pre2D.dirichletBCPreprocessingOnFaces(Pinp,displacementConditions)
+    surfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
+    pre2D.problemPreprocessing(geomsurface,displacementConditions,neumannConditions)
     numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
-#    pre2D.plotGeometry(Uinp,Vinp,pinp,qinp,Pinp,winp,dirichletBCList,neumannConditions,boundaryPreprocessing)
+    # pre2D.plotGeometry(geomsurface,dirichletBCList,neumannConditions,boundaryPreprocessing)
 
-    K,F = linElastStat.assemblyWeakForm(Uinp,Vinp,winp,pinp,qinp,Pinp,surfacePreprocessing,numericalquadrature,materialProperties,boundaryPreprocessing,neumannConditions)
+    K,F = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
+                                        materialProperties,boundaryPreprocessing,neumannConditions)
 
     Kred,Fred,removedDofs,totalDofs = matEqnSol.boundaryConditionsEnforcement(K,F,dirichletBCList)
 
     dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
-    # print(D)
-
-    post2D.postProcessing(Uinp,Vinp,pinp,qinp,Pinp,D,winp,dtotal,surfacePreprocessing,materialProperties)
+    
+    # post2D.postProcessing(Uinp,Vinp,pinp,qinp,Pinp,D,winp,dtotal,surfacePreprocessing,materialProperties)
 
 mainProgram()
 

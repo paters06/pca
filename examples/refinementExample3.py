@@ -107,7 +107,7 @@ def numberToScript(U,V,p,q,P,w,argument):
     func(U,V,p,q,P,w)
 
 ####################################################
-###################MAIN PROGRAM#####################
+################## MAIN PROGRAM ####################
 ####################################################
 
 Pinp = np.array([[0.5,0],[0.5,0.5],[0,0.5],[1,0],[1,1],[0,1]])
@@ -116,6 +116,9 @@ pinp = 2
 qinp = 1
 Uinp = np.array([0,0,0,1,1,1])
 Vinp = np.array([0,0,1,1])
+
+surface1 = rbs.NURBSSurface(Uinp,Vinp,pinp,qinp,Pinp,winp)
+cpts = surface1.createSurface()
 
 # option = 4
 # numberToScript(Uinp,Vinp,pinp,qinp,Pinp,winp,option)
@@ -126,21 +129,16 @@ Vinp = np.array([0,0,1,1])
 
 # reflist = ['h']
 # dirlist = ['U']
-reflist = ['h','h']
-dirlist = ['U','U']
-# reflist = ['k','k','h','h']
-# dirlist = ['U','V','U','V']
+# reflist = ['h','h']
+# dirlist = ['U','V']
+reflist = ['k','k','h','h']
+dirlist = ['U','V','U','V']
 paramlist = [[0.1,0.2,5],[0.3,0.5,3]]
-# Uref,Vref,pref,qref,Pref,wref = srfn.defaultSurfaceRefinement(reflist,dirlist,Uinp,Vinp,pinp,qinp,Pinp,winp)
-Uref,Vref,pref,qref,Pref,wref = srfn.customizedSurfaceRefinement(paramlist,reflist,dirlist,Uinp,Vinp,pinp,qinp,Pinp,winp)
-# print(Uref)
-# print(Vref)
+srfn.defaultSurfaceRefinement(surface1,reflist,dirlist)
+# srfn.customizedSurfaceRefinement(surface1,reflist,dirlist,paramlist)
 
-# cx,cy = rbs.nurbs2DField(Uinp,Vinp,pinp,qinp,Pinp,winp)
-# cxref,cyref = rbs.nurbs2DField(Uref,Vref,pref,qref,Pref,wref)
-cpts = rbs.nurbsSurface(Uinp,Vinp,pinp,qinp,Pinp,winp)
-cptsref = rbs.nurbsSurface(Uref,Vref,pref,qref,Pref,wref)
+cptsref = surface1.createSurface()
 
 # plts.plottingSurface(cpts[0,:,:],cpts[1,:,:],np.zeros((cpts.shape[1],cpts.shape[2])))
 # plts.plottingSurface(cptsref[0,:,:],cptsref[1,:,:],np.zeros((cptsref.shape[1],cptsref.shape[2])))
-plts.plotSurfaceRefinement(cpts[0,:,:],cpts[1,:,:],cptsref[0,:,:],cptsref[1,:,:],Pinp,Pref)
+plts.plotSurfaceRefinement(cpts[0,:,:],cpts[1,:,:],cptsref[0,:,:],cptsref[1,:,:],Pinp,surface1.P)

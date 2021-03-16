@@ -48,24 +48,23 @@ def knotGeneratorChord(n,p,tv):
 #U: knot vector
 #u: parameter between 0 and 1
 def findKnotInterval(n,p,u,U):
-    
     # Special case
     if abs(u - U[n+1]) < 1e-5:
         return n
-    
+
     # Starting binary search
     low = p
     high = n + 1
     mid = (low + high)//2
-        
+
     while u < U[mid] or (u > U[mid+1] or abs(u - U[mid+1]) < 1e-5):
         if u < U[mid]:
             high = mid
         else:
             low = mid
-        
+
         mid = (low + high)//2
-    
+
     return mid
 
 ####################################################
@@ -81,7 +80,7 @@ def basisFunction(i,u,m,p,U):
     N = np.zeros(p+1)
     left = np.zeros(p+1)
     right = np.zeros(p+1)
-    
+
     N[0] = 1.0
     for j in range(1,p+1):
         left[j] = u - U[i+1-j]
@@ -91,9 +90,9 @@ def basisFunction(i,u,m,p,U):
             temp = N[r]/(right[r+1] + left[j-r])
             N[r] = saved + right[r+1]*temp
             saved = left[j-r]*temp
-        
+
         N[j] = saved
-    
+
     return N
 
 def derBasisFunction(i,u,m,p,U,nd):
@@ -102,13 +101,13 @@ def derBasisFunction(i,u,m,p,U,nd):
     Input: i,u,m,p,U
     Output: ders
     """
-    
+
     ndu = np.zeros((p+1,p+1))
     a = np.zeros((2,p+1))
     left = np.zeros(p+1)
     right = np.zeros(p+1)
     ders = np.zeros((nd+1,p+1))
-    
+
     ndu[0][0] = 1.0
     for j in range(1,p+1):
         left[j] = u - U[i+1-j]
@@ -121,13 +120,13 @@ def derBasisFunction(i,u,m,p,U,nd):
             # Upper triangle
             ndu[r][j] = saved + right[r+1]*temp
             saved = left[j-r]*temp
-        
+
         ndu[j][j] = saved
-    
+
     # Load the basis functions
     for j in range(0,p+1):
         ders[0][j] = ndu[j][p]
-    
+
     # This section computes the derivatives
     # according to Eq (2.9) from The NURBS Book
     for r in range(0,p+1):
@@ -141,29 +140,29 @@ def derBasisFunction(i,u,m,p,U,nd):
             d = 0.0
             rk = int(r - k)
             pk = int(p - k)
-            
+
             if r >= k:
                 a[s2][0] = a[s1][0]/ndu[pk+1][rk]
                 d = a[s2][0]*ndu[rk][pk]
-            
+
             if rk >= -1:
                 j1 = 1
             else:
                 j1 = -rk
-            
+
             if (r-1) <= pk:
                 j2 = k - 1
             else:
                 j2 = p - r
-            
+
             for j in range(j1,j2+1):
                 a[s2][j] = (a[s1][j] - a[s1][j-1])/ndu[pk+1][rk+j]
                 d += a[s2][j]*ndu[rk+j][pk]
-            
+
             if r <= pk:
                 a[s2][k] = -a[s1][k-1]/ndu[pk+1][r]
                 d += a[s2][k]*ndu[r][pk]
-            
+
             ders[k][r] = d
             # Switch rows
             j = s1
@@ -174,8 +173,8 @@ def derBasisFunction(i,u,m,p,U,nd):
     for k in range(1,nd+1):
         for j in range(0,p+1):
             ders[k][j] *= r
-        
+
         r *= (p-k)
-    
+
 #    derk = ders[k,:]
     return ders

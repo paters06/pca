@@ -1,18 +1,11 @@
+# Python libraries
 import numpy as np
 
+# Local project
+import src.basisFunctions as bfunc
 import src.nurbs as rbs
 
 tol = 1e-5
-
-def findKnotIndex(U,u):
-    for k in range(len(U)):
-        if U[k] < (u + tol) and (u + tol) < (U[k+1]):
-            kindex = k
-
-        if abs(u - U.max())<tol:
-            if U[k] < (u - tol) and (u - tol) < U[k+1]:
-                kindex = k
-    return kindex
 
 ############# SINGLE KNOT INSERTION FOR SURFACE #################
 
@@ -21,7 +14,7 @@ def knotInsertion(unew,vnew,dir,U,V,p,q,Pwg):
         Unew = np.zeros(len(U) + 1)
         Vnew = np.zeros(len(V) + 1)
 
-        k = findKnotIndex(U,unew)
+        k = bfunc.findKnotInterval(len(U)-p-1,p,unew,U)
         r = 1 #Single insertion
         s = 0 #Multiplicity of the knots
 
@@ -100,7 +93,7 @@ def knotInsertion(unew,vnew,dir,U,V,p,q,Pwg):
         Unew = np.zeros(len(U) + 1)
         Vnew = np.zeros(len(V) + 1)
 
-        k = findKnotIndex(V,vnew)
+        k = bfunc.findKnotInterval(len(V)-q-1,q,vnew,V)
         r = 1 #Single insertion
         s = 0 #Multiplicity of the knots
 
@@ -181,8 +174,8 @@ def knotInsertion(unew,vnew,dir,U,V,p,q,Pwg):
 
 def knotRefinement(dir,X,U,V,p,q,Pwg):
     if dir == "UDIR":
-        a = findKnotIndex(U,X[0])
-        b = findKnotIndex(U,X[-1])
+        a = bfunc.findKnotInterval(len(U)-p-1,p,X[0],U)
+        b = bfunc.findKnotInterval(len(U)-p-1,p,X[-1],U)
         b += 1
 
         n = Pwg.shape[1] - 1
@@ -241,8 +234,8 @@ def knotRefinement(dir,X,U,V,p,q,Pwg):
             k -= 1
 
     if dir == "VDIR":
-        a = findKnotIndex(V,X[0])
-        b = findKnotIndex(V,X[-1])
+        a = bfunc.findKnotInterval(len(V)-q-1,q,X[0],V)
+        b = bfunc.findKnotInterval(len(V)-q-1,q,X[-1],V)
         b += 1
 
         n = Pwg.shape[2] - 1
@@ -686,17 +679,12 @@ def kRefinement(dir,X,U,V,p,q,Pwg):
 
     return Uk,Vk,pk,qk,Pwkg
 
-def defaultSurfaceRefinement(refinementlist,directionlist,U,V,p,q,P,w):
+def defaultSurfaceRefinement(surface,refinementlist,directionlist):
     href = 0
     pref = 0
     kref = 0
 
-    Uin = U
-    Vin = V
-    pin = p
-    qin = q
-    Pin = P
-    win = w
+    Uin,Vin,pin,qin,Pin,win = surface.retrieveSurfaceInformation()
 
     numindex = 0
 
@@ -748,19 +736,14 @@ def defaultSurfaceRefinement(refinementlist,directionlist,U,V,p,q,P,w):
     print('Number of k-refinements')
     print(kref)
 
-    return Uout,Vout,pout,qout,Pout,wout
+    surface.updateSurfaceInformation(Uout,Vout,pout,qout,Pout,wout)
 
-def customizedSurfaceRefinement(paramlist,refinementlist,directionlist,U,V,p,q,P,w):
+def customizedSurfaceRefinement(surface,refinementlist,directionlist,paramlist):
     href = 0
     pref = 0
     kref = 0
 
-    Uin = U
-    Vin = V
-    pin = p
-    qin = q
-    Pin = P
-    win = w
+    Uin,Vin,pin,qin,Pin,win = surface.retrieveSurfaceInformation()
 
     numindex = 0
 
@@ -812,7 +795,7 @@ def customizedSurfaceRefinement(paramlist,refinementlist,directionlist,U,V,p,q,P
     print('Number of k-refinements')
     print(kref)
 
-    return Uout,Vout,pout,qout,Pout,wout
+    surface.updateSurfaceInformation(Uout,Vout,pout,qout,Pout,wout)
 
 def localPatchRefinement(patchlist,reflist,dirlist,mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,localctrlpts):
     for idpatch in range(len(patchlist)):
