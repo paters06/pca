@@ -171,20 +171,20 @@ def plotmultipatchTangentSurface(fullc,fullcp,*argv):
         cx = cpts[0,:,:]
         cy = cpts[1,:,:]
         cz = cpts[2,:,:]
-        
+
         cpx = cppts[0,:,:]
         cpy = cppts[1,:,:]
         cpz = cppts[2,:,:]
-        
+
         ax.plot_surface(cx, cy, cz, cmap = 'viridis')
         plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['b'],length = 0.01,normalize = True)
-        
+
         if len(argv)==3:
             px = np.reshape(argv[0],(len(argv[0]),1))
             py = np.reshape(argv[1],(len(argv[1]),1))
             pz = np.reshape(argv[2],(len(argv[2]),1))
             ax.plot_wireframe(px,py,pz, color = 'red')
-    
+
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z');
@@ -199,17 +199,10 @@ def plotting2DField(cx,cy,fz,*argv):
     field = ax.pcolormesh(cx,cy,fz,vmin=fz.min(),vmax=fz.max())
     # field = ax.pcolormesh(cx,cy,fz,shading='gouraud')
     # field = ax.pcolormesh(cx,cy,fz,shading='gouraud',vmin=fz.min(),vmax=fz.max())
-    if argv!= ():
-        if len(argv) == 1:
-            pts = argv[0]
-        elif len(argv) == 2:
-            pts = argv[0]
-            stringlegends = argv[1]
-            titlestring = stringlegends[0]
-            colorbarstring = stringlegends[1]
-        else:
-            print("More than 2 extra arguments")
-        # ax.scatter(pts[:,0],pts[:,1])
+    if argv != ():
+        stringlegends = argv[0]
+        titlestring = stringlegends[0]
+        colorbarstring = stringlegends[1]
 
     cb = fig.colorbar(field)
     ax.set_xlabel('x')
@@ -224,10 +217,10 @@ def plotMultipatchField(fullc,fullf,comp,*argv):
 #    ax = plt.axes(projection = '3d')
     titlestring = ""
     colorbarstring = "value"
-    
+
     field = ax.scatter(fullc[:,0],fullc[:,1],c=fullf[:,comp])
 #    field = ax.scatter(fullc[:,0],fullc[:,1],fullf[:,comp],c=fullf[:,comp])
-    
+
     if argv != ():
         stringlegends = argv[0]
         titlestring = stringlegends[0]

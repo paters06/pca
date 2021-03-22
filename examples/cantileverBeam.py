@@ -75,7 +75,7 @@ def mainProgram():
     if doRefinement == 'Y':
         reflist = ['h','h','h','h']
         dirlist = ['U','V','U','V']
-        srfn.defaultSurfaceRefinement(geomsurface,reflist,dirlist)
+        srfn.surfaceRefinement(geomsurface,reflist,dirlist)
 
     displacementConditions = [[[0.0,0.0],[0.0,H],"C",0.0]]
     neumannConditions = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
@@ -92,8 +92,8 @@ def mainProgram():
     Kred,Fred,removedDofs,totalDofs = matEqnSol.boundaryConditionsEnforcement(K,F,dirichletBCList)
 
     dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
-    
-    # post2D.postProcessing(Uinp,Vinp,pinp,qinp,Pinp,D,winp,dtotal,surfacePreprocessing,materialProperties)
+
+    post2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 
 mainProgram()
 

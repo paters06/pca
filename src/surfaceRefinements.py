@@ -679,7 +679,7 @@ def kRefinement(dir,X,U,V,p,q,Pwg):
 
     return Uk,Vk,pk,qk,Pwkg
 
-def defaultSurfaceRefinement(surface,refinementlist,directionlist):
+def surfaceRefinement(surface,refinementlist,directionlist,paramlist=None):
     href = 0
     pref = 0
     kref = 0
@@ -691,76 +691,24 @@ def defaultSurfaceRefinement(surface,refinementlist,directionlist):
     for rfnlist in refinementlist:
         dirlist = directionlist[numindex]
 
+        if not paramlist == None:
+            # [paramstart,paramend,numknots]
+            parlist = paramlist[numindex]
+            X = np.linspace(parlist[0],parlist[1],parlist[2])
+
         Pw = rbs.weightedControlPoints(Pin,win)
         Pwgrid = rbs.listToGridControlPoints(Pw,Uin,Vin,pin,qin)
 
         if dirlist == "U":
             dir = "UDIR"
-            Ured = Uin[pin:-pin]
-            X = 0.5*(Ured[0:-1] + Ured[1:])
+            if paramlist == None:
+                Ured = Uin[pin:-pin]
+                X = 0.5*(Ured[0:-1] + Ured[1:])
         elif dirlist == "V":
             dir = "VDIR"
-            Vred = Vin[qin:-qin]
-            X = 0.5*(Vred[0:-1] + Vred[1:])
-        else:
-            print("Wrong parameter direction")
-
-        if rfnlist == 'h':
-            Uout,Vout,pout,qout,Qwout = hRefinement(dir,X,Uin,Vin,pin,qin,Pwgrid)
-            href += 1
-        elif rfnlist == 'p':
-            Uout,Vout,pout,qout,Qwout = pRefinement(dir,Uin,Vin,pin,qin,Pwgrid)
-            pref += 1
-        elif rfnlist == 'k':
-            Uout,Vout,pout,qout,Qwout = kRefinement(dir,X,Uin,Vin,pin,qin,Pwgrid)
-            kref += 1
-        else:
-            print("Invalid option")
-
-        Qw = rbs.gridToListControlPoints(Qwout)
-        Pout,wout = rbs.geometricControlPoints(Qw)
-
-        Uin = Uout
-        Vin = Vout
-        pin = pout
-        qin = qout
-        Pin = Pout
-        win = wout
-
-        numindex += 1
-
-    print('Number of h-refinements')
-    print(href)
-    print('Number of p-refinements')
-    print(pref)
-    print('Number of k-refinements')
-    print(kref)
-
-    surface.updateSurfaceInformation(Uout,Vout,pout,qout,Pout,wout)
-
-def customizedSurfaceRefinement(surface,refinementlist,directionlist,paramlist):
-    href = 0
-    pref = 0
-    kref = 0
-
-    Uin,Vin,pin,qin,Pin,win = surface.retrieveSurfaceInformation()
-
-    numindex = 0
-
-    for rfnlist in refinementlist:
-        dirlist = directionlist[numindex]
-        # [paramstart,paramend,numknots]
-        parlist = paramlist[numindex]
-
-        Pw = rbs.weightedControlPoints(Pin,win)
-        Pwgrid = rbs.listToGridControlPoints(Pw,Uin,Vin,pin,qin)
-
-        X = np.linspace(parlist[0],parlist[1],parlist[2])
-
-        if dirlist == "U":
-            dir = "UDIR"
-        elif dirlist == "V":
-            dir = "VDIR"
+            if paramlist == None:
+                Vred = Vin[qin:-qin]
+                X = 0.5*(Vred[0:-1] + Vred[1:])
         else:
             print("Wrong parameter direction")
 

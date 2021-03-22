@@ -129,13 +129,13 @@ cpts = surface1.createSurface()
 
 # reflist = ['h']
 # dirlist = ['U']
-# reflist = ['h','h']
-# dirlist = ['U','V']
-reflist = ['k','k','h','h']
-dirlist = ['U','V','U','V']
+reflist = ['h','h']
+dirlist = ['U','U']
+# reflist = ['h','h','h','h']
+# dirlist = ['U','V','U','V']
 paramlist = [[0.1,0.2,5],[0.3,0.5,3]]
-srfn.defaultSurfaceRefinement(surface1,reflist,dirlist)
-# srfn.customizedSurfaceRefinement(surface1,reflist,dirlist,paramlist)
+# srfn.surfaceRefinement(surface1,reflist,dirlist)
+# srfn.surfaceRefinement(surface1,reflist,dirlist,paramlist)
 
 cptsref = surface1.createSurface()
 

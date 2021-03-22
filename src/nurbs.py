@@ -19,7 +19,6 @@ def binomial(a,b):
 class NURBSCurve:
     """
     A class that represent a nurbs curve
-
     """
     def __init__(self,U,p,P,w):
         """
