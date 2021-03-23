@@ -12,7 +12,7 @@ import src.plottingScripts as plts
 
 def parametricGrid(mulU,mulV,mulp,mulq):
     numpatches = len(mulU)
-    
+
     multiparamnodes = []
     multielemmat = []
     multisurfaceprep = []
@@ -20,7 +20,7 @@ def parametricGrid(mulU,mulV,mulp,mulq):
     for ipatch in range(0,numpatches):
         Ui = mulU[ipatch]
         Vi = mulV[ipatch]
-        
+
         pi = mulp[ipatch]
         qi = mulq[ipatch]
 
@@ -47,9 +47,9 @@ def parametricGrid(mulU,mulV,mulp,mulq):
 
         elemmat = np.zeros((numelems,4),dtype=int)
         elemIndex = 0
-        
+
         """
-        - The diagonals of a given ABCD parametric element are given by points C and A 
+        - The diagonals of a given ABCD parametric element are given by points C and A
           which values can be found as paramnodes[C][0] and paramnodes[A][0] respectively.
           Each corner is organized in the element as follows:
           ielem -> [A B C D]
@@ -66,57 +66,57 @@ def parametricGrid(mulU,mulV,mulp,mulq):
                 elemIndex += 1
             # End i loop
         # End j loop
-        
+
         # Saving the corresponding matrix of elements of the given patch
         multielemmat.append(elemmat)
-        
+
         mu = len(Ui) - 1
         mv = len(Vi) - 1
         nu = mu - pi - 1
         nv = mv - qi - 1
-        
+
         nonzeroctrlpts = []
         surfacespan = []
         elementcorners = []
-        
+
         """
         - C can be obtained as the 3rd element in a given row of the matrix nodeselem
         - Likewise, A is the 1st element in a ielem row of nodeselem
         - It means that
-        
+
           uC = paramnodes[C][0]
           uA = paramnodes[A][0]
           vC = paramnodes[C][1]
           vA = paramnodes[A][1]
-              
-          where 
+
+          where
           C = elemmat[ielem][2]
           A = element[ielem][0]
           [0] stands for the u component
           [1] stands for the v component
         """
-        
+
         for ielem in range(0,elemIndex):
             uC = paramnodes[elemmat[ielem][2]][0]
             uA = paramnodes[elemmat[ielem][0]][0]
             vC = paramnodes[elemmat[ielem][2]][1]
             vA = paramnodes[elemmat[ielem][0]][1]
-            
+
             apt = np.array([uA,vA])
             cpt = np.array([uC,vC])
-            
+
             uspan = bfunc.findKnotInterval(nu,pi,0.5*(uC + uA),Ui)
             vspan = bfunc.findKnotInterval(nv,qi,0.5*(vC + vA),Vi)
-            
+
             idR = rbs.nonZeroIndicesSurface(uspan,vspan,pi,qi,nu)
-            
+
             nonzeroctrlpts.append(idR)
             surfacespan.append([uspan,vspan])
             elementcorners.append([apt,cpt])
         # End element loop
-        
+
         surfaceprep = [nonzeroctrlpts,surfacespan,elementcorners]
-        
+
         # Saving the corresponding surface information of the given patch
         multisurfaceprep.append(surfaceprep)
     # End patch loop
@@ -138,7 +138,7 @@ def loadPreprocessing(multiparamnodes,multinodeselem,neumannconditions,mulU,mulV
     loadednodes = []
     loadedelements = []
     loadedfaces = []
-    
+
     loadedpatches = []
     boundaryspan = []
     boundarycorners = []
@@ -153,21 +153,21 @@ def loadPreprocessing(multiparamnodes,multinodeselem,neumannconditions,mulU,mulV
         endpt = np.array(cond[2])
 #        loadtype = cond[3]
         value = cond[4]
-        
+
         Ui = mulU[ipatch]
         Vi = mulV[ipatch]
-            
+
         pi = mulp[ipatch]
         qi = mulq[ipatch]
-        
+
         localparamnodes = multiparamnodes[ipatch]
         localnodeselem = multinodeselem[ipatch]
-        
+
         mu = len(Ui) - 1
         mv = len(Vi) - 1
         nu = mu - pi - 1
         nv = mv - qi - 1
-        
+
         # Check the other parametric nodes that belong to the
         # neumann boundary condition
         for inode in range(0,localparamnodes.shape[0]):
@@ -181,7 +181,7 @@ def loadPreprocessing(multiparamnodes,multinodeselem,neumannconditions,mulU,mulV
             if len(commom_nodes) == 2:
                 loadedelements.append(ielem)
 
-        # Check the sides of the loaded parametric elements that 
+        # Check the sides of the loaded parametric elements that
         # belong to the neumann boundary condition
         for ldnelm in loadedelements:
             for j in range(0,4):
@@ -195,19 +195,19 @@ def loadPreprocessing(multiparamnodes,multinodeselem,neumannconditions,mulU,mulV
                     loadedpatches.append(ipatch)
                     valuesload.append(value)
                     loadtype.append(cond[3])
-    
-    
+
+
     for iface in range(0,len(loadedfaces)):
         elemface = loadedfaces[iface]
         ielem = loadedelements[iface]
-        
-        # Selecting the axis where the jacobian 
+
+        # Selecting the axis where the jacobian
         # is not a zero vector on the boundary
         if elemface == 1 or elemface == 3:
            paramaxis = 1
         else:
            paramaxis = 0
-        
+
         if elemface == 0 or elemface == 1:
             startindex = elemface
             endindex = elemface + 1
@@ -217,7 +217,7 @@ def loadPreprocessing(multiparamnodes,multinodeselem,neumannconditions,mulU,mulV
         else:
             startindex = 3
             endindex = 0
-        
+
         uB = localparamnodes[localnodeselem[ielem][endindex]][0]
         uA = localparamnodes[localnodeselem[ielem][startindex]][0]
         vB = localparamnodes[localnodeselem[ielem][endindex]][1]
@@ -226,17 +226,17 @@ def loadPreprocessing(multiparamnodes,multinodeselem,neumannconditions,mulU,mulV
         # Computing the corners of the segment
         apt = np.array([uA,vA])
         bpt = np.array([uB,vB])
-        
+
         uspan = bfunc.findKnotInterval(nu,pi,0.5*(uB + uA),Ui)
         vspan = bfunc.findKnotInterval(nv,qi,0.5*(vB + vA),Vi)
-        
+
         idR = rbs.nonZeroIndicesSurface(uspan,vspan,pi,qi,nu)
-        
+
         boundarycorners.append([apt,bpt])
         boundaryspan.append([uspan,vspan])
         axisselector.append(paramaxis)
         nonzeroctrlptsload.append(idR)
-    
+
     boundaryprep = [loadedpatches,nonzeroctrlptsload,boundaryspan,boundarycorners,axisselector,valuesload,loadtype]
 
     return boundaryprep
@@ -253,7 +253,7 @@ def dirichletBCPreprocessingOnFaces(fullP,idctrlpts,dirichletconditions):
         bpt = np.array(cond[2])
         restriction = cond[3]
         value = cond[4]
-        
+
         Pi = fullP[idctrlpts[ipatch],:]
 
         for i in range(0,Pi.shape[0]):
@@ -322,16 +322,17 @@ def numericalIntegrationPreprocessing(numgauss):
     numericalquad = [gausslegendre2d,gausslegendre1d]
 
     return numericalquad
-    
-def problemPreprocessing(mulU,mulV,mulp,mulq,fullP,idctrlpts,dirichletconditions,neumannconditions):
-    fullParametricNodes,fullNodesInElement,fullSurfacePreprocessing = parametricGrid(mulU,mulV,mulp,mulq)
+
+def problemPreprocessing(multisurface,dirichletconditions,neumannconditions):
+    multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints = multisurface.retrieveSurfaceInformation()
+    fullParametricNodes,fullNodesInElement,fullSurfacePreprocessing = parametricGrid(multiU,multiV,multip,multiq)
     boundaryPreprocessing = loadPreprocessing(fullParametricNodes,fullNodesInElement,neumannconditions,\
-                            mulU,mulV,mulp,mulq)
-    dirichletBCList = dirichletBCPreprocessingOnFaces(fullP,idctrlpts,dirichletconditions)
-    
+                            multiU,multiV,multip,multiq)
+    dirichletBCList = dirichletBCPreprocessingOnFaces(fullP,idcontrolpoints,dirichletconditions)
+
     return fullSurfacePreprocessing,boundaryPreprocessing,dirichletBCList
-    
-def plotMultipatchGeometry(mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,dirichletconds,boundaryprep):
+
+def plotMultipatchGeometry(multisurface,dirichletconds,boundaryprep):
     fig = plt.figure()
     ax = plt.axes()
     plt.axis('equal')
@@ -339,20 +340,24 @@ def plotMultipatchGeometry(mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,dirichletco
     titlestring = "Geometry with boundary conditions"
     ax.axis("off")
 
+    multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints = multisurface.retrieveSurfaceInformation()
+
     # Boundary Geometry
-    numpatches = len(mulU)
-    
+    numpatches = len(multiU)
+
     for ipatch in range(0,numpatches):
-        Ui = mulU[ipatch]
-        Vi = mulV[ipatch]
-        
-        pi = mulp[ipatch]
-        qi = mulq[ipatch]
-        
-        Pi = fullP[idctrlpts[ipatch],:]
-        wi = fullw[idctrlpts[ipatch],:]
-        
-        cbpts = rbs.nurbs2DBoundary(Ui,Vi,pi,qi,Pi,wi)
+        Ui = multiU[ipatch]
+        Vi = multiV[ipatch]
+
+        pi = multip[ipatch]
+        qi = multiq[ipatch]
+
+        Pi = fullP[idcontrolpoints[ipatch],:]
+        wi = fullw[idcontrolpoints[ipatch],:]
+
+        surface_i = rbs.NURBSSurface(Ui,Vi,pi,qi,Pi,wi)
+        cbpts = surface_i.createBoundary()
+        # cbpts = rbs.nurbs2DBoundary(Ui,Vi,pi,qi,Pi,wi)
         fieldplot = ax.fill(cbpts[:,0],cbpts[:,1],facecolor='none',edgecolor='black',linewidth=1.5)
 
     # Control Points
@@ -375,7 +380,7 @@ def plotMultipatchGeometry(mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,dirichletco
     numpt = 5
     loadcoor = []
     loadfield = []
-    
+
     # Rotation matrix for -pi/2
     rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
 
@@ -405,18 +410,18 @@ def plotMultipatchGeometry(mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,dirichletco
         # Extracting the value of the load in the face
         load = valuesload[iload]
 
-        Ui = mulU[ipatch]
-        Vi = mulV[ipatch]
-        
-        pi = mulp[ipatch]
-        qi = mulq[ipatch]
-        
-        Pi = fullP[idctrlpts[ipatch],:]
-        wi = fullw[idctrlpts[ipatch],:]
-        
+        Ui = multiU[ipatch]
+        Vi = multiV[ipatch]
+
+        pi = multip[ipatch]
+        qi = multiq[ipatch]
+
+        Pi = fullP[idcontrolpoints[ipatch],:]
+        wi = fullw[idcontrolpoints[ipatch],:]
+
         mu = len(Ui) - 1
         mv = len(Vi) - 1
-        
+
         Pwl = rbs.weightedControlPoints(Pi,wi)
         Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
 
@@ -460,14 +465,14 @@ def plotMultipatchGeometry(mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,dirichletco
             loadcoor1 = np.vstack((loadcoor1,loadcoor[ld]))
             loadfield1 = np.vstack((loadfield1,loadfield[ld]))
 
-#    # neumannplot = ax.scatter(loadcoor1[:,0],loadcoor1[:,1],c = "b",marker = "s")
+    # neumannplot = ax.scatter(loadcoor1[:,0],loadcoor1[:,1],c = "b",marker = "s")
     neumannplot = ax.quiver(loadcoor1[:,0],loadcoor1[:,1],loadfield1[:,0],loadfield1[:,1],color=['b'])
 
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_title(titlestring)
     # Uncomment for example2
-#    plt.legend((dirichletplot,neumannplot),('Displacement restrictions','Load conditions'),loc='upper right',bbox_to_anchor=(1.2,1.0))
+    # plt.legend((dirichletplot,neumannplot),('Displacement restrictions','Load conditions'),loc='upper right',bbox_to_anchor=(1.2,1.0))
     # Uncomment for example3
     plt.legend((dirichletplot,neumannplot),('Restrictions','Loads'),loc='right',bbox_to_anchor=(1.2,0.5))
     plt.tight_layout()

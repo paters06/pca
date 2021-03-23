@@ -86,14 +86,14 @@ def mainProgram():
 
     # pre2D.plotGeometry(geomsurface,dirichletBCList,neumannConditions,boundaryPreprocessing)
 
-    K,F = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
-                                        materialProperties,boundaryPreprocessing,neumannConditions)
+    # K,F = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
+    #                                     materialProperties,boundaryPreprocessing,neumannConditions)
 
-    Kred,Fred,removedDofs,totalDofs = matEqnSol.boundaryConditionsEnforcement(K,F,dirichletBCList)
+    # Kred,Fred,removedDofs,totalDofs = matEqnSol.boundaryConditionsEnforcement(K,F,dirichletBCList)
 
-    dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
+    # dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
 
-    post2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
+    # post2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 
 mainProgram()
 

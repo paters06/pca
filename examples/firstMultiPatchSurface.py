@@ -16,15 +16,12 @@ import os
 import sys
 
 # Get current working directory
-dir1 = os.getcwd()
+# Command found in https://note.nkmk.me/en/python-script-file-path/
+dir1 = os.path.dirname(os.path.abspath(__file__))
 # Insert .. command to go to the upper directory
 dir2 = dir1 + '/..'
-# Change directory
-os.chdir(dir2)
-# Get the new current working directory
-dir3 = os.getcwd()
 # Setting the package directory path for the modules execution
-sys.path.append(dir3)
+sys.path.append(dir2)
 #######################################################################
 
 # Local project
@@ -76,19 +73,21 @@ multiV = [np.array([0,0,1,1]),np.array([0,0,1,1])]
 #U = np.array([0,0,1,1])
 #V = np.array([0,0,1,1])
 
+surface = rbs.MultiPatchNURBSSurface(multiU,multiV,multip,multiq,\
+                                     fullP,fullw,idcontrolpoints)
+
+
+
 localRefinement = 'Y'
 patchesToRefine = [0,1]
 reflist = [['h','h','h','h'],['h','h']]
 dirlist = [['U','V','U','V'],['U','V']]
 
 if localRefinement == 'Y':
-    multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints,localcontrolpoints = \
-    srfn.localPatchRefinement(patchesToRefine,reflist,dirlist,multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints,localcontrolpoints)
+    localcontrolpoints = srfn.localPatchRefinement(surface,patchesToRefine,reflist,dirlist,localcontrolpoints)
 
+fullcpts = surface.createMultipatchSurface()
+fullcpu,fullcpv = surface.createMultipatchTangentSurface()
 
-#Computing the surface
-fullcpts = rbs.multipatchNurbsSurface(multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints)
-fullcpu,fullcpv = rbs.multipatchNurbsSurfaceTangent(multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints)
-plts.plotmultipatchSurface(fullcpts,localcontrolpoints)
-#plts.plotmultipatchTangentSurface(fullcpts,fullcpu)
-#plts.plotmultipatchTangentSurface(fullcpts,fullcpv)
+# surface.plotMultipatchSurface()
+# surface.plotMultipatchTangentSurface("u")

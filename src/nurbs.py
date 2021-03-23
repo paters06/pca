@@ -127,7 +127,6 @@ class NURBSSurface:
         Initialize the nurbs object with the control points
         and their respective weights,the degree of the spline,
         and the knot vector for both parametric directions
-
         """
         self.U = U
         self.V = V
@@ -139,14 +138,12 @@ class NURBSSurface:
     def retrieveSurfaceInformation(self):
         """
         Getter method for the surface class
-
         """
         return self.U,self.V,self.p,self.q,self.P,self.w
 
     def updateSurfaceInformation(self,U,V,p,q,P,w):
         """
         Setter method for the surface class
-
         """
         self.U = U
         self.V = V
@@ -158,7 +155,6 @@ class NURBSSurface:
     def createSurface(self):
         """
         Create a nurbs surface for further plotting
-
         """
         numpoints = 41
         urank = np.linspace(self.U.min(),self.U.max(),numpoints)
@@ -195,7 +191,6 @@ class NURBSSurface:
     def createTangentSurface(self):
         """
         Create a nurbs tangent surface for further plotting
-
         """
         numpoints = 41
         urank = np.linspace(self.U.min(),self.U.max(),numpoints)
@@ -232,10 +227,56 @@ class NURBSSurface:
 
         return self.cpu,self.cpv
 
+    def createBoundary(self):
+        """
+        Create a boundary of the nurbs surface for further plotting
+        """
+        Pwl = weightedControlPoints(self.P,self.w)
+        Pw = listToGridControlPoints(Pwl,self.U,self.V,self.p,self.q)
+
+        mu = len(self.U) - 1
+        mv = len(self.V) - 1
+        nu = mu - self.p - 1
+        nv = mv - self.q - 1
+
+        idxu = np.arange(0,self.p+1)
+        idxv = np.arange(0,self.q+1)
+
+        boundarycoor = []
+
+        boundlimits = [[np.array([0.0,0.0]),np.array([1.0,0.0])],
+                      [np.array([1.0,0.0]),np.array([1.0,1.0])],
+                      [np.array([1.0,1.0]),np.array([0.0,1.0])],
+                      [np.array([0.0,1.0]),np.array([0.0,0.0])]]
+
+        numpt = 11
+        for bndlim in boundlimits:
+            parampath = np.linspace(bndlim[0],bndlim[1],numpt,endpoint=True)
+            coor = np.zeros((parampath.shape[0],2))
+            ipath = 0
+            for ppath in parampath:
+                uspan = bfunc.findKnotInterval(nu,self.p,ppath[0],self.U)
+                vspan = bfunc.findKnotInterval(nv,self.q,ppath[1],self.V)
+                idR = nonZeroIndicesSurface(uspan,vspan,self.p,self.q,nu)
+
+                R = bivariateRationalFunction(mu,mv,self.p,self.q,uspan,vspan,ppath[0],ppath[1],self.U,self.V,Pw)
+                S = R@self.P[idR,:]
+                coor[ipath,:] = S
+                ipath += 1
+
+            boundarycoor.append(coor)
+
+        for bc in range(len(boundarycoor)):
+            if bc == 0:
+                self.boundarycoor1 = boundarycoor[bc]
+            else:
+                self.boundarycoor1 = np.vstack((self.boundarycoor1,boundarycoor[bc]))
+
+        return self.boundarycoor1
+
     def plotSurface(self):
         """
         Plot the surface
-
         """
         cx = self.cpts[0,:,:]
         cy = self.cpts[1,:,:]
@@ -253,7 +294,6 @@ class NURBSSurface:
     def plotTangentSurface(self,component):
         """
         Plot the tangent surface
-
         """
         cx = self.cpts[0,:,:]
         cy = self.cpts[1,:,:]
@@ -273,6 +313,204 @@ class NURBSSurface:
         # ax.contour3D(cx,cy,cz,cmap='viridis')
         ax.plot_surface(cx,cy,cz,cmap='viridis')
         plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['k'],length = 0.01,normalize = True)
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        plt.show()
+
+class MultiPatchNURBSSurface():
+    """
+    A class that represents an object conformed
+    by multiple patches of nurbs surfaces
+    """
+    def __init__(self,multiU,multiV,multip,multiq,fullP,fullw,idctrlpts):
+        """
+        Constructor for the multipatch object
+        It will be implemented as an class of arrays
+        """
+        self.multiU = multiU
+        self.multiV = multiV
+        self.multip = multip
+        self.multiq = multiq
+        self.fullP = fullP
+        self.fullw = fullw
+        self.idcontrolpoints = idctrlpts
+
+    def retrieveSurfaceInformation(self):
+        """
+        Getter method for the multipatch surface class
+        """
+        return self.multiU,self.multiV,self.multip,self.multiq,self.fullP,self.fullw,self.idcontrolpoints
+
+    def updateSurfaceInformation(self,multiU,multiV,multip,multiq,fullP,fullw,idctrlpts):
+        """
+        Setter method for the multipatch surface class
+        """
+        self.multiU = multiU
+        self.multiV = multiV
+        self.multip = multip
+        self.multiq = multiq
+        self.fullP = fullP
+        self.fullw = fullw
+        self.idcontrolpoints = idctrlpts
+
+    def createMultipatchSurface(self):
+        """
+        Create a surface of multiple nurbs patches for further plotting
+        """
+        numpoints = 11
+
+        numpatches = len(self.multiU)
+
+        self.fullcpts = []
+
+        for ipatch in range(0,numpatches):
+            Ui = self.multiU[ipatch]
+            Vi = self.multiV[ipatch]
+
+            pi = self.multip[ipatch]
+            qi = self.multiq[ipatch]
+
+            urank = np.linspace(Ui.min(),Ui.max(),numpoints)
+            vrank = np.linspace(Vi.min(),Vi.max(),numpoints)
+
+            Pi = self.fullP[self.idcontrolpoints[ipatch],:]
+            wi = self.fullw[self.idcontrolpoints[ipatch],:]
+
+            Pwl = weightedControlPoints(Pi,wi)
+            Pw = listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
+
+            mui = len(Ui) - 1
+            mvi = len(Vi) - 1
+            nui = mui - pi - 1
+            nvi = mvi - qi - 1
+
+            cpts = np.zeros((Pi.shape[1],len(urank),len(vrank)))
+
+            for j in range(len(vrank)):
+                for i in range(len(urank)):
+                    uspan = bfunc.findKnotInterval(nui,pi,urank[i],Ui)
+                    vspan = bfunc.findKnotInterval(nvi,qi,vrank[j],Vi)
+
+                    idR = nonZeroIndicesSurface(uspan,vspan,pi,qi,nui)
+
+                    R = bivariateRationalFunction(mui,mvi,pi,qi,uspan,vspan,urank[i],vrank[j],Ui,Vi,Pw)
+                    S = R@Pi[idR,:]
+
+                    cpts[:,i,j] = S
+                # End i loop
+            # End j loop
+
+            self.fullcpts.append(cpts)
+        # End patch loop
+
+        return self.fullcpts
+
+    def createMultipatchTangentSurface(self):
+        """
+        Create a surface of the derivatives over multiple nurbs patches
+        for further plotting
+        """
+        numpoints = 11
+
+        numpatches = len(self.multiU)
+
+        self.fullcpu = []
+        self.fullcpv = []
+
+        for ipatch in range(0,numpatches):
+            Ui = self.multiU[ipatch]
+            Vi = self.multiV[ipatch]
+
+            pi = self.multip[ipatch]
+            qi = self.multiq[ipatch]
+
+            urank = np.linspace(Ui.min(),Ui.max(),numpoints)
+            vrank = np.linspace(Vi.min(),Vi.max(),numpoints)
+
+            Pi = self.fullP[self.idcontrolpoints[ipatch]]
+            wi = self.fullw[self.idcontrolpoints[ipatch]]
+
+            Pwl = weightedControlPoints(Pi,wi)
+            Pw = listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
+
+            mui = len(Ui) - 1
+            mvi = len(Vi) - 1
+            nui = mui - pi - 1
+            nvi = mvi - qi - 1
+
+            # cpts = np.zeros((Pi.shape[1],len(urank),len(vrank)))
+            cpu = np.zeros((Pi.shape[1],len(urank),len(vrank)))
+            cpv = np.zeros((Pi.shape[1],len(urank),len(vrank)))
+
+            for j in range(len(vrank)):
+                for i in range(len(urank)):
+                    uspan = bfunc.findKnotInterval(nui,pi,urank[i],Ui)
+                    vspan = bfunc.findKnotInterval(nvi,qi,vrank[j],Vi)
+
+                    idR = nonZeroIndicesSurface(uspan,vspan,pi,qi,nui)
+
+                    R = bivariateRationalFunction(mui,mvi,pi,qi,uspan,vspan,urank[i],vrank[j],Ui,Vi,Pw)
+                    S = R@Pi[idR,:]
+
+                    Ralph = bivariateRationalGradient(mui,mvi,pi,qi,uspan,vspan,urank[i],vrank[j],Ui,Vi,Pw)
+                    dS = Ralph@Pi[idR,:]
+
+                    # cpts[:,i,j] = S
+                    cpu[:,i,j] = dS[1,:]
+                    cpv[:,i,j] = dS[2,:]
+
+            self.fullcpu.append(cpu)
+            self.fullcpv.append(cpv)
+
+        return self.fullcpu,self.fullcpv
+
+    def plotMultipatchSurface(self):
+        """
+        Plot the multipatch surface
+        """
+        fig = plt.figure()
+        ax = plt.axes(projection = '3d')
+        # ax.set_aspect('equal','box')
+        for ipatch in range(0,len(self.fullcpts)):
+            cpts = self.fullcpts[ipatch]
+            cx = cpts[0,:,:]
+            cy = cpts[1,:,:]
+            cz = cpts[2,:,:]
+            # ax.contour3D(cx, cy, cz, 50, cmap = 'viridis')
+            ax.plot_surface(cx, cy, cz, cmap = 'viridis')
+
+        ax.scatter(self.fullP[:,0],self.fullP[:,1],self.fullP[:,2], color = 'red')
+
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        plt.show()
+
+    def plotMultipatchTangentSurface(self,component):
+        """
+        Plot the multipatch tangent surface
+        """
+        fig = plt.figure()
+        ax = plt.axes(projection = '3d')
+        for ipatch in range(0,len(self.fullcpts)):
+            cpts = self.fullcpts[ipatch]
+            if component == "u":
+                cppts = self.fullcpu[ipatch]
+            else:
+                cppts = self.fullcpv[ipatch]
+
+            cx = cpts[0,:,:]
+            cy = cpts[1,:,:]
+            cz = cpts[2,:,:]
+
+            cpx = cppts[0,:,:]
+            cpy = cppts[1,:,:]
+            cpz = cppts[2,:,:]
+
+            ax.plot_surface(cx, cy, cz, cmap = 'viridis')
+            plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['b'],length = 0.01,normalize = True)
+
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.set_zlabel('z')
@@ -303,8 +541,8 @@ def listToGridControlPoints(Pl,U,V,p,q):
     #Number of control points in the V direction
     NV = len(V) - q - 1
 
-#    print("NU:",NU)
-#    print("NV:",NV)
+    # print("NU:",NU)
+    # print("NV:",NV)
 
     Pg = np.zeros((Pl.shape[1],NU,NV))
 
@@ -414,291 +652,3 @@ def bivariateRationalGradient(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
     dR[2,:] = (dA[1,:] - dW[1]*biN)/W
 
     return dR
-
-################## NURBS CURVES ######################
-
-def nurbsCurve(U,p,P,w):
-    numpoints = 41
-    urank = np.linspace(U.min(),U.max(),numpoints)
-
-    cpts = np.zeros((numpoints,2))
-
-    mu = len(U) - 1
-    nu = mu - p - 1
-    idx = np.arange(0,p+1)
-
-    for i in range(len(urank)):
-        uspan = bfunc.findKnotInterval(nu,p,urank[i],U)
-        idxU = uspan + idx - p
-        nbas = bfunc.basisFunction(uspan,urank[i],mu,p,U)
-
-        nbas = np.reshape(nbas,(1,len(nbas)))
-
-        ratFunc = (nbas*w[idxU,:].T)/(nbas@w[idxU,:])
-
-        cpts[i,:] = ratFunc@P[idxU,:]
-    return cpts
-
-def nurbsCurveTangent(U,p,P,w):
-    numpoints = 41
-    urank = np.linspace(U.min(),U.max(),numpoints)
-
-    cppts = np.zeros((numpoints,2))
-
-    Pw = weightedControlPoints(P,w)
-
-    mu = len(U) - 1
-    nu = mu - p - 1
-    idx = np.arange(0,p+1)
-
-    # Derivative order
-    d = 1
-
-    for i in range(len(urank)):
-        uspan = bfunc.findKnotInterval(nu,p,urank[i],U)
-        idxU = uspan + idx - p
-        nbas = bfunc.basisFunction(uspan,urank[i],mu,p,U)
-        dnbasU = bfunc.derBasisFunction(uspan,urank[i],mu,p,U,d)
-
-        """Just using the formulas way"""
-#        Aders = dnbasU*Pw[idxU,-1].T
-#        wders = dnbasU@Pw[idxU,-1]
-#        wders = np.reshape(wders,(len(wders),1))
-#        dRatdU = (Aders - (wders*nbas))/wders[0]
-#        Ck = dRatdU@P[idxU,:]
-
-        """The NURBS Book way"""
-
-#        dCw = dnbasU@Pw[idxU,:]
-        # Selecting colums from 0 to the previous to the last one
-#        Aders = dCw[:,0:-1]
-        # Selecting the last column
-#        wders = dCw[:,-1]
-#        Ck = rationalCurveDerivative(Aders,wders,d)
-
-        """Hughes' way"""
-        Aders = dnbasU*Pw[idxU,-1].T
-        wders = dnbasU@Pw[idxU,-1]
-        dRatdU = univariateRationalDerivative(Aders,wders,d)
-        Ck = dRatdU@P[idxU,:]
-
-        cppts[i,:] = Ck[d,:]
-
-    return cppts
-
-################# NURBS SURFACES #####################
-
-def nurbs2DBoundary(U,V,p,q,P,w):
-    Pwl = weightedControlPoints(P,w)
-    Pw = listToGridControlPoints(Pwl,U,V,p,q)
-
-    mu = len(U) - 1
-    mv = len(V) - 1
-    nu = mu - p - 1
-    nv = mv - q - 1
-
-    idxu = np.arange(0,p+1)
-    idxv = np.arange(0,q+1)
-
-    boundarycoor = []
-
-    boundlimits = [[np.array([0.0,0.0]),np.array([1.0,0.0])],
-                  [np.array([1.0,0.0]),np.array([1.0,1.0])],
-                  [np.array([1.0,1.0]),np.array([0.0,1.0])],
-                  [np.array([0.0,1.0]),np.array([0.0,0.0])]]
-
-    numpt = 11
-    for bndlim in boundlimits:
-        parampath = np.linspace(bndlim[0],bndlim[1],numpt,endpoint=True)
-        coor = np.zeros((parampath.shape[0],2))
-        ipath = 0
-        for ppath in parampath:
-            uspan = bfunc.findKnotInterval(nu,p,ppath[0],U)
-            vspan = bfunc.findKnotInterval(nv,q,ppath[1],V)
-            idR = nonZeroIndicesSurface(uspan,vspan,p,q,nu)
-
-            R = bivariateRationalFunction(mu,mv,p,q,uspan,vspan,ppath[0],ppath[1],U,V,Pw)
-            S = R@P[idR,:]
-            coor[ipath,:] = S
-            ipath += 1
-
-        boundarycoor.append(coor)
-
-    for bc in range(len(boundarycoor)):
-        if bc == 0:
-            boundarycoor1 = boundarycoor[bc]
-        else:
-            boundarycoor1 = np.vstack((boundarycoor1,boundarycoor[bc]))
-
-    return boundarycoor1
-
-def nurbsSurface(U,V,p,q,P,w):
-    numpoints = 41
-    urank = np.linspace(U.min(),U.max(),numpoints)
-    vrank = np.linspace(V.min(),V.max(),numpoints)
-
-    Pwl = weightedControlPoints(P,w)
-    Pw = listToGridControlPoints(Pwl,U,V,p,q)
-
-    mu = len(U) - 1
-    mv = len(V) - 1
-    nu = mu - p - 1
-    nv = mv - q - 1
-
-    idxu = np.arange(0,p+1)
-    idxv = np.arange(0,q+1)
-
-    cpts = np.zeros((P.shape[1],len(urank),len(vrank)))
-
-    for j in range(len(vrank)):
-        for i in range(len(urank)):
-            uspan = bfunc.findKnotInterval(nu,p,urank[i],U)
-            vspan = bfunc.findKnotInterval(nv,q,vrank[j],V)
-
-            idR = nonZeroIndicesSurface(uspan,vspan,p,q,nu)
-
-            R = bivariateRationalFunction(mu,mv,p,q,uspan,vspan,urank[i],vrank[j],U,V,Pw)
-            S = R@P[idR,:]
-
-            cpts[:,i,j] = S
-    return cpts
-
-def nurbsSurfaceTangent(U,V,p,q,P,w):
-    numpoints = 41
-    urank = np.linspace(U.min(),U.max(),numpoints)
-    vrank = np.linspace(V.min(),V.max(),numpoints)
-
-    Pwl = weightedControlPoints(P,w)
-    Pw = listToGridControlPoints(Pwl,U,V,p,q)
-
-    mu = len(U) - 1
-    mv = len(V) - 1
-    nu = mu - p - 1
-    nv = mv - q - 1
-
-    idxu = np.arange(0,p+1)
-    idxv = np.arange(0,q+1)
-
-    cpu = np.zeros((P.shape[1],len(urank),len(vrank)))
-    cpv = np.zeros((P.shape[1],len(urank),len(vrank)))
-
-    for j in range(len(vrank)):
-        for i in range(len(urank)):
-            uspan = bfunc.findKnotInterval(nu,p,urank[i],U)
-            vspan = bfunc.findKnotInterval(nv,q,vrank[j],V)
-
-            idR = nonZeroIndicesSurface(uspan,vspan,p,q,nu)
-
-            Ralph = bivariateRationalGradient(mu,mv,p,q,uspan,vspan,urank[i],vrank[j],U,V,Pw)
-            dS = Ralph@P[idR,:]
-
-            cpu[:,i,j] = dS[1,:]
-            cpv[:,i,j] = dS[2,:]
-
-    return cpu,cpv
-
-################# MULTIPATCH NURBS SURFACES #####################
-
-def multipatchNurbsSurface(mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts):
-    numpoints = 11
-
-    numpatches = len(mulU)
-
-    fullcpts = []
-
-    for ipatch in range(0,numpatches):
-        Ui = mulU[ipatch]
-        Vi = mulV[ipatch]
-
-        pi = mulp[ipatch]
-        qi = mulq[ipatch]
-
-        urank = np.linspace(Ui.min(),Ui.max(),numpoints)
-        vrank = np.linspace(Vi.min(),Vi.max(),numpoints)
-
-        Pi = fullP[idctrlpts[ipatch],:]
-        wi = fullw[idctrlpts[ipatch],:]
-
-        Pwl = weightedControlPoints(Pi,wi)
-        Pw = listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
-
-        mui = len(Ui) - 1
-        mvi = len(Vi) - 1
-        nui = mui - pi - 1
-        nvi = mvi - qi - 1
-
-        cpts = np.zeros((Pi.shape[1],len(urank),len(vrank)))
-
-        for j in range(len(vrank)):
-            for i in range(len(urank)):
-                uspan = bfunc.findKnotInterval(nui,pi,urank[i],Ui)
-                vspan = bfunc.findKnotInterval(nvi,qi,vrank[j],Vi)
-
-                idR = nonZeroIndicesSurface(uspan,vspan,pi,qi,nui)
-
-                R = bivariateRationalFunction(mui,mvi,pi,qi,uspan,vspan,urank[i],vrank[j],Ui,Vi,Pw)
-                S = R@Pi[idR,:]
-
-                cpts[:,i,j] = S
-            # End i loop
-        # End j loop
-
-        fullcpts.append(cpts)
-    # End patch loop
-
-    return fullcpts
-
-def multipatchNurbsSurfaceTangent(mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts):
-    numpoints = 11
-
-    numpatches = len(mulU)
-
-    fullcpu = []
-    fullcpv = []
-
-    for ipatch in range(0,numpatches):
-        Ui = mulU[ipatch]
-        Vi = mulV[ipatch]
-
-        pi = mulp[ipatch]
-        qi = mulq[ipatch]
-
-        urank = np.linspace(Ui.min(),Ui.max(),numpoints)
-        vrank = np.linspace(Vi.min(),Vi.max(),numpoints)
-
-        Pi = fullP[idctrlpts[ipatch]]
-        wi = fullw[idctrlpts[ipatch]]
-
-        Pwl = weightedControlPoints(Pi,wi)
-        Pw = listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
-
-        mui = len(Ui) - 1
-        mvi = len(Vi) - 1
-        nui = mui - pi - 1
-        nvi = mvi - qi - 1
-
-#        cpts = np.zeros((Pi.shape[1],len(urank),len(vrank)))
-        cpu = np.zeros((Pi.shape[1],len(urank),len(vrank)))
-        cpv = np.zeros((Pi.shape[1],len(urank),len(vrank)))
-
-        for j in range(len(vrank)):
-            for i in range(len(urank)):
-                uspan = bfunc.findKnotInterval(nui,pi,urank[i],Ui)
-                vspan = bfunc.findKnotInterval(nvi,qi,vrank[j],Vi)
-
-                idR = nonZeroIndicesSurface(uspan,vspan,pi,qi,nui)
-
-                R = bivariateRationalFunction(mui,mvi,pi,qi,uspan,vspan,urank[i],vrank[j],Ui,Vi,Pw)
-                S = R@Pi[idR,:]
-
-                Ralph = bivariateRationalGradient(mui,mvi,pi,qi,uspan,vspan,urank[i],vrank[j],Ui,Vi,Pw)
-                dS = Ralph@Pi[idR,:]
-
-#                cpts[:,i,j] = S
-                cpu[:,i,j] = dS[1,:]
-                cpv[:,i,j] = dS[2,:]
-
-        fullcpu.append(cpu)
-        fullcpv.append(cpv)
-
-    return fullcpu,fullcpv

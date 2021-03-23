@@ -134,6 +134,8 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep,neumanncon
                 nMat[1,1::2] = biRatGrad[0,:]
 
                 Fb[globalDOF] += (nMat.T@bvec)*wJac
+        # End iquad loop
+    # End ielem loop
 
     # Load integrals
     print('Computing the load integrals')
@@ -170,11 +172,11 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep,neumanncon
                 unitTangetVec = np.zeros((2,1))
 
             if loadtype == "tangent":
-#                tvec = (loadvalue/abs(loadvalue))*unitTangetVec
+                # tvec = (loadvalue/abs(loadvalue))*unitTangetVec
                 tvec = loadvalue*unitTangetVec
             elif loadtype == "normal":
                 unitNormalVec = rotMat@unitTangetVec
-#                tvec = (loadvalue/abs(loadvalue))*unitNormalVec
+                # tvec = (loadvalue/abs(loadvalue))*unitNormalVec
                 tvec = loadvalue*unitNormalVec
             else:
                 print("Wrong load configuration")
@@ -186,12 +188,15 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep,neumanncon
             nMat[1,1::2] = biRatGrad[0,:]
 
             Fl[globalDOF] += (nMat.T@tvec)*jac1*jac2*numquad1d[iquad][1]
-
+        # End iquad loop
+    # End iload loop
 
     F = Fb + Fl
     return K,F
 
-def assemblyMultipatchWeakForm(mulU,mulV,fullw,mulp,mulq,fullP,idctrlpts,surfaceprep,numquad,matprop,boundaryprep):
+def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundaryprep):
+    multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints = multisurface.retrieveSurfaceInformation()
+
     Ktotal = np.zeros((2*fullP.shape[0],2*fullP.shape[0]))
     Ftotal = np.zeros((2*fullP.shape[0],1))
     Fbtotal = np.zeros((2*fullP.shape[0],1))
@@ -214,19 +219,19 @@ def assemblyMultipatchWeakForm(mulU,mulV,fullw,mulp,mulq,fullP,idctrlpts,surface
     bvec = np.zeros((2,1))
     bvec[1][0] = -rho*9.8
 
-    numpatches = len(mulU)
+    numpatches = len(multiU)
 
     # Patch loop
     print('Computing the strain-energy and body forces integrals')
     for ipatch in range(0,numpatches):
-        Ui = mulU[ipatch]
-        Vi = mulV[ipatch]
+        Ui = multiU[ipatch]
+        Vi = multiV[ipatch]
 
-        pi = mulp[ipatch]
-        qi = mulq[ipatch]
+        pi = multip[ipatch]
+        qi = multiq[ipatch]
 
-        Pi = fullP[idctrlpts[ipatch],:]
-        wi = fullw[idctrlpts[ipatch],:]
+        Pi = fullP[idcontrolpoints[ipatch],:]
+        wi = fullw[idcontrolpoints[ipatch],:]
 
         Kpatch = np.zeros((2*Pi.shape[0],2*Pi.shape[0]))
         Fbpatch = np.zeros((2*Pi.shape[0],1))
@@ -247,8 +252,8 @@ def assemblyMultipatchWeakForm(mulU,mulV,fullw,mulp,mulq,fullP,idctrlpts,surface
         nV = mV - qi - 1
 
         # Global degrees of freedom
-        globalDOF = np.zeros(2*len(idctrlpts[ipatch]),dtype=int)
-        dof0 = 2*np.array(idctrlpts[ipatch])
+        globalDOF = np.zeros(2*len(idcontrolpoints[ipatch]),dtype=int)
+        dof0 = 2*np.array(idcontrolpoints[ipatch])
         dof1 = dof0 + 1
         globalDOF[0::2] = dof0
         globalDOF[1::2] = dof1
@@ -350,14 +355,14 @@ def assemblyMultipatchWeakForm(mulU,mulV,fullw,mulp,mulq,fullP,idctrlpts,surface
         # Extracting the value of the load in the face
         load = valuesload[iload]
 
-        Ui = mulU[ipatch]
-        Vi = mulV[ipatch]
+        Ui = multiU[ipatch]
+        Vi = multiV[ipatch]
 
-        pi = mulp[ipatch]
-        qi = mulq[ipatch]
+        pi = multip[ipatch]
+        qi = multiq[ipatch]
 
-        Pi = fullP[idctrlpts[ipatch],:]
-        wi = fullw[idctrlpts[ipatch],:]
+        Pi = fullP[idcontrolpoints[ipatch],:]
+        wi = fullw[idcontrolpoints[ipatch],:]
 
         Flpatch = np.zeros((2*Pi.shape[0],1))
 
@@ -368,8 +373,8 @@ def assemblyMultipatchWeakForm(mulU,mulV,fullw,mulp,mulq,fullP,idctrlpts,surface
         Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
 
         # Global degrees of freedom
-        globalDOF = np.zeros(2*len(idctrlpts[ipatch]),dtype=int)
-        dof0 = 2*np.array(idctrlpts[ipatch])
+        globalDOF = np.zeros(2*len(idcontrolpoints[ipatch]),dtype=int)
+        dof0 = 2*np.array(idcontrolpoints[ipatch])
         dof1 = dof0 + 1
         globalDOF[0::2] = dof0
         globalDOF[1::2] = dof1
@@ -399,11 +404,11 @@ def assemblyMultipatchWeakForm(mulU,mulV,fullw,mulp,mulq,fullP,idctrlpts,surface
                 unitTangetVec = np.zeros((2,1))
 
             if loadtype[iload] == "tangent":
-#                tvec = (loadvalue/abs(loadvalue))*unitTangetVec
+                # tvec = (loadvalue/abs(loadvalue))*unitTangetVec
                 tvec = load*unitTangetVec
             elif loadtype[iload] == "normal":
                 unitNormalVec = rotMat@unitTangetVec
-#                tvec = (loadvalue/abs(loadvalue))*unitNormalVec
+                # tvec = (loadvalue/abs(loadvalue))*unitNormalVec
                 tvec = load*unitNormalVec
             else:
                 print("Wrong load configuration")

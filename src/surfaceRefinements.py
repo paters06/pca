@@ -745,43 +745,53 @@ def surfaceRefinement(surface,refinementlist,directionlist,paramlist=None):
 
     surface.updateSurfaceInformation(Uout,Vout,pout,qout,Pout,wout)
 
-def localPatchRefinement(patchlist,reflist,dirlist,mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,localctrlpts):
+def localPatchRefinement(multisurface,patchlist,reflist,dirlist,localctrlpts):
+    multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints = multisurface.retrieveSurfaceInformation()
+
     for idpatch in range(len(patchlist)):
         print('Patch #',idpatch)
 
         idPatchToRefine = patchlist[idpatch]
         # Select info of the desired patch to refine
-        Uinit = mulU[idPatchToRefine]
-        Vinit = mulV[idPatchToRefine]
-        pinit = mulp[idPatchToRefine]
-        qinit = mulq[idPatchToRefine]
-        Pinit = fullP[idctrlpts[idPatchToRefine]]
-        winit = fullw[idctrlpts[idPatchToRefine]]
+        Uinit = multiU[idPatchToRefine]
+        Vinit = multiV[idPatchToRefine]
+        pinit = multip[idPatchToRefine]
+        qinit = multiq[idPatchToRefine]
+        Pinit = fullP[idcontrolpoints[idPatchToRefine]]
+        winit = fullw[idcontrolpoints[idPatchToRefine]]
 
-        Uinp,Vinp,pinp,qinp,Pinp,winp = \
-        defaultSurfaceRefinement(reflist[idPatchToRefine],dirlist[idPatchToRefine],Uinit,Vinit,pinit,qinit,Pinit,winit)
+        surface_i = rbs.NURBSSurface(Uinit,Vinit,pinit,qinit,Pinit,winit)
+
+        surfaceRefinement(surface_i,reflist[idPatchToRefine],dirlist[idPatchToRefine])
 
         # Removing the rows of the refined patch
-        Premain_n = np.delete(fullP,idctrlpts[idPatchToRefine],0)
-        wremain_n = np.delete(fullw,idctrlpts[idPatchToRefine],0)
+        Premain_n = np.delete(fullP,idcontrolpoints[idPatchToRefine],0)
+        wremain_n = np.delete(fullw,idcontrolpoints[idPatchToRefine],0)
+
+        Uinp,Vinp,pinp,qinp,Pinp,winp = surface_i.retrieveSurfaceInformation()
 
         # Insert new information about refined patch
-        mulU[idPatchToRefine] = Uinp
-        mulV[idPatchToRefine] = Vinp
-        mulp[idPatchToRefine] = pinp
-        mulq[idPatchToRefine] = qinp
+        multiU[idPatchToRefine] = Uinp
+        multiV[idPatchToRefine] = Vinp
+        multip[idPatchToRefine] = pinp
+        multiq[idPatchToRefine] = qinp
         localctrlpts[idPatchToRefine] = Pinp
         fullP = np.vstack((Pinp,Premain_n))
         fullw = np.vstack((winp,wremain_n))
 
         # Calculate the new global indexing in each patch
-        for idpatch in range(len(idctrlpts)):
-            idctrlpts[idpatch] = []
+        for idpatch in range(len(idcontrolpoints)):
+            idcontrolpoints[idpatch] = []
 
             for pt in localctrlpts[idpatch]:
                 ''' How to find the index of a row in a 2d numpy array:
                     https://stackoverflow.com/questions/18927475/numpy-array-get-row-index-searching-by-a-row '''
                 row_idx = np.where(np.all(fullP==pt,axis=1))[0][0]
-                idctrlpts[idpatch].append(row_idx)
+                idcontrolpoints[idpatch].append(row_idx)
+            # End pt loop
+        # End idpatch loop
+    # End idpatch loop (fix that)
 
-    return mulU,mulV,mulp,mulq,fullP,fullw,idctrlpts,localctrlpts
+    multisurface.updateSurfaceInformation(multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints)
+
+    return localctrlpts

@@ -16,6 +16,9 @@ class SolutionField:
     A class for the solution field
     """
     def __init__(self,surface,D,dtot):
+        """
+        Constructor of the class
+        """
         U,V,p,q,P,w = surface.retrieveSurfaceInformation()
         self.Usol = U
         self.Vsol = V

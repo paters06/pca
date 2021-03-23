@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 ####################################################
-######################PLOTS#########################
+##################### PLOTS ########################
 ####################################################
+
+##################### IGA 1D ########################
 
 def plotCurve1d(cx,uy,*argv):
     fig = plt.figure()
@@ -57,19 +59,7 @@ def plot1DField(cx,uy,field,*argv):
     else:
         plt.show()
 
-#def plotCurve2d(cpts,P,*argv):
-#    fig,ax = plt.subplots()
-#    plt.plot(cpts[:,0],cpts[:,1])
-#    ax.set_aspect('equal','box')
-#    plt.plot(P[:,0],P[:,1],'ro')
-#    plt.plot(P[:,0],P[:,1])
-#    if argv != ():
-#        if argv[0] == 'yes':
-#            plt.savefig(argv[1]+'.png')
-#        else:
-#            plt.show()
-#    else:
-#        plt.show()
+##################### INTERPOLATION ########################
 
 def plotInterpolatedCurve(cx,cy,P,Q):
     fig = plt.figure()
@@ -79,19 +69,7 @@ def plotInterpolatedCurve(cx,cy,P,Q):
     plt.plot(Q[0,:],Q[1,:],'ko')
     plt.show()
 
-#def plotTangentCurve2d(cpts,cppts,P,*argv):
-#    fig = plt.figure()
-#    plt.plot(P[:,0],P[:,1],'ro')
-#    plt.plot(P[:,0],P[:,1])
-#    plt.plot(cpts[:,0],cpts[:,1])
-#    plt.quiver(cpts[:,0],cpts[:,1],cppts[:,0],cppts[:,1],color=['k'])
-#    if argv != ():
-#        if argv[0] == 'yes':
-#            plt.savefig(argv[1]+'.png')
-#        else:
-#            plt.show()
-#    else:
-#        plt.show()
+##################### 3D-CURVES ########################
 
 def plotting3d(cx,cy,cz,*argv):
     fig = plt.figure()
@@ -106,89 +84,7 @@ def plotting3d(cx,cy,cz,*argv):
             else:
                 sys.exit("Missing arguments to plot control points")
 
-#def plottingSurface(cx,cy,cz,*argv):
-#    fig = plt.figure()
-#    ax = plt.axes(projection = '3d')
-#    # ax.contour3D(cx, cy, cz, 50, cmap = 'viridis')
-#    ax.plot_surface(cx, cy, cz, cmap = 'viridis')
-#    if len(argv)==3:
-#        px = np.reshape(argv[0],(len(argv[0]),1))
-#        py = np.reshape(argv[1],(len(argv[1]),1))
-#        pz = np.reshape(argv[2],(len(argv[2]),1))
-#        ax.plot_wireframe(px,py,pz, color = 'red')
-#    ax.set_xlabel('x')
-#    ax.set_ylabel('y')
-#    ax.set_zlabel('z')
-#    plt.show()
-
-def plotmultipatchSurface(fullc,*argv):
-    fig = plt.figure()
-    ax = plt.axes(projection = '3d')
-#    ax.set_aspect('equal','box')
-    if len(argv) != 0:
-        fP = argv[0]
-    for ipatch in range(0,len(fullc)):
-        cpts = fullc[ipatch]
-        cx = cpts[0,:,:]
-        cy = cpts[1,:,:]
-        cz = cpts[2,:,:]
-        # ax.contour3D(cx, cy, cz, 50, cmap = 'viridis')
-        ax.plot_surface(cx, cy, cz, cmap = 'viridis')
-        if len(argv) != 0:
-            P = fP[ipatch]
-            ax.scatter(P[:,0],P[:,1],P[:,2], color = 'red')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z');
-    plt.show()
-
-#def plotTangentSurface(cx,cy,cz,cpx,cpy,cpz,*argv):
-#    fig = plt.figure()
-#    ax = plt.axes(projection = '3d')
-#    #ax.contour3D(cx, cy, cz, 50, cmap = 'binary')
-#    ax.plot_surface(cx, cy, cz, cmap = 'viridis')
-#    plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['k'],length = 0.5,normalize = True)
-##    plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['k'],normalize = True)
-#    if len(argv)==3:
-#        px = np.reshape(argv[0],(len(argv[0]),1))
-#        py = np.reshape(argv[1],(len(argv[1]),1))
-#        pz = np.reshape(argv[2],(len(argv[2]),1))
-#        ax.plot_wireframe(px,py,pz, color = 'red')
-
-#    if argv != ():
-#        ax.set_title(argv[0])
-#    ax.set_xlabel('x')
-#    ax.set_ylabel('y')
-#    ax.set_zlabel('z');
-#    plt.show()
-
-def plotmultipatchTangentSurface(fullc,fullcp,*argv):
-    fig = plt.figure()
-    ax = plt.axes(projection = '3d')
-    for ipatch in range(0,len(fullc)):
-        cpts = fullc[ipatch]
-        cppts = fullcp[ipatch]
-        cx = cpts[0,:,:]
-        cy = cpts[1,:,:]
-        cz = cpts[2,:,:]
-
-        cpx = cppts[0,:,:]
-        cpy = cppts[1,:,:]
-        cpz = cppts[2,:,:]
-
-        ax.plot_surface(cx, cy, cz, cmap = 'viridis')
-        plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['b'],length = 0.01,normalize = True)
-
-        if len(argv)==3:
-            px = np.reshape(argv[0],(len(argv[0]),1))
-            py = np.reshape(argv[1],(len(argv[1]),1))
-            pz = np.reshape(argv[2],(len(argv[2]),1))
-            ax.plot_wireframe(px,py,pz, color = 'red')
-
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z');
-    plt.show()
+##################### 2D-FIELDS ########################
 
 def plotting2DField(cx,cy,fz,*argv):
     fig = plt.figure()
@@ -214,12 +110,12 @@ def plotting2DField(cx,cy,fz,*argv):
 def plotMultipatchField(fullc,fullf,comp,*argv):
     fig = plt.figure()
     ax = plt.axes()
-#    ax = plt.axes(projection = '3d')
+    # ax = plt.axes(projection = '3d')
     titlestring = ""
     colorbarstring = "value"
 
     field = ax.scatter(fullc[:,0],fullc[:,1],c=fullf[:,comp])
-#    field = ax.scatter(fullc[:,0],fullc[:,1],fullf[:,comp],c=fullf[:,comp])
+    # field = ax.scatter(fullc[:,0],fullc[:,1],fullf[:,comp],c=fullf[:,comp])
 
     if argv != ():
         stringlegends = argv[0]
@@ -227,12 +123,14 @@ def plotMultipatchField(fullc,fullf,comp,*argv):
         colorbarstring = stringlegends[1]
 
     cb = fig.colorbar(field)
-#    cb = fig.colorbar(field,extend='both')
+    # cb = fig.colorbar(field,extend='both')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_title(titlestring)
-#    cb.set_label(colorbarstring)
+    # cb.set_label(colorbarstring)
     plt.show()
+
+##################### SURFACE REFINEMENT ########################
 
 def plotKnotInsertion(cx,cy,cxnew,cynew,P,Pnew,*argv):
     fig,ax = plt.subplots(1,2,sharey=True,figsize=(8,4.8))

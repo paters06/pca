@@ -311,7 +311,7 @@ def plotGeometry(surface,dirichletconds,neumannconditions,boundaryprep):
     rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
 
     # Boundary Geometry
-    cbpts = rbs.nurbs2DBoundary(U,V,p,q,P,w)
+    cbpts = surface.createBoundary()
     fieldplot = ax.fill(cbpts[:,0],cbpts[:,1],facecolor='none',edgecolor='black',linewidth=1.5)
 
     # Control Points
