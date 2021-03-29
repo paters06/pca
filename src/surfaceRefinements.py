@@ -691,7 +691,7 @@ def surfaceRefinement(surface,refinementlist,directionlist,paramlist=None):
     for rfnlist in refinementlist:
         dirlist = directionlist[numindex]
 
-        if not paramlist == None:
+        if paramlist is not None:
             # [paramstart,paramend,numknots]
             parlist = paramlist[numindex]
             X = np.linspace(parlist[0],parlist[1],parlist[2])

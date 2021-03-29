@@ -26,6 +26,7 @@ sys.path.append(dir2)
 #######################################################################
 
 # Local project
+import src.basisFunctions as bfunc
 import src.nurbs as rbs
 import src.plottingScripts as plts
 
@@ -34,9 +35,13 @@ U = np.array([0,0,0,1,2,3,3,3])
 w = np.array([[1],[1],[1],[1],[1]])
 p = 2
 
-curve1 = rbs.NURBSCurve(U,p,P,w)
+# pi = 1
+# n = 3
+# Ui = bfunc.knotGeneratorUniform(n,pi)
+# print(Ui)
+
+curve1 = rbs.NURBSCurve(P,w,p,U)
 cpts = curve1.createCurve()
 cppts = curve1.createTangentCurve()
-#curve1.plotCurve()
-curve1.plotTangentCurve()
-
+curve1.plotCurve()
+# curve1.plotTangentCurve()

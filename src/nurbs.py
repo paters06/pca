@@ -20,17 +20,23 @@ class NURBSCurve:
     """
     A class that represent a nurbs curve
     """
-    def __init__(self,U,p,P,w):
+    def __init__(self,P,w,p,U=None):
         """
         Initialize the nurbs object with the control points
         and their respective weights,the degree of the spline,
         and the knot vector
 
         """
-        self.U = U
-        self.p = p
         self.P = P
         self.w = w
+        self.p = p
+
+        if U is None:
+            self.U = bfunc.generateUniformKnotVector(P.shape[0],p)
+        else:
+            self.U = U
+
+    # End constructor method
 
     def createCurve(self):
         """
@@ -122,18 +128,25 @@ class NURBSSurface:
     """
     A class that represent a nurbs surface
     """
-    def __init__(self,U,V,p,q,P,w):
+    def __init__(self,P,w,p,q,U=None,V=None,gridsize=None):
         """
         Initialize the nurbs object with the control points
         and their respective weights,the degree of the spline,
         and the knot vector for both parametric directions
         """
-        self.U = U
-        self.V = V
-        self.p = p
-        self.q = q
         self.P = P
         self.w = w
+        self.p = p
+        self.q = q
+
+        if U is None:
+            self.U = bfunc.generateUniformKnotVector(gridsize[0],p)
+            self.V = bfunc.generateUniformKnotVector(gridsize[1],q)
+        else:
+            self.U = U
+            self.V = V
+
+    # End constructor method
 
     def retrieveSurfaceInformation(self):
         """

@@ -15,18 +15,23 @@ import sys
 #tolerance for knot vector
 tol = 1e-5
 
-def knotGeneratorUniform(n,p):
-    if n<p:
+def generateUniformKnotVector(N,p):
+    if N < p:
         print ("Fatal error")
-        sys.exit("No such vector curve exists, please try n greater than p")
         return np.zeros(p+1)
     else:
-        ustart = np.zeros(p+1)
-        umid = np.zeros(n-p)
-        for j in range(1,n-p+1):
-            umid[j-1] = j/(n-p+1)
-        uend = np.ones(p+1)
-        return np.concatenate([ustart,umid,uend])
+        n = N - 1
+        M = N + p + 1
+        m = M - 1
+        uknot = np.zeros(M)
+
+        for j in range(p+1,m-p):
+            uknot[j] = (j-p)/(n)
+
+        for j in range(n+1,M):
+            uknot[j] = 1.0
+
+        return uknot
 
 def knotGeneratorChord(n,p,tv):
     if n<p:

@@ -17,15 +17,12 @@ import os
 import sys
 
 # Get current working directory
-dir1 = os.getcwd()
+# Command found in https://note.nkmk.me/en/python-script-file-path/
+dir1 = os.path.dirname(os.path.abspath(__file__))
 # Insert .. command to go to the upper directory
 dir2 = dir1 + '/..'
-# Change directory
-os.chdir(dir2)
-# Get the new current working directory
-dir3 = os.getcwd()
 # Setting the package directory path for the modules execution
-sys.path.append(dir3)
+sys.path.append(dir2)
 #######################################################################
 
 import src.nurbs as rbs
@@ -135,7 +132,7 @@ U = np.array([0,0,0,1,1,1])
 V = np.array([0,0,1,1])
 
 
-surface1 = rbs.NURBSSurface(U,V,p,q,P,w)
+surface1 = rbs.NURBSSurface(P,w,p,q,U,V)
 cpts = surface1.createSurface()
 cpu,cpv = surface1.createTangentSurface()
 #surface1.plotSurface()

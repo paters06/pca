@@ -58,9 +58,8 @@ q = 1
 U = np.array([0,0,1,1])
 V = np.array([0,0,1,1])
 
-surface1 = rbs.NURBSSurface(U,V,p,q,P,w)
+surface1 = rbs.NURBSSurface(P,w,p,q,U,V)
 cpts = surface1.createSurface()
 cpu,cpv = surface1.createTangentSurface()
-#surface1.plotSurface()
-surface1.plotTangentSurface("v")
-
+# surface1.plotSurface()
+# surface1.plotTangentSurface("v")

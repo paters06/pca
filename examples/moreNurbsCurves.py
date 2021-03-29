@@ -18,15 +18,12 @@ import os
 import sys
 
 # Get current working directory
-dir1 = os.getcwd()
+# Command found in https://note.nkmk.me/en/python-script-file-path/
+dir1 = os.path.dirname(os.path.abspath(__file__))
 # Insert .. command to go to the upper directory
 dir2 = dir1 + '/..'
-# Change directory
-os.chdir(dir2)
-# Get the new current working directory
-dir3 = os.getcwd()
 # Setting the package directory path for the modules execution
-sys.path.append(dir3)
+sys.path.append(dir2)
 #######################################################################
 
 import src.nurbs as rbs
@@ -62,7 +59,7 @@ w = np.array([[1],[1/np.sqrt(2)],[1]])
 U = np.array([0,0,0,1,1,1])
 p = 2
 
-curve1 = rbs.NURBSCurve(U,p,P,w)
+curve1 = rbs.NURBSCurve(P,w,p,U)
 cpts = curve1.createCurve()
 cppts = curve1.createTangentCurve()
 #curve1.plotCurve()

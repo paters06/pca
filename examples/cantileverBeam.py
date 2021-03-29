@@ -18,7 +18,6 @@ sys.path.append(dir2)
 #######################################################################
 
 # Local project
-import src.plottingScripts as plts
 import src.nurbs as rbs
 import src.preprocessor2D as pre2D
 import src.linearElastoStaticsSolver as linElastStat
@@ -47,51 +46,55 @@ def mainProgram():
     numGaussPoints = 4
     # gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
 
-    Pinit = np.array([[0,0],
-                  	 [0.5*L,0],
-                  	 [L,0],
-                  	 [0,0.5*H],
-                  	 [0.5*L,0.5*H],
-                  	 [L,0.5*H],
-                  	 [0,H],
-                  	 [0.5*L,H],
-                  	 [L,H]])
+    # Pinit = np.array([[0,0],[0.5*L,0],[L,0],[0,0.5*H],
+    #               	 [0.5*L,0.5*H],[L,0.5*H],[0,H],[0.5*L,H],[L,H]])
+    #
+    # winit = np.array([[1],[1],[1],[1],[1],[1],[1],[1],[1]])
 
-    winit = np.array([[1],[1],[1],[1],[1],[1],[1],[1],[1]])
+    Pinit=np.array([[0,0],[3.75,0],[7.5,0],[11.25,0],[15,0],[18.75,0],[22.5,0],
+                    [26.25,0],[30,0],[0,3],[3.75,3],[7.5,3],[11.25,3],[15,3],
+                    [18.75,3],[22.5,3],[26.25,3],[30,3],[0,6],[3.75,6],[7.5,6],
+                    [11.25,6],[15,6],[18.75,6],[22.5,6],[26.25,6],[30,6]])
+
+    winit = np.ones((Pinit.shape[0],1))
+
+    gridsize = [9,3]
 
     #Isogeometric routines
-    Uinit = np.array([0,0,0,1,1,1])
-    Vinit = np.array([0,0,0,1,1,1])
-    # Uinit = np.array([0,0,0.5,1,1])
-    # Vinit = np.array([0,0,0.5,1,1])
+    # Uinit = np.array([0,0,0,1,1,1])
+    # Vinit = np.array([0,0,0,1,1,1])
+    Uinit = np.array([0,0,0.125,0.25,0.375,0.5,0.625,0.75,0.875,1,1])
+    Vinit = np.array([0,0,0.5,1,1])
 
-    pinit = 2
-    qinit = 2
+    pinit = 1
+    qinit = 1
 
-    geomsurface = rbs.NURBSSurface(Uinit,Vinit,pinit,qinit,Pinit,winit)
+    geomsurface = rbs.NURBSSurface(Pinit,winit,pinit,qinit,gridsize=[9,3])
 
-    doRefinement = 'Y'
+    doRefinement = 'N'
 
     if doRefinement == 'Y':
         reflist = ['h','h','h','h']
         dirlist = ['U','V','U','V']
         srfn.surfaceRefinement(geomsurface,reflist,dirlist)
 
-    displacementConditions = [[[0.0,0.0],[0.0,H],"C",0.0]]
+    displacementConditions = [[[0.0,0.0],[0.0,6],"C",0.0]]
     neumannConditions = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
 
     surfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
     pre2D.problemPreprocessing(geomsurface,displacementConditions,neumannConditions)
     numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
+    dbg_scrpt.calculateArea(geomsurface,surfacePreprocessing,numericalquadrature)
+
     # pre2D.plotGeometry(geomsurface,dirichletBCList,neumannConditions,boundaryPreprocessing)
 
-    # K,F = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
-    #                                     materialProperties,boundaryPreprocessing,neumannConditions)
+    K,F = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
+                                        materialProperties,boundaryPreprocessing,neumannConditions)
 
-    # Kred,Fred,removedDofs,totalDofs = matEqnSol.boundaryConditionsEnforcement(K,F,dirichletBCList)
+    Kred,Fred,removedDofs,totalDofs = matEqnSol.boundaryConditionsEnforcement(K,F,dirichletBCList)
 
-    # dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
+    dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
 
     # post2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 
