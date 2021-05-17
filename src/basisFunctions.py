@@ -8,7 +8,6 @@ Modified on Sun Aug 02 15:29:17 2020
 @collaborator: paternina
 """
 #"NURBS"
-
 import numpy as np
 import sys
 

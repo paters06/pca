@@ -109,93 +109,98 @@ def checkColinearPoints(apt,bpt,cpt):
     else:
         return False
 
-def loadPreprocessing(paramnodes,nodeselem,neumannconditions,U,V,p,q):
-    loadednodes = []
-    loadfaces = []
-
+def neumannBCPreprocessing(paramnodes,nodeselem,neumannconditionsdata,U,V,p,q):
     mu = len(U) - 1
     mv = len(V) - 1
     nu = mu - p - 1
     nv = mv - q - 1
 
-    loadelements = []
     boundaryspan = []
     boundarycorners = []
     axisselector = []
-    nonzeroctrlptsload = []
+    nonzeroctrlpts = []
+    neumannbc_type = []
+    neumannbc_value = []
 
-    for cond in neumannconditions:
+    for cond in neumannconditionsdata:
         startpt = np.array(cond[0])
         endpt = np.array(cond[1])
-        loadtype = cond[2]
+
+        neumannnodes = []
+        neumannfaces = []
+        neumannelements = []
 
         # Check the other parametric nodes that belong to the
         # neumann boundary condition
         for inode in range(0,paramnodes.shape[0]):
             if checkColinearPoints(startpt,endpt,paramnodes[inode,:]):
-                loadednodes.append(inode)
+                neumannnodes.append(inode)
 
         # Check the nodes that have applied load and match them
         # with the list of parametric elements
         for ielem in range(0,nodeselem.shape[0]):
-            commom_nodes = set.intersection(set(loadednodes),set(nodeselem[ielem,:]))
+            commom_nodes = set.intersection(set(neumannnodes),set(nodeselem[ielem,:]))
             if len(commom_nodes) == 2:
-                loadelements.append(ielem)
+                neumannelements.append(ielem)
 
         # Check the sides of the loaded parametric elements that
-        # belong t the neumann boundary condition
-        for ldnelm in loadelements:
+        # belong to the neumann boundary condition
+        for ldnelm in neumannelements:
             for j in range(0,4):
                 if j < 3:
                     side_nodes = [nodeselem[ldnelm][j],nodeselem[ldnelm][j+1]]
                 else:
                     side_nodes = [nodeselem[ldnelm][j],nodeselem[ldnelm][0]]
-                face = set.intersection(set(side_nodes),set(loadednodes))
+                face = set.intersection(set(side_nodes),set(neumannnodes))
                 if len(face) == 2:
-                    loadfaces.append(j)
+                    neumannfaces.append(j)
+            # End j for loop
+        # End neumannelements for loop
 
+        for iface in range(0,len(neumannfaces)):
+            elemface = neumannfaces[iface]
+            ielem = neumannelements[iface]
 
-    for iface in range(0,len(loadfaces)):
-        elemface = loadfaces[iface]
-        ielem = loadelements[iface]
+            # Selecting the axis where the jacobian
+            # is not a zero vector on the boundary
+            if elemface == 1 or elemface == 3:
+               paramaxis = 1
+            else:
+               paramaxis = 0
 
-        # Selecting the axis where the jacobian
-        # is not a zero vector on the boundary
-        if elemface == 1 or elemface == 3:
-           paramaxis = 1
-        else:
-           paramaxis = 0
+            if elemface == 0 or elemface == 1:
+                startindex = elemface
+                endindex = elemface + 1
+            elif elemface == 2:
+                startindex = elemface + 1
+                endindex = elemface
+            else:
+                startindex = 3
+                endindex = 0
 
-        if elemface == 0 or elemface == 1:
-            startindex = elemface
-            endindex = elemface + 1
-        elif elemface == 2:
-            startindex = elemface + 1
-            endindex = elemface
-        else:
-            startindex = 3
-            endindex = 0
+            uB = paramnodes[nodeselem[ielem][endindex]][0]
+            uA = paramnodes[nodeselem[ielem][startindex]][0]
+            vB = paramnodes[nodeselem[ielem][endindex]][1]
+            vA = paramnodes[nodeselem[ielem][startindex]][1]
 
-        uB = paramnodes[nodeselem[ielem][endindex]][0]
-        uA = paramnodes[nodeselem[ielem][startindex]][0]
-        vB = paramnodes[nodeselem[ielem][endindex]][1]
-        vA = paramnodes[nodeselem[ielem][startindex]][1]
+            # Computing the corners of the segment
+            apt = np.array([uA,vA])
+            bpt = np.array([uB,vB])
 
-        # Computing the corners of the segment
-        apt = np.array([uA,vA])
-        bpt = np.array([uB,vB])
+            uspan = bfunc.findKnotInterval(nu,p,0.5*(uB + uA),U)
+            vspan = bfunc.findKnotInterval(nv,q,0.5*(vB + vA),V)
 
-        uspan = bfunc.findKnotInterval(nu,p,0.5*(uB + uA),U)
-        vspan = bfunc.findKnotInterval(nv,q,0.5*(vB + vA),V)
+            idR = rbs.nonZeroIndicesSurface(uspan,vspan,p,q,nu)
 
-        idR = rbs.nonZeroIndicesSurface(uspan,vspan,p,q,nu)
+            boundarycorners.append([apt,bpt])
+            boundaryspan.append([uspan,vspan])
+            axisselector.append(paramaxis)
+            nonzeroctrlpts.append(idR)
+            neumannbc_type.append(cond[2])
+            neumannbc_value.append(cond[3])
 
-        boundarycorners.append([apt,bpt])
-        boundaryspan.append([uspan,vspan])
-        axisselector.append(paramaxis)
-        nonzeroctrlptsload.append(idR)
-
-    boundaryprep = [nonzeroctrlptsload,boundaryspan,boundarycorners,axisselector]
+    # End cond for loop
+    boundaryprep = [nonzeroctrlpts,boundaryspan,boundarycorners,axisselector,neumannbc_type,neumannbc_value]
 
     return boundaryprep
 
@@ -276,14 +281,14 @@ def numericalIntegrationPreprocessing(numgauss):
 
     return numericalquad
 
-def problemPreprocessing(surface,dirichletconditions,neumannconditions):
+def problemPreprocessing(surface,dirichletconditionsdata,neumannconditionsdata):
     U,V,p,q,P,w = surface.retrieveSurfaceInformation()
     parametricNodes,nodesInElement,surfacePreprocessing = parametricGrid(U,V,p,q)
-    boundaryPreprocessing = loadPreprocessing(parametricNodes,nodesInElement,neumannconditions,U,V,p,q)
-    dirichletBCList = dirichletBCPreprocessingOnFaces(P,dirichletconditions)
+    boundaryPreprocessing = neumannBCPreprocessing(parametricNodes,nodesInElement,neumannconditionsdata,U,V,p,q)
+    dirichletBCList = dirichletBCPreprocessingOnFaces(P,dirichletconditionsdata)
     return surfacePreprocessing,boundaryPreprocessing,dirichletBCList
 
-def plotGeometry(surface,dirichletconds,neumannconditions,boundaryprep):
+def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
     U,V,p,q,P,w = surface.retrieveSurfaceInformation()
 
     fig = plt.figure()
@@ -298,14 +303,13 @@ def plotGeometry(surface,dirichletconds,neumannconditions,boundaryprep):
     loadcoor = []
     loadfield = []
 
-    loadtype = neumannconditions[0][2]
-    loadvalue = neumannconditions[0][3]
-
     # Extraction of boundary preprocessing
-    nonzeroctrlptsload = boundaryprep[0]
+    nonzeroctrlpts_surface = boundaryprep[0]
     boundaryspan = boundaryprep[1]
     boundarycorners = boundaryprep[2]
     axisselector = boundaryprep[3]
+    neumannbc_type = boundaryprep[4]
+    neumannbc_value = boundaryprep[5]
 
     # Rotation matrix for -pi/2
     rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
@@ -339,67 +343,96 @@ def plotGeometry(surface,dirichletconds,neumannconditions,boundaryprep):
     Pw = rbs.listToGridControlPoints(Pwl,U,V,p,q)
 
     # Neumann Conditions
-    for iload in range(0,len(boundarycorners)):
+    for ineumann in range(0,len(boundarycorners)):
         # Extracting the indices of the non-zero control points of the loaded elements
-        idR = nonzeroctrlptsload[iload]
+        idR = nonzeroctrlpts_surface[ineumann]
         # Extracting the indices for the location of the parametric segment
-        uspan = boundaryspan[iload][0]
-        vspan = boundaryspan[iload][1]
+        uspan = boundaryspan[ineumann][0]
+        vspan = boundaryspan[ineumann][1]
         # Extracting the corners of the parametric segment
-        startpt = boundarycorners[iload][0]
-        endpt = boundarycorners[iload][1]
+        startpt = boundarycorners[ineumann][0]
+        endpt = boundarycorners[ineumann][1]
         # Extracting the non-zero column index of the boundary jacobian
-        paramaxis = axisselector[iload]
+        paramaxis = axisselector[ineumann]
+        # Extracting the type and value of the neumann conditions
+        neumanntype = neumannbc_type[ineumann]
+        neumannval = neumannbc_value[ineumann]
 
-        parampath = np.linspace(startpt,endpt,numpt,endpoint=True)
-        geomcoor = np.zeros((parampath.shape[0],2))
-        fieldpatch = np.zeros((parampath.shape[0],2))
-        ipath = 0
-        for ppath in parampath:
-            biRatGrad = rbs.bivariateRationalGradient(mu,mv,p,q,uspan,vspan,ppath[0],ppath[1],U,V,Pw)
+        if abs(neumannval) > 1e-5:
+            parampath = np.linspace(startpt,endpt,numpt,endpoint=True)
+            geomcoor = np.zeros((parampath.shape[0],2))
+            fieldpatch = np.zeros((parampath.shape[0],2))
+            ipath = 0
+            for ppath in parampath:
+                biRatGrad = rbs.bivariateRationalGradient(mu,mv,p,q,uspan,vspan,ppath[0],ppath[1],U,V,Pw)
 
-            jmat = (biRatGrad[1:3,:]@P[idR,:]).T
+                jmat = (biRatGrad[1:3,:]@P[idR,:]).T
 
-            jvec = jmat[:,paramaxis]
-            normjvec = np.linalg.norm(jvec)
+                jvec = jmat[:,paramaxis]
+                normjvec = np.linalg.norm(jvec)
 
-            if normjvec > 1e-6:
-                unitTangetVec = jvec/normjvec
+                if normjvec > 1e-6:
+                    unitTangetVec = jvec/normjvec
+                else:
+                    unitTangetVec = np.zeros((2,1))
+
+                if neumanntype == "tangent":
+                    neumannvec = (neumannval/abs(neumannval))*unitTangetVec
+                elif neumanntype == "normal":
+                    unitNormalVec = rotMat@unitTangetVec
+                    neumannvec = (neumannval/abs(neumannval))*unitNormalVec
+                else:
+                    print("Wrong Neumann condition configuration")
+
+                geomcoor[ipath,:] = biRatGrad[0,:]@P[idR,:]
+                fieldpatch[ipath,:] = neumannvec.T
+                ipath += 1
+
+            loadcoor.append(geomcoor)
+            loadfield.append(fieldpatch)
+
+    if len(loadcoor) > 0:
+        for ld in range(len(loadcoor)):
+            if ld == 0:
+                print("Entering here")
+                loadcoor1 = loadcoor[ld]
+                loadfield1 = loadfield[ld]
             else:
-                unitTangetVec = np.zeros((2,1))
+                loadcoor1 = np.vstack((loadcoor1,loadcoor[ld]))
+                loadfield1 = np.vstack((loadfield1,loadfield[ld]))
+    else:
+        loadcoor1 = []
+        loadfield1 = []
 
-            if loadtype == "tangent":
-                loadvec = (loadvalue/abs(loadvalue))*unitTangetVec
-            elif loadtype == "normal":
-                unitNormalVec = rotMat@unitTangetVec
-                loadvec = (loadvalue/abs(loadvalue))*unitNormalVec
-            else:
-                print("Wrong load configuration")
+    if phenomenon == "Elasticity":
+        first_string = "Displacement BC"
+        second_string = "Load BC"
+    elif phenomenon == "Heat":
+        first_string = "Temperature BC"
+        second_string = "Flux BC"
+    else:
+        first_string = "Null BC"
+        second_string = "Null BC"
 
-            geomcoor[ipath,:] = biRatGrad[0,:]@P[idR,:]
-            fieldpatch[ipath,:] = loadvec.T
-            ipath += 1
+    if len(loadcoor1) != 0:
+        # neumannplot = ax.scatter(loadcoor1[:,0],loadcoor1[:,1],c = "b",marker = "s")
+        neumannplot = ax.quiver(loadcoor1[:,0],loadcoor1[:,1],loadfield1[:,0],loadfield1[:,1],color=['b'])
 
-        loadcoor.append(geomcoor)
-        loadfield.append(fieldpatch)
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_title(titlestring)
+        # Uncomment for example2
+        plt.legend((dirichletplot,neumannplot),(first_string,second_string),loc='upper right',bbox_to_anchor=(1.2,1.0))
+        # Uncomment for example3
+        # plt.legend((dirichletplot,neumannplot),('Displacement restrictions','Load conditions'),loc='lower right',bbox_to_anchor=(1.2,0.0))
+    else:
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_title(titlestring)
+        # Uncomment for example2
+        plt.legend([dirichletplot],[first_string],loc='upper right',bbox_to_anchor=(1.2,1.0))
+        # Uncomment for example3
+        # plt.legend((dirichletplot),('Displacement restrictions'),loc='lower right',bbox_to_anchor=(1.2,0.0))
 
-    for ld in range(len(loadcoor)):
-        if ld == 0:
-            loadcoor1 = loadcoor[ld]
-            loadfield1 = loadfield[ld]
-        else:
-            loadcoor1 = np.vstack((loadcoor1,loadcoor[ld]))
-            loadfield1 = np.vstack((loadfield1,loadfield[ld]))
-
-    # neumannplot = ax.scatter(loadcoor1[:,0],loadcoor1[:,1],c = "b",marker = "s")
-    neumannplot = ax.quiver(loadcoor1[:,0],loadcoor1[:,1],loadfield1[:,0],loadfield1[:,1],color=['b'])
-
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_title(titlestring)
-    # Uncomment for example2
-    plt.legend((dirichletplot,neumannplot),('Displacement restrictions','Load conditions'),loc='upper right',bbox_to_anchor=(1.2,1.0))
-    # Uncomment for example3
-    # plt.legend((dirichletplot,neumannplot),('Displacement restrictions','Load conditions'),loc='lower right',bbox_to_anchor=(1.2,0.0))
     plt.tight_layout()
     plt.show()

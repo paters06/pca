@@ -117,7 +117,7 @@ qinp = 1
 Uinp = np.array([0,0,0,1,1,1])
 Vinp = np.array([0,0,1,1])
 
-surface1 = rbs.NURBSSurface(Uinp,Vinp,pinp,qinp,Pinp,winp)
+surface1 = rbs.NURBSSurface(Pinp,winp,pinp,qinp,Uinp,Vinp)
 cpts = surface1.createSurface()
 
 # option = 4
@@ -127,15 +127,19 @@ cpts = surface1.createSurface()
 # Uref,Vref,pref,qref,Pref,wref = srfn.pRefinement("V",Uinp,Vinp,pinp,qinp,Pinp,winp)
 # Uref,Vref,pref,qref,Pref,wref = srfn.kRefinement("U",Uinp,Vinp,pinp,qinp,Pinp,winp)
 
-# reflist = ['h']
-# dirlist = ['U']
-reflist = ['h','h']
-dirlist = ['U','U']
+reflist = ['h']
+dirlist = ['U']
+# reflist = ['h','h']
+# dirlist = ['U','V']
 # reflist = ['h','h','h','h']
 # dirlist = ['U','V','U','V']
 paramlist = [[0.1,0.2,5],[0.3,0.5,3]]
 # srfn.surfaceRefinement(surface1,reflist,dirlist)
-# srfn.surfaceRefinement(surface1,reflist,dirlist,paramlist)
+srfn.surfaceRefinement(surface1,reflist,dirlist,paramlist)
+
+reflist = ['h']
+dirlist = ['V']
+srfn.surfaceRefinement(surface1,reflist,dirlist)
 
 cptsref = surface1.createSurface()
 

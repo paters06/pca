@@ -196,6 +196,15 @@ class SolutionField:
 
         return self.sigma
 
+    def showExtremaValues(self):
+        print("Displacements")
+        print("UX ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.upts[0,:,:]),np.min(self.upts[0,:,:])))
+        print("UY ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.upts[1,:,:]),np.min(self.upts[1,:,:])))
+        print("Stresses")
+        print("SXX ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[0,:,:]),np.min(self.sigma[0,:,:])))
+        print("SYY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[1,:,:]),np.min(self.sigma[1,:,:])))
+        print("SXY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[2,:,:]),np.min(self.sigma[2,:,:])))
+
     def plotDisplacementFields(self):
         from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -323,7 +332,10 @@ def postProcessing(surface,D,dtot,surfaceprep,matprop):
     solfield = SolutionField(surface,D,dtot)
     upts,cpts = solfield.displacementField(numpoints,surfaceprep)
     sigmapts = solfield.stressField(numpoints,matprop,surfaceprep)
+
+    solfield.showExtremaValues()
+
     # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],upts[0,:,:],["Ux Displacement Field","[m]"])
     # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],["Sx Stress Field","[Pa]"])
-    # solfield.plotDisplacementFields()
-    solfield.plotStressFields()
+    solfield.plotDisplacementFields()
+    # solfield.plotStressFields()

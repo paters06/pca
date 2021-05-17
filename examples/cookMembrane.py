@@ -30,60 +30,60 @@ import src.debugScripts as dbg_scrpt
 
 def mainProgram():
     #Data
-    L = 1.0
-    H = 0.2
-    E = 2e5 #Pa
-    nu = 0.31
+    # L = 1.0
+    # H = 0.2
+    E = 70 #Pa
+    nu = 0.4999
     rho = 0.0 #kg/m3
     materialProperties = [E,nu,rho]
     u0 = 0.0
-    tv = -1 #Pa
-    # uDirichlet = [1,4,7]
-    # uAxis = [1,0,1,0,1,0]
+    tv = 6.25 #Pa
 
     numGaussPoints = 4
     # gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
 
-    # Pinit = np.array([[0,0],[0.5*L,0],[L,0],[0,0.5*H],
-    #               	 [0.5*L,0.5*H],[L,0.5*H],[0,H],[0.5*L,H],[L,H]])
-    #
-    # winit = np.array([[1],[1],[1],[1],[1],[1],[1],[1],[1]])
+    Pinit = np.array([[0.0,0.0],[0.048,0.044],[0.0,0.044],[0.048,0.06]])
 
-    Pinit=np.array([[0,0],[3.75,0],[7.5,0],[11.25,0],[15,0],[18.75,0],[22.5,0],
-                    [26.25,0],[30,0],[0,3],[3.75,3],[7.5,3],[11.25,3],[15,3],
-                    [18.75,3],[22.5,3],[26.25,3],[30,3],[0,6],[3.75,6],[7.5,6],
-                    [11.25,6],[15,6],[18.75,6],[22.5,6],[26.25,6],[30,6]])
+    # Pinit=np.array([[0,0],[3.75,0],[7.5,0],[11.25,0],[15,0],[18.75,0],[22.5,0],
+    #                 [26.25,0],[30,0],[0,3],[3.75,3],[7.5,3],[11.25,3],[15,3],
+    #                 [18.75,3],[22.5,3],[26.25,3],[30,3],[0,6],[3.75,6],[7.5,6],
+    #                 [11.25,6],[15,6],[18.75,6],[22.5,6],[26.25,6],[30,6]])
 
     winit = np.ones((Pinit.shape[0],1))
 
-    gridsize = [9,3]
-
     #Isogeometric routines
-    # Uinit = np.array([0,0,0,1,1,1])
-    # Vinit = np.array([0,0,0,1,1,1])
-    Uinit = np.array([0,0,0.125,0.25,0.375,0.5,0.625,0.75,0.875,1,1])
-    Vinit = np.array([0,0,0.5,1,1])
+    Uinit = np.array([0,0,1,1])
+    Vinit = np.array([0,0,1,1])
+    # Uinit = np.array([0,0,0.125,0.25,0.375,0.5,0.625,0.75,0.875,1,1])
+    # Vinit = np.array([0,0,0.5,1,1])
 
     pinit = 1
     qinit = 1
 
-    geomsurface = rbs.NURBSSurface(Pinit,winit,pinit,qinit,gridsize=[9,3])
+    geomsurface = rbs.NURBSSurface(Pinit,winit,pinit,qinit,U=Uinit,V=Vinit)
 
-    doRefinement = 'N'
+    doRefinement = 'Y'
 
     if doRefinement == 'Y':
-        reflist = ['h','h','h','h']
+        # reflist = ['h','h','h','h']
+        # dirlist = ['U','V','U','V']
+        reflist = ['p','p','h','h']
         dirlist = ['U','V','U','V']
+        # reflist = ['h','h','h','h','h','h','h','h','h','h']
+        # dirlist = ['U','V','U','V','U','V','U','V','U','V']
+        # reflist = ['p','p','h','h','h','h','h','h','h','h']
+        # dirlist = ['U','V','U','V','U','V','U','V','U','V']
         srfn.surfaceRefinement(geomsurface,reflist,dirlist)
 
-    displacementConditions = [[[0.0,0.0],[0.0,6],"C",0.0]]
+    displacementConditions = [[[0.0,0.0],[0.0,0.044],"C",0.0]]
     neumannConditions = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
 
     surfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
     pre2D.problemPreprocessing(geomsurface,displacementConditions,neumannConditions)
     numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
-    dbg_scrpt.calculateArea(geomsurface,surfacePreprocessing,numericalquadrature)
+    # dbg_scrpt.calculateArea(geomsurface,surfacePreprocessing,numericalquadrature)
+    # print("Elmo")
 
     # pre2D.plotGeometry(geomsurface,dirichletBCList,neumannConditions,boundaryPreprocessing)
 
@@ -94,16 +94,16 @@ def mainProgram():
 
     dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
 
-    # post2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
+    post2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 
-# mainProgram()
-
-import cProfile
-import pstats
-profiler = cProfile.Profile()
-profiler.enable()
 mainProgram()
-profiler.disable()
-# stats = pstats.Stats(profiler).sort_stats('ncalls')
-stats = pstats.Stats(profiler).sort_stats('tottime')
-stats.print_stats()
+
+# import cProfile
+# import pstats
+# profiler = cProfile.Profile()
+# profiler.enable()
+# mainProgram()
+# profiler.disable()
+# # stats = pstats.Stats(profiler).sort_stats('ncalls')
+# stats = pstats.Stats(profiler).sort_stats('tottime')
+# stats.print_stats()
