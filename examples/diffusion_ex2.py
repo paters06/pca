@@ -31,6 +31,8 @@ import src.debugScripts as dbg_scrpt
 def mainProgram():
     #Data
     phenomenon = "Heat"
+    Rmax = 1.0
+    Rmin = 0.7
     kappa = 385 #Pa
     source = 0.0 #kg/m3
     materialProperties = [kappa,source]
@@ -39,27 +41,20 @@ def mainProgram():
     numGaussPoints = 4
     # gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
 
-    Pinit = np.array([[0.0,0.0],[1.0,0.0],[0.0,1.0],[1.0,1.0]])
+    Pinit = np.array([[Rmin,0],[Rmin,Rmin],[0,Rmin],[Rmax,0],[Rmax,Rmax],[0,Rmax]])
 
-    # Pinit=np.array([[0,0],[3.75,0],[7.5,0],[11.25,0],[15,0],[18.75,0],[22.5,0],
-    #                 [26.25,0],[30,0],[0,3],[3.75,3],[7.5,3],[11.25,3],[15,3],
-    #                 [18.75,3],[22.5,3],[26.25,3],[30,3],[0,6],[3.75,6],[7.5,6],
-    #                 [11.25,6],[15,6],[18.75,6],[22.5,6],[26.25,6],[30,6]])
-
-    winit = np.ones((Pinit.shape[0],1))
+    winit = np.array([[1],[0.5*np.sqrt(2)],[1],[1],[0.5*np.sqrt(2)],[1]])
 
     #Isogeometric routines
-    Uinit = np.array([0,0,1,1])
+    Uinit = np.array([0,0,0,1,1,1])
     Vinit = np.array([0,0,1,1])
-    # Uinit = np.array([0,0,0.125,0.25,0.375,0.5,0.625,0.75,0.875,1,1])
-    # Vinit = np.array([0,0,0.5,1,1])
 
-    pinit = 1
+    pinit = 2
     qinit = 1
 
     geomsurface = rbs.NURBSSurface(Pinit,winit,pinit,qinit,U=Uinit,V=Vinit)
 
-    doRefinement = 'Y'
+    doRefinement = 'N'
 
     if doRefinement == 'Y':
         # reflist = ['h','h','h','h']
@@ -72,9 +67,11 @@ def mainProgram():
         # dirlist = ['U','V','U','V','U','V','U','V','U','V']
         srfn.surfaceRefinement(geomsurface,reflist,dirlist)
 
-    displacementConditionsData = [[[0.0,0.0],[0.0,1.0],"C",20.0],[[1.0,0.0],[1.0,1.0],"C",100.0]]
+    displacementConditionsData = [[[0.0,Rmin],[0.0,Rmax],"S",0.0],[[Rmin,0.0],[Rmax,0.0],"S",0.0]]
+    neumannConditionsData = [[[0.0,0.0],[1.0,0.0],"normal",tv]]
+
     # neumannConditionsData = [[[0.0,1.0],[1.0,1.0],"tangent",flux]]
-    neumannConditionsData = [[[0.0,0.0],[1.0,0.0],"tangent",flux],[[0.0,1.0],[1.0,1.0],"tangent",flux]]
+    # neumannConditionsData = [[[0.0,0.0],[1.0,0.0],"tangent",flux],[[0.0,1.0],[1.0,1.0],"tangent",flux]]
 
     surfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
     pre2D.problemPreprocessing(phenomenon,geomsurface,displacementConditionsData,neumannConditionsData)

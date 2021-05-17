@@ -15,11 +15,12 @@ class SolutionField:
     """
     A class for the solution field
     """
-    def __init__(self,surface,D,dtot):
+    def __init__(self,phenomenon,surface,D,dtot):
         """
         Constructor of the class
         """
         U,V,p,q,P,w = surface.retrieveSurfaceInformation()
+        self.phenomenon = phenomenon
         self.Usol = U
         self.Vsol = V
         self.psol = p
@@ -28,6 +29,55 @@ class SolutionField:
         self.wsol = w
         self.Dsol = D
         self.dtot = dtot
+
+    def temperatureField(self,numpoints,surfaceprep):
+        mu = len(self.Usol) - 1
+        mv = len(self.Vsol) - 1
+        nu = mu - self.psol - 1
+        nv = mv - self.qsol - 1
+
+        # Extraction of surface preprocessing
+        nonzeroctrlpts = surfaceprep[0]
+        surfacespan = surfaceprep[1]
+        elementcorners = surfaceprep[2]
+
+        numElems = len(elementcorners)
+        numelemsu = len(np.unique(self.Usol)) - 1
+        numelemsv = len(np.unique(self.Vsol)) - 1
+
+        Pwl = rbs.weightedControlPoints(self.Psol,self.wsol)
+        Pw = rbs.listToGridControlPoints(Pwl,self.Usol,self.Vsol,self.psol,self.qsol)
+
+        # Geometric coordinates
+        self.cpts = np.zeros((2,numelemsu*numpoints,numelemsv*numpoints))
+
+        # Temperature
+        self.tpts = np.zeros((numelemsu*numpoints,numelemsv*numpoints))
+
+        for ielem in range(0,numElems):
+            # Extracting the indices of the non-zero control points
+            idR = nonzeroctrlpts[ielem]
+            # Extracting the indices for the location of the parametric element
+            uspan = surfacespan[ielem][0]
+            vspan = surfacespan[ielem][1]
+            # Extracting the corners of the parametric element
+            apt = elementcorners[ielem][0]
+            cpt = elementcorners[ielem][1]
+
+            urank = np.linspace(apt[0],cpt[0],numpoints)
+            vrank = np.linspace(apt[1],cpt[1],numpoints)
+
+            jv = ielem//numelemsu
+            iu = ielem%numelemsu
+
+            for j in range(0,numpoints):
+                for i in range(0,numpoints):
+                    R = rbs.bivariateRationalFunction(mu,mv,self.psol,self.qsol,uspan,vspan,urank[i],vrank[j],self.Usol,self.Vsol,Pw)
+
+                    self.tpts[iu*numpoints + i,jv*numpoints + j] = R@self.Dsol[idR,:]
+                    self.cpts[:,iu*numpoints + i,jv*numpoints + j] = R@self.Psol[idR,:]
+
+        return self.tpts,self.cpts
 
     def displacementField(self,numpoints,surfaceprep):
         mu = len(self.Usol) - 1
@@ -197,13 +247,55 @@ class SolutionField:
         return self.sigma
 
     def showExtremaValues(self):
-        print("Displacements")
-        print("UX ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.upts[0,:,:]),np.min(self.upts[0,:,:])))
-        print("UY ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.upts[1,:,:]),np.min(self.upts[1,:,:])))
-        print("Stresses")
-        print("SXX ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[0,:,:]),np.min(self.sigma[0,:,:])))
-        print("SYY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[1,:,:]),np.min(self.sigma[1,:,:])))
-        print("SXY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[2,:,:]),np.min(self.sigma[2,:,:])))
+        if self.phenomenon == "Elasticity":
+            print("Displacements")
+            print("UX ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.upts[0,:,:]),np.min(self.upts[0,:,:])))
+            print("UY ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.upts[1,:,:]),np.min(self.upts[1,:,:])))
+            print("Stresses")
+            print("SXX ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[0,:,:]),np.min(self.sigma[0,:,:])))
+            print("SYY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[1,:,:]),np.min(self.sigma[1,:,:])))
+            print("SXY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[2,:,:]),np.min(self.sigma[2,:,:])))
+        elif self.phenomenon == "Heat":
+            print("Temperature")
+            print("T ==> Max: {:.5f} °C. Min: {:.5f} °C".format(np.max(self.tpts),np.min(self.tpts)))
+        else:
+            print("Check physics selection")
+
+    def plotTemperatureField(self):
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+        cx = self.cpts[0,:,:]
+        cy = self.cpts[1,:,:]
+        T = self.tpts
+
+        xlength = np.amax(np.absolute(cx))
+        ylength = np.amax(np.absolute(cy))
+
+        aspectRatio = xlength/ylength
+
+        fig,ax1 = plt.subplots()
+
+        # if aspectRatio > 1.5:
+        #     fig, (ax1,ax2) = plt.subplots(2,1,sharex='col',sharey='row')
+        # else:
+        #     fig, (ax1,ax2) = plt.subplots(1,2,sharex='col',sharey='row')
+
+        # fig.suptitle('Temperature field')
+        # fig.subplots_adjust(hspace=0.4, wspace=0.4)
+
+        field1 = ax1.pcolormesh(cx,cy,T,vmin=T.min(),vmax=T.max())
+        ax1.set_title('Temperature Field')
+        ax1.set_xlabel('x')
+        ax1.set_ylabel('y')
+        ax1.set_aspect('equal')
+        # divider = make_axes_locatable(ax1)
+        # cax = divider.append_axes("right",size="5%",pad=0.1)
+        cb1 = fig.colorbar(field1,label='[°C]')
+
+        # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],["Sx Stress Field","[Pa]"])
+
+        plt.tight_layout()
+        plt.show()
 
     def plotDisplacementFields(self):
         from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -316,7 +408,7 @@ class SolutionField:
         plt.tight_layout()
         plt.show()
 
-def postProcessing(surface,D,dtot,surfaceprep,matprop):
+def postProcessing(phenomenon,surface,D,dtot,surfaceprep,matprop):
     elementcorners = surfaceprep[2]
     numelems = len(elementcorners)
 
@@ -329,13 +421,17 @@ def postProcessing(surface,D,dtot,surfaceprep,matprop):
     else:
         numpoints = 5
 
-    solfield = SolutionField(surface,D,dtot)
-    upts,cpts = solfield.displacementField(numpoints,surfaceprep)
-    sigmapts = solfield.stressField(numpoints,matprop,surfaceprep)
+    solfield = SolutionField(phenomenon,surface,D,dtot)
+    if phenomenon == "Elasticity":
+        upts,cpts = solfield.displacementField(numpoints,surfaceprep)
+        sigmapts = solfield.stressField(numpoints,matprop,surfaceprep)
+        # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],upts[0,:,:],["Ux Displacement Field","[m]"])
+        # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],["Sx Stress Field","[Pa]"])
+
+        solfield.plotDisplacementFields()
+        # solfield.plotStressFields()
+    elif phenomenon == "Heat":
+        upts,tpts = solfield.temperatureField(numpoints,surfaceprep)
+        solfield.plotTemperatureField()
 
     solfield.showExtremaValues()
-
-    # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],upts[0,:,:],["Ux Displacement Field","[m]"])
-    # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],["Sx Stress Field","[Pa]"])
-    solfield.plotDisplacementFields()
-    # solfield.plotStressFields()

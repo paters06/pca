@@ -30,10 +30,9 @@ import src.debugScripts as dbg_scrpt
 
 def mainProgram():
     #Data
-    # L = 1.0
-    # H = 0.2
+    phenomenon = "Elasticity"
     E = 70 #Pa
-    nu = 0.4999
+    nu = 0.3333
     rho = 0.0 #kg/m3
     materialProperties = [E,nu,rho]
     u0 = 0.0
@@ -67,34 +66,33 @@ def mainProgram():
     if doRefinement == 'Y':
         # reflist = ['h','h','h','h']
         # dirlist = ['U','V','U','V']
-        reflist = ['p','p','h','h']
-        dirlist = ['U','V','U','V']
+        # reflist = ['p','p','h','h']
+        # dirlist = ['U','V','U','V']
         # reflist = ['h','h','h','h','h','h','h','h','h','h']
         # dirlist = ['U','V','U','V','U','V','U','V','U','V']
-        # reflist = ['p','p','h','h','h','h','h','h','h','h']
-        # dirlist = ['U','V','U','V','U','V','U','V','U','V']
+        reflist = ['p','p','h','h','h','h','h','h','h','h']
+        dirlist = ['U','V','U','V','U','V','U','V','U','V']
         srfn.surfaceRefinement(geomsurface,reflist,dirlist)
 
     displacementConditions = [[[0.0,0.0],[0.0,0.044],"C",0.0]]
     neumannConditions = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
 
     surfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
-    pre2D.problemPreprocessing(geomsurface,displacementConditions,neumannConditions)
+    pre2D.problemPreprocessing(phenomenon,geomsurface,displacementConditions,neumannConditions)
     numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
     # dbg_scrpt.calculateArea(geomsurface,surfacePreprocessing,numericalquadrature)
-    # print("Elmo")
 
-    # pre2D.plotGeometry(geomsurface,dirichletBCList,neumannConditions,boundaryPreprocessing)
+    # pre2D.plotGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
     K,F = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
                                         materialProperties,boundaryPreprocessing,neumannConditions)
 
-    Kred,Fred,removedDofs,totalDofs = matEqnSol.boundaryConditionsEnforcement(K,F,dirichletBCList)
+    Kred,Fred,removedDofs,totalDofs = matEqnSol.dirichletBCEnforcement(phenomenon,K,F,dirichletBCList)
 
-    dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
+    dtotal,D = matEqnSol.solveMatrixEquations(phenomenon,Kred,Fred,totalDofs,removedDofs,dirichletBCList)
 
-    post2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
+    post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 
 mainProgram()
 

@@ -204,7 +204,7 @@ def neumannBCPreprocessing(paramnodes,nodeselem,neumannconditionsdata,U,V,p,q):
 
     return boundaryprep
 
-def dirichletBCPreprocessingOnFaces(P,dirichletconditions):
+def dirichletBCPreprocessing_Elasticity(P,dirichletconditions):
     dirichletconds = []
 
     # Rotation matrix for -pi/2
@@ -254,6 +254,31 @@ def dirichletBCPreprocessingOnFaces(P,dirichletconditions):
 
     return dirichletconds
 
+def dirichletBCPreprocessing_Heat(P,dirichletconditions):
+    dirichletconds = []
+
+    for cond in dirichletconditions:
+        apt = np.array(cond[0])
+        bpt = np.array(cond[1])
+        value = cond[3]
+
+        for i in range(0,P.shape[0]):
+            nodecond = []
+
+            # Check the control points that belong to the
+            # Dirichlet boundary condition
+            if checkColinearPoints(apt,bpt,P[i,:]):
+                # Insertion of the node
+                nodecond.append(i)
+
+                # Insertion of the enforced value
+                nodecond.append(value)
+
+                # Insertion of the whole package of conditions
+                dirichletconds.append(nodecond)
+
+    return dirichletconds
+
 def numericalIntegrationPreprocessing(numgauss):
     numericalquadrature = np.polynomial.legendre.leggauss(numgauss)
 
@@ -281,11 +306,16 @@ def numericalIntegrationPreprocessing(numgauss):
 
     return numericalquad
 
-def problemPreprocessing(surface,dirichletconditionsdata,neumannconditionsdata):
+def problemPreprocessing(phenomenon,surface,dirichletconditionsdata,neumannconditionsdata):
     U,V,p,q,P,w = surface.retrieveSurfaceInformation()
     parametricNodes,nodesInElement,surfacePreprocessing = parametricGrid(U,V,p,q)
     boundaryPreprocessing = neumannBCPreprocessing(parametricNodes,nodesInElement,neumannconditionsdata,U,V,p,q)
-    dirichletBCList = dirichletBCPreprocessingOnFaces(P,dirichletconditionsdata)
+
+    if phenomenon == "Elasticity":
+        dirichletBCList = dirichletBCPreprocessing_Elasticity(P,dirichletconditionsdata)
+    if phenomenon == "Heat":
+        dirichletBCList = dirichletBCPreprocessing_Heat(P,dirichletconditionsdata)
+
     return surfacePreprocessing,boundaryPreprocessing,dirichletBCList
 
 def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
