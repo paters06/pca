@@ -36,17 +36,11 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
     surfacespan = surfaceprep[1]
     elementcorners = surfaceprep[2]
 
-    # Extraction of boundary preprocessing
-    nonzeroctrlpts_neumannbc = boundaryprep[0]
-    boundaryspan = boundaryprep[1]
-    boundarycorners = boundaryprep[2]
-    axisselector = boundaryprep[3]
-    neumannbc_type = boundaryprep[4]
-    neumannbc_value = boundaryprep[5]
+
 
     paramGrad = np.zeros((2,2))
     numElems = len(elementcorners)
-    numLoadedElems = len(boundarycorners)
+
 
     Pwl = rbs.weightedControlPoints(P,w)
     Pw = rbs.listToGridControlPoints(Pwl,U,V,p,q)
@@ -115,55 +109,67 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
         # End iquad loop
     # End ielem loop
 
-    # Neumann boundary integrals
-    print('Computing the Neumann boundary integrals')
-    for ineumann in range(0,numLoadedElems):
-        # Extracting the indices of the non-zero control points of the loaded elements
-        idR = nonzeroctrlpts_neumannbc[ineumann]
-        # Extracting the indices for the location of the parametric segment
-        uspan = boundaryspan[ineumann][0]
-        vspan = boundaryspan[ineumann][1]
-        # Extracting the corners of the parametric segment
-        aPoint = boundarycorners[ineumann][0]
-        bPoint = boundarycorners[ineumann][1]
-        # Extracting the non-zero column index of the boundary jacobian
-        paramaxis = axisselector[ineumann]
-        # Extracting the type and value of the neumann conditions
-        neumanntype = neumannbc_type[ineumann]
-        neumannval = neumannbc_value[ineumann]
+    if boundaryprep is not None:
+        # Extraction of boundary preprocessing
+        nonzeroctrlpts_neumannbc = boundaryprep[0]
+        boundaryspan = boundaryprep[1]
+        boundarycorners = boundaryprep[2]
+        axisselector = boundaryprep[3]
+        neumannbc_type = boundaryprep[4]
+        neumannbc_value = boundaryprep[5]
 
-        # Global degrees of freedom
-        globalDOF = idR
+        numLoadedElems = len(boundarycorners)
 
-        for iquad in range(numquad1d.shape[0]):
-            coor = parametricCoordinate(aPoint[0],bPoint[0],aPoint[1],bPoint[1],numquad1d[iquad][0],numquad1d[iquad][0])
+        # Neumann boundary integrals
+        print('Computing the Neumann boundary integrals')
+        for ineumann in range(0,numLoadedElems):
+            # Extracting the indices of the non-zero control points of the loaded elements
+            idR = nonzeroctrlpts_neumannbc[ineumann]
+            # Extracting the indices for the location of the parametric segment
+            uspan = boundaryspan[ineumann][0]
+            vspan = boundaryspan[ineumann][1]
+            # Extracting the corners of the parametric segment
+            aPoint = boundarycorners[ineumann][0]
+            bPoint = boundarycorners[ineumann][1]
+            # Extracting the non-zero column index of the boundary jacobian
+            paramaxis = axisselector[ineumann]
+            # Extracting the type and value of the neumann conditions
+            neumanntype = neumannbc_type[ineumann]
+            neumannval = neumannbc_value[ineumann]
 
-            biRatGrad = rbs.bivariateRationalGradient(mU,mV,p,q,uspan,vspan,coor[0][0],coor[0][1],U,V,Pw)
-            Jac = (biRatGrad[1:3,:]@P[idR,:]).T
-            jac1 = np.linalg.norm(Jac[:,paramaxis])
-            jac2 = 0.5*np.sum(bPoint-aPoint)
+            # Global degrees of freedom
+            globalDOF = idR
 
-            if jac1 > 1e-6:
-                unitTangetVec = Jac[:,paramaxis]/jac1
-            else:
-                unitTangetVec = np.zeros((2,1))
+            for iquad in range(numquad1d.shape[0]):
+                coor = parametricCoordinate(aPoint[0],bPoint[0],aPoint[1],bPoint[1],numquad1d[iquad][0],numquad1d[iquad][0])
 
-            if neumanntype == "tangent":
-                tvec = neumannval*unitTangetVec
-            elif neumanntype == "normal":
-                unitNormalVec = rotMat@unitTangetVec
-                tvec = neumannval*unitNormalVec
-            else:
-                print("Wrong load configuration")
+                biRatGrad = rbs.bivariateRationalGradient(mU,mV,p,q,uspan,vspan,coor[0][0],coor[0][1],U,V,Pw)
+                Jac = (biRatGrad[1:3,:]@P[idR,:]).T
+                jac1 = np.linalg.norm(Jac[:,paramaxis])
+                jac2 = 0.5*np.sum(bPoint-aPoint)
 
-            tvec = 0.0
-            nMat = biRatGrad[0,:]
-            nMat = np.reshape(nMat,(len(nMat),1))
+                if jac1 > 1e-6:
+                    unitTangetVec = Jac[:,paramaxis]/jac1
+                else:
+                    unitTangetVec = np.zeros((2,1))
 
-            Fl[globalDOF] += nMat*tvec*jac1*jac2*numquad1d[iquad][1]
-        # End iquad loop
-    # End ineumann loop
+                if neumanntype == "tangent":
+                    tvec = neumannval*unitTangetVec
+                elif neumanntype == "normal":
+                    unitNormalVec = rotMat@unitTangetVec
+                    tvec = neumannval*unitNormalVec
+                else:
+                    print("Wrong load configuration")
 
+                tvec = 0.0
+                nMat = biRatGrad[0,:]
+                nMat = np.reshape(nMat,(len(nMat),1))
+
+                Fl[globalDOF] += nMat*tvec*jac1*jac2*numquad1d[iquad][1]
+            # End iquad loop
+        # End ineumann loop
+    # End if boundary is not None
+    
     F = Fb + Fl
     return K,F
 

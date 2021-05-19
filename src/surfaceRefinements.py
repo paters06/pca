@@ -679,18 +679,10 @@ def kRefinement(dir,X,U,V,p,q,Pwg):
 
     return Uk,Vk,pk,qk,Pwkg
 
-def surfaceRefinement(surface,refinementlist,directionlist,paramlist=None):
-    href = 0
-    pref = 0
-    kref = 0
-
+def surfaceRefinement(surface,rfnnum,rfntype,rfndir,paramlist=None):
     Uin,Vin,pin,qin,Pin,win = surface.retrieveSurfaceInformation()
 
-    numindex = 0
-
-    for rfnlist in refinementlist:
-        dirlist = directionlist[numindex]
-
+    for irfn in range(rfnnum):
         if paramlist is not None:
             # [paramstart,paramend,numknots]
             parlist = paramlist[numindex]
@@ -699,12 +691,12 @@ def surfaceRefinement(surface,refinementlist,directionlist,paramlist=None):
         Pw = rbs.weightedControlPoints(Pin,win)
         Pwgrid = rbs.listToGridControlPoints(Pw,Uin,Vin,pin,qin)
 
-        if dirlist == "U":
+        if rfndir == "U":
             dir = "UDIR"
             if paramlist == None:
                 Ured = Uin[pin:-pin]
                 X = 0.5*(Ured[0:-1] + Ured[1:])
-        elif dirlist == "V":
+        elif rfndir == "V":
             dir = "VDIR"
             if paramlist == None:
                 Vred = Vin[qin:-qin]
@@ -712,15 +704,12 @@ def surfaceRefinement(surface,refinementlist,directionlist,paramlist=None):
         else:
             print("Wrong parameter direction")
 
-        if rfnlist == 'h':
+        if rfntype == 'h':
             Uout,Vout,pout,qout,Qwout = hRefinement(dir,X,Uin,Vin,pin,qin,Pwgrid)
-            href += 1
-        elif rfnlist == 'p':
+        elif rfntype == 'p':
             Uout,Vout,pout,qout,Qwout = pRefinement(dir,Uin,Vin,pin,qin,Pwgrid)
-            pref += 1
-        elif rfnlist == 'k':
+        elif rfntype == 'k':
             Uout,Vout,pout,qout,Qwout = kRefinement(dir,X,Uin,Vin,pin,qin,Pwgrid)
-            kref += 1
         else:
             print("Invalid option")
 
@@ -734,14 +723,7 @@ def surfaceRefinement(surface,refinementlist,directionlist,paramlist=None):
         Pin = Pout
         win = wout
 
-        numindex += 1
-
-    print('Number of h-refinements')
-    print(href)
-    print('Number of p-refinements')
-    print(pref)
-    print('Number of k-refinements')
-    print(kref)
+    print("{0} {1} refinements in {2} direction".format(rfnnum,rfntype,rfndir))
 
     surface.updateSurfaceInformation(Uout,Vout,pout,qout,Pout,wout)
 
