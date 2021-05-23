@@ -59,11 +59,11 @@ def mainProgram():
     if doRefinement == 'Y':
         srfn.surfaceRefinement(geomsurface,1,'p','U')
         srfn.surfaceRefinement(geomsurface,1,'p','V')
-        srfn.surfaceRefinement(geomsurface,2,'h','U')
-        srfn.surfaceRefinement(geomsurface,2,'h','V')
+        srfn.surfaceRefinement(geomsurface,1,'h','U')
+        srfn.surfaceRefinement(geomsurface,1,'h','V')
 
-    dirichletConditionsData = [[[0.0,0.0],[0.0,1.0],"C",100.0],[[1.0,0.0],[1.0,1.0],"C",0.0]
-                               ,[[0.0,0.0],[1.0,0.0],"C",0.0],[[0.0,1.0],[1.0,1.0],"C",20.0]]
+    dirichletConditionsData = [[[0.0,0.0],[0.0,1.0],100.0],[[1.0,0.0],[1.0,1.0],0.0]
+                               ,[[0.0,0.0],[1.0,0.0],0.0],[[0.0,1.0],[1.0,1.0],0.0]]
     # neumannConditionsData = [[[0.0,0.0],[1.0,0.0],"tangent",flux],[[0.0,1.0],[1.0,1.0],"tangent",flux]]
     neumannConditionsData = None
 
@@ -82,7 +82,7 @@ def mainProgram():
 
     dtotal,D = matEqnSol.solveMatrixEquations(phenomenon,Kred,Fred,totalDofs,removedDofs,dirichletBCList)
 
-    post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
+    # post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 
 mainProgram()
 

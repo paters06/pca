@@ -165,6 +165,24 @@ class NURBSSurface:
         self.P = P
         self.w = w
 
+    def pointInSurface(self,upt,vpt):
+        mu = len(self.U) - 1
+        mv = len(self.V) - 1
+        nu = mu - self.p - 1
+        nv = mv - self.q - 1
+
+        Pwl = weightedControlPoints(self.P,self.w)
+        Pw = listToGridControlPoints(Pwl,self.U,self.V,self.p,self.q)
+
+        uspan = bfunc.findKnotInterval(nu,self.p,upt,self.U)
+        vspan = bfunc.findKnotInterval(nv,self.q,vpt,self.V)
+
+        idR = nonZeroIndicesSurface(uspan,vspan,self.p,self.q,nu)
+
+        R = bivariateRationalFunction(mu,mv,self.p,self.q,uspan,vspan,upt,vpt,self.U,self.V,Pw)
+        spt = R@self.P[idR,:]
+        return spt
+
     def createSurface(self):
         """
         Create a nurbs surface for further plotting

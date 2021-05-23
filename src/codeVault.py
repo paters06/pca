@@ -46,20 +46,20 @@ def nurbsCurveTangent(U,p,P,w):
         dnbasU = bfunc.derBasisFunction(uspan,urank[i],mu,p,U,d)
 
         """Just using the formulas way"""
-#        Aders = dnbasU*Pw[idxU,-1].T
-#        wders = dnbasU@Pw[idxU,-1]
-#        wders = np.reshape(wders,(len(wders),1))
-#        dRatdU = (Aders - (wders*nbas))/wders[0]
-#        Ck = dRatdU@P[idxU,:]
+       # Aders = dnbasU*Pw[idxU,-1].T
+       # wders = dnbasU@Pw[idxU,-1]
+       # wders = np.reshape(wders,(len(wders),1))
+       # dRatdU = (Aders - (wders*nbas))/wders[0]
+       # Ck = dRatdU@P[idxU,:]
 
         """The NURBS Book way"""
 
-#        dCw = dnbasU@Pw[idxU,:]
-        # Selecting colums from 0 to the previous to the last one
-#        Aders = dCw[:,0:-1]
-        # Selecting the last column
-#        wders = dCw[:,-1]
-#        Ck = rationalCurveDerivative(Aders,wders,d)
+       # dCw = dnbasU@Pw[idxU,:]
+       #  Selecting colums from 0 to the previous to the last one
+       # Aders = dCw[:,0:-1]
+       #  Selecting the last column
+       # wders = dCw[:,-1]
+       # Ck = rationalCurveDerivative(Aders,wders,d)
 
         """Hughes' way"""
         Aders = dnbasU*Pw[idxU,-1].T

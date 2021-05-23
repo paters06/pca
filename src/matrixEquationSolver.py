@@ -12,35 +12,31 @@ def dirichletBCEnforcement(phenomenon,K,F,dirichletconds):
     for drchcond in dirichletconds:
         if phenomenon == "Elasticity":
             if len(drchcond) == 5:
+                # Beware the first index
                 ipatch = drchcond[0]
-                inode = drchcond[1]
-                restriction = drchcond[2]
-                localdofs = drchcond[3]
-                value = drchcond[4]
+                inode = drchcond[0]
+                value = drchcond[1][0]
+                localdofs = drchcond[1][1]
             else:
                 inode = drchcond[0]
-                restriction = drchcond[1]
-                localdofs = drchcond[2]
-                value = drchcond[3]
+                value = drchcond[1][0]
+                localdofs = drchcond[1][1]
             # End if
 
-            if restriction == "C":
+            if len(localdofs) == 2:
                 # On clamped condition, the node and the value
                 # are replicated as many spatial dimensions are
                 enforcednodes.append(2*inode)
                 enforcednodes.append(2*inode)
                 values.append(value)
                 values.append(value)
-            elif restriction == "S":
+            elif len(localdofs) == 1:
                 enforcednodes.append(2*inode)
                 values.append(value)
             else:
                 print("Wrong restriction")
             # End if
-
-            # print(localdofs)
             restricteddofs += localdofs
-
         elif phenomenon == "Heat":
             if len(drchcond) == 4:
                 ipatch = drchcond[0]
@@ -61,11 +57,7 @@ def dirichletBCEnforcement(phenomenon,K,F,dirichletconds):
             enforcednodes.append(2*inode)
             values.append(value)
         # End if
-
-        # print(localdofs)
-        # restricteddofs.append(localdofs)
     #End dirichlet conditions loop
-    # print(restricteddofs)
 
     if phenomenon == "Elasticity":
         # Calculating the global dofs to be removed
@@ -122,7 +114,7 @@ def solveMatrixEquations(phenomenon,Kred,Fred,totaldofs,remdofs,dirichletconds):
 
     if phenomenon == "Elasticity":
         for drchcond in dirichletconds:
-            dtotal[drchcond[0]] = drchcond[3]
+            dtotal[drchcond[0]] = drchcond[1][0]
 
         dx = dtotal[0::2]
         dy = dtotal[1::2]

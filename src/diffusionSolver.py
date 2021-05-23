@@ -36,11 +36,8 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
     surfacespan = surfaceprep[1]
     elementcorners = surfaceprep[2]
 
-
-
     paramGrad = np.zeros((2,2))
     numElems = len(elementcorners)
-
 
     Pwl = rbs.weightedControlPoints(P,w)
     Pw = rbs.listToGridControlPoints(Pwl,U,V,p,q)
@@ -149,12 +146,12 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
                 jac2 = 0.5*np.sum(bPoint-aPoint)
 
                 if jac1 > 1e-6:
-                    unitTangetVec = Jac[:,paramaxis]/jac1
+                    unitTangentVec = Jac[:,paramaxis]/jac1
                 else:
                     unitTangetVec = np.zeros((2,1))
 
                 if neumanntype == "tangent":
-                    tvec = neumannval*unitTangetVec
+                    tvec = neumannval*unitTangentVec
                 elif neumanntype == "normal":
                     unitNormalVec = rotMat@unitTangetVec
                     tvec = neumannval*unitNormalVec
@@ -169,7 +166,7 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
             # End iquad loop
         # End ineumann loop
     # End if boundary is not None
-    
+
     F = Fb + Fl
     return K,F
 
@@ -378,14 +375,14 @@ def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundary
             jac2 = 0.5*np.sum(bPoint-aPoint)
 
             if jac1 > 1e-6:
-                unitTangetVec = Jac[:,paramaxis]/jac1
+                unitTangentVec = Jac[:,paramaxis]/jac1
             else:
-                unitTangetVec = np.zeros((2,1))
+                unitTangentVec = np.zeros((2,1))
 
             if neumanntype[ineumann] == "tangent":
-                tvec = load*unitTangetVec
+                tvec = load*unitTangentVec
             elif neumanntype[ineumann] == "normal":
-                unitNormalVec = rotMat@unitTangetVec
+                unitNormalVec = rotMat@unitTangentVec
                 tvec = load*unitNormalVec
             else:
                 print("Wrong load configuration")

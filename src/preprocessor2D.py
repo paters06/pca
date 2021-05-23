@@ -167,6 +167,7 @@ def neumannBCPreprocessing(paramnodes,nodeselem,neumannconditionsdata,U,V,p,q):
                paramaxis = 1
             else:
                paramaxis = 0
+            # End if
 
             if elemface == 0 or elemface == 1:
                 startindex = elemface
@@ -177,6 +178,7 @@ def neumannBCPreprocessing(paramnodes,nodeselem,neumannconditionsdata,U,V,p,q):
             else:
                 startindex = 3
                 endindex = 0
+            # End if
 
             uB = paramnodes[nodeselem[ielem][endindex]][0]
             uA = paramnodes[nodeselem[ielem][startindex]][0]
@@ -198,84 +200,155 @@ def neumannBCPreprocessing(paramnodes,nodeselem,neumannconditionsdata,U,V,p,q):
             nonzeroctrlpts.append(idR)
             neumannbc_type.append(cond[2])
             neumannbc_value.append(cond[3])
-
+        # End iface for loop
     # End cond for loop
     boundaryprep = [nonzeroctrlpts,boundaryspan,boundarycorners,axisselector,neumannbc_type,neumannbc_value]
 
     return boundaryprep
 
-def dirichletBCPreprocessing_Elasticity(P,dirichletconditions):
+def dirichletBCPreprocessing(dirichletconditions,Pl,U,V,p,q):
+    mu = len(U) - 1
+    mv = len(V) - 1
+    nu = mu - p - 1
+    nv = mv - q - 1
+
     dirichletconds = []
+    dcconds_dict = {}
+
+    f = np.arange(0,Pl.shape[0])
+    fg = np.reshape(f,(nu+1,nv+1),order='C')
+    fgg = np.reshape(f,(nu+1,nv+1),order='F')
+
+    for cond in dirichletconditions:
+        apt = np.array(cond[0])
+        bpt = np.array(cond[1])
+        value = cond[2]
+
+        cpt = bpt - apt
+
+        if abs(cpt[0]) < 1e-5 and abs(cpt[1]) > 1e-5:
+            if abs(apt[0]) < 1e-5:
+                index = 0
+            elif abs(apt[0]) - 1.0 < 1e-5:
+                index = -1
+            else:
+                print("Wrong condition")
+                index = 0
+            # End if
+            f_slice = fg[:,index]
+        elif abs(cpt[0]) > 1e-5 and abs(cpt[1]) < 1e-5:
+            if abs(apt[1]) < 1e-5:
+                index = 0
+            elif abs(apt[1]) - 1.0 < 1e-5:
+                index = -1
+            else:
+                print("Wrong condition")
+                index = 0
+            # End if
+            f_slice = fg[index,:]
+        else:
+            print("Wrong condition")
+            index = 0
+        # End if
+
+        for fs in f_slice:
+            if fs in dcconds_dict:
+                if abs(value) > 1e-5:
+                    dcconds_dict[fs] = value
+                # End if
+            else:
+                dcconds_dict[fs] = value
+            # End if
+        # End fs for loop
+    # End cond for loop
+
+    dirichletconds = [[a,b] for a,b in dcconds_dict.items()]
+
+    return dirichletconds
+
+def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
+    mu = len(U) - 1
+    mv = len(V) - 1
+    nu = mu - p - 1
+    nv = mv - q - 1
+
+    dirichletconds = []
+    dcconds_dict = {}
 
     # Rotation matrix for -pi/2
     rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
 
-    for cond in dirichletconditions:
-        apt = np.array(cond[0])
-        bpt = np.array(cond[1])
-        restriction = cond[2]
-        value = cond[3]
-
-        for i in range(0,P.shape[0]):
-            nodecond = []
-
-            # Check the control points that belong to the
-            # Dirichlet boundary condition
-            if checkColinearPoints(apt,bpt,P[i,:]):
-                # Insertion of the node
-                nodecond.append(i)
-                # Insertion of the type of restriction
-                nodecond.append(restriction)
-
-                if restriction == "C":
-                    # Clamped condition assumed
-                    # Insertion of the axis where the condition are applied
-                    nodecond.append([0,1])
-                else:
-                    # Supported condition assumed
-                    tangetVec = bpt - apt
-                    tangetVec = np.reshape(tangetVec,(len(tangetVec),1))
-                    unitTangetVec = tangetVec/np.linalg.norm(tangetVec)
-
-                    unitNormalVec = rotMat@unitTangetVec
-
-                    for j in range(len(unitNormalVec)):
-                        if abs(unitNormalVec[j]) > 1e-5:
-                            axis = j
-
-                    # Insertion of the axis where the condition is applied
-                    nodecond.append([axis])
-
-                # Insertion of the enforced value
-                nodecond.append(value)
-
-                # Insertion of the whole package of conditions
-                dirichletconds.append(nodecond)
-
-    return dirichletconds
-
-def dirichletBCPreprocessing_Heat(P,dirichletconditions):
-    dirichletconds = []
+    f = np.arange(0,Pl.shape[0])
+    fg = np.reshape(f,(nu+1,nv+1),order='C')
 
     for cond in dirichletconditions:
         apt = np.array(cond[0])
         bpt = np.array(cond[1])
-        value = cond[3]
+        value = cond[2]
+        restriction = cond[3]
 
-        for i in range(0,P.shape[0]):
-            nodecond = []
+        cpt = bpt - apt
 
-            # Check the control points that belong to the
-            # Dirichlet boundary condition
-            if checkColinearPoints(apt,bpt,P[i,:]):
-                # Insertion of the node
-                nodecond.append(i)
+        gapt = surface.pointInSurface(apt[0],apt[1])
+        gbpt = surface.pointInSurface(bpt[0],bpt[1])
 
-                # Insertion of the enforced value
-                nodecond.append(value)
+        tangentpt = gbpt - gapt
 
-                # Insertion of the whole package of conditions
-                dirichletconds.append(nodecond)
+        if abs(cpt[0]) < 1e-5 and abs(cpt[1]) > 1e-5:
+            if abs(apt[0]) < 1e-5:
+                index = 0
+            elif abs(apt[0]) - 1.0 < 1e-5:
+                index = -1
+            else:
+                print("Wrong condition")
+                index = 0
+            # End if
+            f_slice = fg[:,index]
+        elif abs(cpt[0]) > 1e-5 and abs(cpt[1]) < 1e-5:
+            if abs(apt[1]) < 1e-5:
+                index = 0
+            elif abs(apt[1]) - 1.0 < 1e-5:
+                index = -1
+            else:
+                print("Wrong condition")
+                index = 0
+            # End if
+            f_slice = fg[index,:]
+        else:
+            print("Wrong condition")
+            index = 0
+        # End if
+
+        if restriction == "C":
+            # Clamped condition assumed
+            # Insertion of the axis where the condition are applied
+            dofs = [0,1]
+        else:
+            # Supported condition assumed
+            tangentVec = np.reshape(tangentpt,(len(tangentpt),1))
+            unitTangentVec = tangentpt/np.linalg.norm(tangentpt)
+
+            unitNormalVec = rotMat@unitTangentVec
+
+            for j in range(len(unitNormalVec)):
+                if abs(unitNormalVec[j]) > 1e-5:
+                    dofs = [j]
+                # End if
+            # End j for loop
+        # End if
+
+        for fs in f_slice:
+            if fs in dcconds_dict:
+                if abs(value) > 1e-5:
+                    dcconds_dict[fs] = [value,dofs]
+                # End if
+            else:
+                dcconds_dict[fs] = [value,dofs]
+            # End if
+        # End fs for loop
+    # End cond for loop
+
+    dirichletconds = [[a,b] for a,b in dcconds_dict.items()]
 
     return dirichletconds
 
@@ -315,9 +388,9 @@ def problemPreprocessing(phenomenon,surface,dirichletconditionsdata,neumanncondi
         boundaryPreprocessing = None
 
     if phenomenon == "Elasticity":
-        dirichletBCList = dirichletBCPreprocessing_Elasticity(P,dirichletconditionsdata)
+        dirichletBCList = dirichletBCPreprocessing_Elasticity(P,surface,dirichletconditionsdata,U,V,p,q)
     if phenomenon == "Heat":
-        dirichletBCList = dirichletBCPreprocessing_Heat(P,dirichletconditionsdata)
+        dirichletBCList = dirichletBCPreprocessing(dirichletconditionsdata,P,U,V,p,q)
 
     return surfacePreprocessing,boundaryPreprocessing,dirichletBCList
 
@@ -446,7 +519,7 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
             # End if
         # End ineumann for loop
     # End if boundary is not None
-    
+
     if len(loadcoor) != 0:
         # neumannplot = ax.scatter(loadcoor[:,0],loadcoor[:,1],c = "b",marker = "s")
         neumannplot = ax.quiver(loadcoor[:,0],loadcoor[:,1],loadfield[:,0],loadfield[:,1],color=['b'])
