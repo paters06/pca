@@ -78,9 +78,9 @@ def mainProgram():
     K,F = diffSol.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
                                         materialProperties,boundaryPreprocessing)
 
-    Kred,Fred,removedDofs,totalDofs = matEqnSol.dirichletBCEnforcement(phenomenon,K,F,dirichletBCList)
+    Kred,Fred,totalDofs,removedDofs,dofValues = matEqnSol.dirichletBCEnforcement(phenomenon,K,F,dirichletBCList)
 
-    dtotal,D = matEqnSol.solveMatrixEquations(phenomenon,Kred,Fred,totalDofs,removedDofs,dirichletBCList)
+    dtotal,D = matEqnSol.solveMatrixEquations(phenomenon,Kred,Fred,totalDofs,removedDofs,dofValues)
 
     # post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 

@@ -279,7 +279,10 @@ def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
     rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
 
     f = np.arange(0,Pl.shape[0])
-    fg = np.reshape(f,(nu+1,nv+1),order='C')
+    f = np.reshape(f,(len(f),1))
+    fg = np.reshape(f,(nv+1,nu+1),order='C')
+    # print(fg)
+    # print(np.hstack((f,Pl)))
 
     for cond in dirichletconditions:
         apt = np.array(cond[0])
@@ -292,7 +295,10 @@ def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
         gapt = surface.pointInSurface(apt[0],apt[1])
         gbpt = surface.pointInSurface(bpt[0],bpt[1])
 
-        tangentpt = gbpt - gapt
+        # tangentpt = gbpt - gapt
+        tangentpt = gbpt[0] - gapt[0]
+        # print(gapt[0])
+        # print(gbpt[0])
 
         if abs(cpt[0]) < 1e-5 and abs(cpt[1]) > 1e-5:
             if abs(apt[0]) < 1e-5:
@@ -329,6 +335,7 @@ def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
             unitTangentVec = tangentpt/np.linalg.norm(tangentpt)
 
             unitNormalVec = rotMat@unitTangentVec
+            # print(unitNormalVec)
 
             for j in range(len(unitNormalVec)):
                 if abs(unitNormalVec[j]) > 1e-5:
@@ -345,6 +352,7 @@ def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
             else:
                 dcconds_dict[fs] = [value,dofs]
             # End if
+            # print(fs,dofs)
         # End fs for loop
     # End cond for loop
 
@@ -436,7 +444,7 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
         dirctrlpts.append(inode)
 
     for i in range(0,len(dirichletconds)):
-        if dirichletconds[i][1] == "C":
+        if len(dirichletconds[i][1][1]) == 2:
             dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "r",marker = "^")
         else:
             dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "g",marker = "o")
@@ -490,14 +498,14 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
                     normjvec = np.linalg.norm(jvec)
 
                     if normjvec > 1e-6:
-                        unitTangetVec = jvec/normjvec
+                        unitTangentVec = jvec/normjvec
                     else:
                         unitTangetVec = np.zeros((2,1))
 
                     if neumanntype == "tangent":
-                        neumannvec = (neumannval/abs(neumannval))*unitTangetVec
+                        neumannvec = (neumannval/abs(neumannval))*unitTangentVec
                     elif neumanntype == "normal":
-                        unitNormalVec = rotMat@unitTangetVec
+                        unitNormalVec = rotMat@unitTangentVec
                         neumannvec = (neumannval/abs(neumannval))*unitNormalVec
                     else:
                         print("Wrong Neumann condition configuration")

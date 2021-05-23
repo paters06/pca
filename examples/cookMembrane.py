@@ -69,11 +69,11 @@ def mainProgram():
         srfn.surfaceRefinement(geomsurface,3,'h','U')
         srfn.surfaceRefinement(geomsurface,3,'h','V')
 
-    displacementConditions = [[[0.0,0.0],[0.0,1.0],0.0,"C"]]
-    neumannConditions = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
+    dirichletConditionsData = [[[0.0,0.0],[0.0,1.0],0.0,"C"]]
+    neumannConditionsData = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
 
     surfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
-    pre2D.problemPreprocessing(phenomenon,geomsurface,displacementConditions,neumannConditions)
+    pre2D.problemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
     numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
     # dbg_scrpt.calculateArea(geomsurface,surfacePreprocessing,numericalquadrature)
@@ -81,7 +81,7 @@ def mainProgram():
     # pre2D.plotGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
     K,F = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
-                                        materialProperties,boundaryPreprocessing,neumannConditions)
+                                        materialProperties,boundaryPreprocessing,neumannConditionsData)
 
     Kred,Fred,removedDofs,totalDofs = matEqnSol.dirichletBCEnforcement(phenomenon,K,F,dirichletBCList)
 

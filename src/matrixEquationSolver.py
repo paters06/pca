@@ -87,9 +87,9 @@ def dirichletBCEnforcement(phenomenon,K,F,dirichletconds):
 
     totaldofs = np.arange(F.shape[0])
 
-    return Kred,Fred,restricteddofs,totaldofs
+    return Kred,Fred,totaldofs,restricteddofs,values
 
-def solveMatrixEquations(phenomenon,Kred,Fred,totaldofs,remdofs,dirichletconds):
+def solveMatrixEquations(phenomenon,Kred,Fred,totaldofs,remdofs,values):
     # Checking full rank in matrix
     mRank = np.linalg.matrix_rank(Kred)
     mRows = Kred.shape[0]
@@ -112,19 +112,17 @@ def solveMatrixEquations(phenomenon,Kred,Fred,totaldofs,remdofs,dirichletconds):
     dtotal = np.zeros((totaldofs.shape[0],1))
     dtotal[reduceddofs,:] = dred
 
-    if phenomenon == "Elasticity":
-        for drchcond in dirichletconds:
-            dtotal[drchcond[0]] = drchcond[1][0]
+    values = np.reshape(values,(len(values),1))
+    dtotal[remdofs,:] = values
+    # for idof in range(len(remdofs)):
+        # dtotal[remdofs[idof]] = values[idof]
 
+    if phenomenon == "Elasticity":
         dx = dtotal[0::2]
         dy = dtotal[1::2]
         D = np.hstack((dx,dy))
-
         return dtotal,D
     elif phenomenon == "Heat":
-        for drchcond in dirichletconds:
-            dtotal[drchcond[0]] = drchcond[1]
-
         return dtotal,dtotal
     else:
         print("Check physics selection")

@@ -428,8 +428,8 @@ def postProcessing(phenomenon,surface,D,dtot,surfaceprep,matprop):
         # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],upts[0,:,:],["Ux Displacement Field","[m]"])
         # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],["Sx Stress Field","[Pa]"])
 
-        solfield.plotDisplacementFields()
-        # solfield.plotStressFields()
+        # solfield.plotDisplacementFields()
+        solfield.plotStressFields()
     elif phenomenon == "Heat":
         upts,tpts = solfield.temperatureField(numpoints,surfaceprep)
         solfield.plotTemperatureField()
