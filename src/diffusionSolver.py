@@ -27,6 +27,7 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
     F = np.zeros((P.shape[0],1))
     Fb = np.zeros((P.shape[0],1))
     Fl = np.zeros((P.shape[0],1))
+    M = np.zeros((P.shape[0],P.shape[0]))
 
     numquad2d = numquad[0]
     numquad1d = numquad[1]
@@ -47,7 +48,8 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
 
     # Definition of the material matrix
     kappa = matprop[0]
-    source = matprop[1]
+    rho = matprop[1]
+    source = matprop[2]
     kMat = conductivityMatrix(kappa)
 
     bvec = source
@@ -102,7 +104,13 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
             if abs(source) > 1e-5:
                 nMat = biRatGrad[0,:]
 
-                Fb[globalDOF] += (nMat.T@bvec)*wJac
+                Fb[globalDOF] += (nMat.T@source)*wJac
+
+            # Mass integral
+            if abs(rho) > 1e-5:
+                nMat = biRatGrad[0,:]
+
+                M[globalDOFx,globalDOFy] += rho*(nMat.T@nMat)*wJac
         # End iquad loop
     # End ielem loop
 
@@ -168,7 +176,7 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
     # End if boundary is not None
 
     F = Fb + Fl
-    return K,F
+    return K,F,M
 
 def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundaryprep):
     multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints = multisurface.retrieveSurfaceInformation()

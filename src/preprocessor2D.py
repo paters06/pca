@@ -214,10 +214,13 @@ def dirichletBCPreprocessing(dirichletconditions,Pl,U,V,p,q):
 
     dirichletconds = []
     dcconds_dict = {}
+    enforceddof = []
+    enforcedvalues = []
 
     f = np.arange(0,Pl.shape[0])
-    fg = np.reshape(f,(nu+1,nv+1),order='C')
-    fgg = np.reshape(f,(nu+1,nv+1),order='F')
+    # fg = np.reshape(f,(nu+1,nv+1),order='C')
+    fg = np.reshape(f,(nv+1,nu+1),order='C')
+    # fgg = np.reshape(f,(nu+1,nv+1),order='F')
 
     for cond in dirichletconditions:
         apt = np.array(cond[0])
@@ -254,17 +257,20 @@ def dirichletBCPreprocessing(dirichletconditions,Pl,U,V,p,q):
         for fs in f_slice:
             if fs in dcconds_dict:
                 if abs(value) > 1e-5:
-                    dcconds_dict[fs] = value
+                    dcconds_dict[fs] = [value]
                 # End if
             else:
-                dcconds_dict[fs] = value
+                dcconds_dict[fs] = [value]
             # End if
+
+            enforceddof.append(fs)
+            enforcedvalues.append(value)
         # End fs for loop
     # End cond for loop
 
     dirichletconds = [[a,b] for a,b in dcconds_dict.items()]
 
-    return dirichletconds
+    return dirichletconds,enforceddof,enforcedvalues
 
 def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
     mu = len(U) - 1
@@ -274,6 +280,8 @@ def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
 
     dirichletconds = []
     dcconds_dict = {}
+    enforceddof = []
+    enforcedvalues = []
 
     # Rotation matrix for -pi/2
     rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
@@ -323,6 +331,7 @@ def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
         else:
             print("Wrong condition")
             index = 0
+            f_slice = fg[index,:]
         # End if
 
         if restriction == "C":
@@ -352,13 +361,30 @@ def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
             else:
                 dcconds_dict[fs] = [value,dofs]
             # End if
+
+            if len(dofs) == 2:
+                # On clamped condition, the node and the value
+                # are replicated as many spatial dimensions are
+                enforceddof.append(2*fs+dofs[0])
+                enforceddof.append(2*fs+dofs[1])
+                enforcedvalues.append(value)
+                enforcedvalues.append(value)
+            elif len(dofs) == 1:
+                enforceddof.append(2*fs+dofs[0])
+                enforcedvalues.append(value)
+            else:
+                print("Wrong restriction")
+            # End if
+
             # print(fs,dofs)
         # End fs for loop
     # End cond for loop
 
     dirichletconds = [[a,b] for a,b in dcconds_dict.items()]
+    # print(enforceddof)
+    # print(enforcedvalues)
 
-    return dirichletconds
+    return dirichletconds,enforceddof,enforcedvalues
 
 def numericalIntegrationPreprocessing(numgauss):
     numericalquadrature = np.polynomial.legendre.leggauss(numgauss)
@@ -396,11 +422,11 @@ def problemPreprocessing(phenomenon,surface,dirichletconditionsdata,neumanncondi
         boundaryPreprocessing = None
 
     if phenomenon == "Elasticity":
-        dirichletBCList = dirichletBCPreprocessing_Elasticity(P,surface,dirichletconditionsdata,U,V,p,q)
+        dirichletBCList,enforcedDOF,enforcedValues = dirichletBCPreprocessing_Elasticity(P,surface,dirichletconditionsdata,U,V,p,q)
     if phenomenon == "Heat":
-        dirichletBCList = dirichletBCPreprocessing(dirichletconditionsdata,P,U,V,p,q)
+        dirichletBCList,enforcedDOF,enforcedValues = dirichletBCPreprocessing(dirichletconditionsdata,P,U,V,p,q)
 
-    return surfacePreprocessing,boundaryPreprocessing,dirichletBCList
+    return surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues
 
 def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
     if phenomenon == "Elasticity":
@@ -444,7 +470,7 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
         dirctrlpts.append(inode)
 
     for i in range(0,len(dirichletconds)):
-        if len(dirichletconds[i][1][1]) == 2:
+        if len(dirichletconds[i][1]) == 2:
             dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "r",marker = "^")
         else:
             dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "g",marker = "o")
@@ -459,7 +485,6 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
     Pw = rbs.listToGridControlPoints(Pwl,U,V,p,q)
 
     if boundaryprep is not None:
-
         # Extraction of boundary preprocessing
         nonzeroctrlpts_boundary = boundaryprep[0]
         boundaryspan = boundaryprep[1]

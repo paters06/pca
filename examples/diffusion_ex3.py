@@ -34,7 +34,7 @@ def mainProgram():
     Rmax = 1.0
     Rmin = 0.7
     kappa = 385 #Pa
-    rho = 0.0
+    rho = 10.0
     source = 0.0 #kg/m3
     materialProperties = [kappa,rho,source]
     flux = 0.0 #Pa
@@ -63,12 +63,12 @@ def mainProgram():
         srfn.surfaceRefinement(geomsurface,1,'h','U')
         srfn.surfaceRefinement(geomsurface,1,'h','V')
 
-    dirichletConditionsData = [[[1.0,0.0],[1.0,1.0],0.0],[[0.0,0.0],[1.0,0.0],0.0],
-                               [[0.0,1.0],[1.0,1.0],0.0],[[0.0,0.0],[0.0,1.0],100.0]]
+    dirichletConditionsData = [[[0.0,0.0],[0.0,1.0],100.0],[[1.0,0.0],[1.0,1.0],0.0]
+                               ,[[0.0,0.0],[1.0,0.0],0.0],[[0.0,1.0],[1.0,1.0],0.0]]
     # neumannConditionsData = [[[0.0,0.0],[1.0,0.0],"tangent",flux],[[0.0,1.0],[1.0,1.0],"tangent",flux]]
     neumannConditionsData = None
 
-    surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues = \
+    surfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
     pre2D.problemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
     numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
@@ -79,13 +79,9 @@ def mainProgram():
     K,F,M = diffSol.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
                                         materialProperties,boundaryPreprocessing)
 
-    Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(K,F,enforcedDOF,enforcedValues)
-    dtotal,D = matEqnSol.solveReducedMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
+    Kred,Fred,totalDofs,removedDofs,dofValues = matEqnSol.dirichletBCEnforcement(phenomenon,K,F,dirichletBCList)
 
-    Kmod,Fmod,totalDofs = matEqnSol.dirichletBCEnforcement_Modified(K,F,enforcedDOF,enforcedValues)
-    dtotal2,D = matEqnSol.solveModifiedMatrixEquations(phenomenon,Kmod,Fmod,totalDofs)
-
-    # print(np.hstack((dtotal,dtotal2)))
+    dtotal,D = matEqnSol.solveMatrixEquations(phenomenon,Kred,Fred,totalDofs,removedDofs,dofValues)
 
     # post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 

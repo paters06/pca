@@ -72,7 +72,7 @@ def mainProgram():
     dirichletConditionsData = [[[0.0,0.0],[0.0,1.0],0.0,"S"],[[1.0,0.0],[1.0,1.0],0.0,"S"]]
     neumannConditionsData = [[[0.0,1.0],[0.5,1.0],"normal",tv]]
 
-    surfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
+    surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues  = \
     pre2D.problemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
     numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
@@ -81,9 +81,9 @@ def mainProgram():
     K,F = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
                                         materialProperties,boundaryPreprocessing,neumannConditionsData)
 
-    Kred,Fred,totalDofs,removedDofs,dofValues = matEqnSol.dirichletBCEnforcement(phenomenon,K,F,dirichletBCList)
+    Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement(K,F,enforcedDOF,enforcedValues)
 
-    dtotal,D = matEqnSol.solveMatrixEquations(phenomenon,Kred,Fred,totalDofs,removedDofs,dofValues)
+    dtotal,D = matEqnSol.solveMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
 
     # post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 

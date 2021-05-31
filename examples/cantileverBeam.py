@@ -82,20 +82,20 @@ def mainProgram():
     dirichletConditionsData = [[[0.0,0.0],[0.0,1.0],0.0,"C"]]
     neumannConditionsData = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
 
-    surfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
+    surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues = \
     pre2D.problemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
     numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
     # dbg_scrpt.calculateArea(geomsurface,surfacePreprocessing,numericalquadrature)
 
-    # pre2D.plotGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
+    pre2D.plotGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
     K,F = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
                                         materialProperties,boundaryPreprocessing,neumannConditionsData)
 
-    Kred,Fred,totalDofs,removedDofs,dofValues = matEqnSol.dirichletBCEnforcement(phenomenon,K,F,dirichletBCList)
+    Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement(K,F,enforcedDOF,enforcedValues)
 
-    dtotal,D = matEqnSol.solveMatrixEquations(phenomenon,Kred,Fred,totalDofs,removedDofs,dofValues)
+    dtotal,D = matEqnSol.solveMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
 
     # post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 

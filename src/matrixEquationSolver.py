@@ -4,92 +4,90 @@ import numpy.linalg
 
 ################ MATRIX EQUATION SOLUTION ####################
 
-def dirichletBCEnforcement(phenomenon,K,F,dirichletconds):
-    enforcednodes = []
-    restricteddofs = []
-    values = []
+def dirichletBCEnforcement_Modified(Kmod,Fmod,enforceddof,enforcedvalues):
+    mRows = Kmod.shape[0]
+    mCols = Kmod.shape[1]
+    numdof = len(enforceddof)
 
-    for drchcond in dirichletconds:
-        if phenomenon == "Elasticity":
-            if len(drchcond) == 5:
-                # Beware the first index
-                ipatch = drchcond[0]
-                inode = drchcond[0]
-                value = drchcond[1][0]
-                localdofs = drchcond[1][1]
-            else:
-                inode = drchcond[0]
-                value = drchcond[1][0]
-                localdofs = drchcond[1][1]
-            # End if
+    print("First modification")
+    Kmod[enforceddof,:] = np.zeros((numdof,mCols))
 
-            if len(localdofs) == 2:
-                # On clamped condition, the node and the value
-                # are replicated as many spatial dimensions are
-                enforcednodes.append(2*inode)
-                enforcednodes.append(2*inode)
-                values.append(value)
-                values.append(value)
-            elif len(localdofs) == 1:
-                enforcednodes.append(2*inode)
-                values.append(value)
-            else:
-                print("Wrong restriction")
-            # End if
-            restricteddofs += localdofs
-        elif phenomenon == "Heat":
-            if len(drchcond) == 4:
-                ipatch = drchcond[0]
-                inode = drchcond[1]
-                localdofs = drchcond[1]
-                value = drchcond[2]
-            else:
-                inode = drchcond[0]
-                localdofs = drchcond[0]
-                value = drchcond[1]
-            # End if
+    print("Second modification")
+    for i in range(numdof):
+        # Second modification
+        Kcol = Kmod[:,enforceddof[i]]
+        Kcol = np.reshape(Kcol,(Kcol.shape[0],1))
+        Fmod -= Kcol*enforcedvalues[i]
 
-            enforcednodes.append(inode)
-            values.append(value)
-            restricteddofs.append(localdofs)
-        else:
-            print("Wrong physics")
-            enforcednodes.append(2*inode)
-            values.append(value)
-        # End if
-    #End dirichlet conditions loop
+    print("Third modification")
+    Kmod[:,enforceddof] = np.zeros((mRows,numdof))
+    Kmod[enforceddof,enforceddof] = np.ones((numdof))
+    Fmod[enforceddof] = np.reshape(enforcedvalues,(numdof,1))
 
-    if phenomenon == "Elasticity":
-        # Calculating the global dofs to be removed
-        enforcednodes = np.array(enforcednodes)
-        restricteddofs = np.array(restricteddofs)
-        restricteddofs += enforcednodes
-    elif phenomenon == "Heat":
-        restricteddofs = np.array(restricteddofs)
-    else:
-        print("Check physics selection")
-        restricteddofs = np.array(restricteddofs)
-    # End if
+    totaldofs = np.arange(Fmod.shape[0])
 
+    return Kmod,Fmod,totaldofs
+
+def dirichletBCEnforcement_Reduced(K,F,enforceddof,enforcedvalues):
     print("First reduction")
-    Fred = np.delete(F,restricteddofs,0)
-    Kred = np.delete(K,restricteddofs,0)
+    Fred = np.delete(F,enforceddof,0)
+    Kred = np.delete(K,enforceddof,0)
 
     print("Modification of Freduced")
-    for i in range(len(restricteddofs)):
-        Kcol = Kred[:,restricteddofs[i]]
+    for i in range(len(enforceddof)):
+        Kcol = Kred[:,enforceddof[i]]
         Kcol = np.reshape(Kcol,(Kcol.shape[0],1))
         # print(values[i])
-        Fred -= Kcol*values[i]
+        Fred -= Kcol*enforcedvalues[i]
 
     print("Second reduction")
-    Kred = np.delete(Kred,restricteddofs,1)
+    Kred = np.delete(Kred,enforceddof,1)
 
     totaldofs = np.arange(F.shape[0])
 
-    return Kred,Fred,totaldofs,restricteddofs,values
+    return Kred,Fred,totaldofs
 
-def solveMatrixEquations(phenomenon,Kred,Fred,totaldofs,remdofs,values):
+def solveModifiedMatrixEquations(phenomenon,Kmod,Fmod,totaldofs):
+    # Checking full rank in matrix
+    mRank = np.linalg.matrix_rank(Kmod)
+    mRows = Kmod.shape[0]
+    print("Number of rows: ",mRows)
+    print("Rank of matrix: ",mRank)
+    if mRank == mRows:
+        fullRank = True
+    else:
+        fullRank = False
+
+    # fullRank = True
+    if fullRank:
+        print("The matrix has full rank. It is invertible")
+        dsol = np.linalg.solve(Kmod,Fmod)
+    else:
+        print("The matrix has not full rank. It is not invertible")
+        dsol = np.linalg.lstsq(Kmod,Fmod,rcond=None)[0]
+
+    # reduceddofs = np.setdiff1d(totaldofs,remdofs)
+    # dtotal = np.zeros((totaldofs.shape[0],1))
+    # dtotal[reduceddofs,:] = dred
+
+    # values = np.reshape(values,(len(values),1))
+    # dtotal[remdofs,:] = values
+    # for idof in range(len(remdofs)):
+        # dtotal[remdofs[idof]] = values[idof]
+
+    if phenomenon == "Elasticity":
+        dx = dsol[0::2]
+        dy = dsol[1::2]
+        D = np.hstack((dx,dy))
+        return dsol,D
+    elif phenomenon == "Heat":
+        return dsol,dsol
+    else:
+        print("Check physics selection")
+        return dsol,dsol
+    # End if
+
+def solveReducedMatrixEquations(phenomenon,Kred,Fred,totaldofs,remdofs,values):
     # Checking full rank in matrix
     mRank = np.linalg.matrix_rank(Kred)
     mRows = Kred.shape[0]
