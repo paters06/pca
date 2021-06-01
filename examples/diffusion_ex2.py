@@ -55,7 +55,7 @@ def mainProgram():
 
     geomsurface = rbs.NURBSSurface(Pinit,winit,pinit,qinit,U=Uinit,V=Vinit)
 
-    doRefinement = 'Y'
+    doRefinement = 'N'
 
     if doRefinement == 'Y':
         srfn.surfaceRefinement(geomsurface,1,'p','U')
@@ -79,8 +79,8 @@ def mainProgram():
     K,F,M = diffSol.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
                                         materialProperties,boundaryPreprocessing)
 
-    Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(K,F,enforcedDOF,enforcedValues)
-    dtotal,D = matEqnSol.solveReducedMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
+    # Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(K,F,enforcedDOF,enforcedValues)
+    # dtotal,D = matEqnSol.solveReducedMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
 
     Kmod,Fmod,totalDofs = matEqnSol.dirichletBCEnforcement_Modified(K,F,enforcedDOF,enforcedValues)
     dtotal2,D = matEqnSol.solveModifiedMatrixEquations(phenomenon,Kmod,Fmod,totalDofs)

@@ -66,15 +66,6 @@ def solveModifiedMatrixEquations(phenomenon,Kmod,Fmod,totaldofs):
         print("The matrix has not full rank. It is not invertible")
         dsol = np.linalg.lstsq(Kmod,Fmod,rcond=None)[0]
 
-    # reduceddofs = np.setdiff1d(totaldofs,remdofs)
-    # dtotal = np.zeros((totaldofs.shape[0],1))
-    # dtotal[reduceddofs,:] = dred
-
-    # values = np.reshape(values,(len(values),1))
-    # dtotal[remdofs,:] = values
-    # for idof in range(len(remdofs)):
-        # dtotal[remdofs[idof]] = values[idof]
-
     if phenomenon == "Elasticity":
         dx = dsol[0::2]
         dy = dsol[1::2]
@@ -112,8 +103,6 @@ def solveReducedMatrixEquations(phenomenon,Kred,Fred,totaldofs,remdofs,values):
 
     values = np.reshape(values,(len(values),1))
     dtotal[remdofs,:] = values
-    # for idof in range(len(remdofs)):
-        # dtotal[remdofs[idof]] = values[idof]
 
     if phenomenon == "Elasticity":
         dx = dtotal[0::2]

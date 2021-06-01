@@ -408,6 +408,26 @@ class SolutionField:
         plt.tight_layout()
         plt.show()
 
+def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un):
+    elementcorners = surfaceprep[2]
+    numelems = len(elementcorners)
+
+    if numelems < 5:
+        numpoints = 11
+    elif numelems >= 5 and numelems < 10:
+        numpoints = 9
+    elif numelems >= 10 and numelems < 20:
+        numpoints = 7
+    else:
+        numpoints = 5
+    # End if
+
+    for i in range(Un.shape[1]):
+        if i%20 == 0:
+            solfield = SolutionField(phenomenon,surface,Un[:,i,None],Un[:,i,None])
+            upts,tpts = solfield.temperatureField(numpoints,surfaceprep)
+            solfield.plotTemperatureField()
+
 def postProcessing(phenomenon,surface,D,dtot,surfaceprep,matprop):
     elementcorners = surfaceprep[2]
     numelems = len(elementcorners)
@@ -420,6 +440,7 @@ def postProcessing(phenomenon,surface,D,dtot,surfaceprep,matprop):
         numpoints = 7
     else:
         numpoints = 5
+    # End if
 
     solfield = SolutionField(phenomenon,surface,D,dtot)
     if phenomenon == "Elasticity":

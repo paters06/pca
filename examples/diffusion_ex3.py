@@ -19,7 +19,8 @@ sys.path.append(dir2)
 import src.nurbs as rbs
 import src.preprocessor2D as pre2D
 import src.diffusionSolver as diffSol
-import src.matrixEquationSolver as matEqnSol
+import src.timeIntegration as timeIntg
+# import src.matrixEquationSolver as matEqnSol
 import src.postprocessor2D as post2D
 import src.surfaceRefinements as srfn
 import src.debugScripts as dbg_scrpt
@@ -63,12 +64,12 @@ def mainProgram():
         srfn.surfaceRefinement(geomsurface,1,'h','U')
         srfn.surfaceRefinement(geomsurface,1,'h','V')
 
-    dirichletConditionsData = [[[0.0,0.0],[0.0,1.0],100.0],[[1.0,0.0],[1.0,1.0],0.0]
-                               ,[[0.0,0.0],[1.0,0.0],0.0],[[0.0,1.0],[1.0,1.0],0.0]]
+    dirichletConditionsData = [[[1.0,0.0],[1.0,1.0],0.0],[[0.0,0.0],[1.0,0.0],0.0],
+                               [[0.0,1.0],[1.0,1.0],0.0],[[0.0,0.0],[0.0,1.0],100.0]]
     # neumannConditionsData = [[[0.0,0.0],[1.0,0.0],"tangent",flux],[[0.0,1.0],[1.0,1.0],"tangent",flux]]
     neumannConditionsData = None
 
-    surfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
+    surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues = \
     pre2D.problemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
     numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
@@ -79,11 +80,15 @@ def mainProgram():
     K,F,M = diffSol.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
                                         materialProperties,boundaryPreprocessing)
 
-    Kred,Fred,totalDofs,removedDofs,dofValues = matEqnSol.dirichletBCEnforcement(phenomenon,K,F,dirichletBCList)
-
-    dtotal,D = matEqnSol.solveMatrixEquations(phenomenon,Kred,Fred,totalDofs,removedDofs,dofValues)
+    T = 1.0
+    dt = 0.005
+    uInitial = np.full((F.shape[0],1),0.0)
+    uTransient = timeIntg.explicitScheme(M,K,F,uInitial,dt,T,enforcedDOF,enforcedValues)
+    # uTransient = timeIntg.implicitScheme(M,K,F,uInitial,dt,T,enforcedDOF,enforcedValues)
+    # print(uTransient)
 
     # post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
+    # post2D.plotTransientField(phenomenon,geomsurface,surfacePreprocessing,materialProperties,uTransient)
 
 mainProgram()
 

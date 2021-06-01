@@ -103,13 +103,12 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
             # Body forces integral
             if abs(source) > 1e-5:
                 nMat = biRatGrad[0,:]
-
                 Fb[globalDOF] += (nMat.T@source)*wJac
 
             # Mass integral
             if abs(rho) > 1e-5:
                 nMat = biRatGrad[0,:]
-
+                nMat = np.reshape(nMat,(1,len(nMat)))
                 M[globalDOFx,globalDOFy] += rho*(nMat.T@nMat)*wJac
         # End iquad loop
     # End ielem loop
