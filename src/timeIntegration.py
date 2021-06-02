@@ -17,6 +17,7 @@ def explicitScheme(M,K,F,u0,dt,T,enforceddof,enforcedvalues):
     eigvalues,eigenvectors = np.linalg.eig(K)
     maxEig = np.amax(eigvalues)
     dt_cr = 2/maxEig
+    print("Maximum eigenvalue: {0}".format(maxEig))
     print("Maximum time step for explicit scheme: {0} seconds".format(dt_cr))
 
     if dt < dt_cr:
@@ -37,7 +38,7 @@ def explicitScheme(M,K,F,u0,dt,T,enforceddof,enforcedvalues):
             u_i = u_n[:,i-1,None]
             # print(u_i.T)
             Q_n = A@u_i + B
-            print(Q_n.T)
+            # print(Q_n.T)
             u_n[:,i,None] = np.reshape(invM@Q_n,(-1,1))
             if i%100 == 0:
                 print("Iteration #{0}".format(i))

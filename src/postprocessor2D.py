@@ -3,6 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.linalg
+from matplotlib import animation
 
 # Local project
 import src.basisFunctions as bfunc
@@ -29,6 +30,10 @@ class SolutionField:
         self.wsol = w
         self.Dsol = D
         self.dtot = dtot
+
+    def updateControlPoints(self,D_new,dtotal_new):
+        self.Dsol = D_new
+        self.dtot = dtotal_new
 
     def temperatureField(self,numpoints,surfaceprep):
         mu = len(self.Usol) - 1
@@ -422,11 +427,50 @@ def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un):
         numpoints = 5
     # End if
 
-    for i in range(Un.shape[1]):
-        if i%20 == 0:
-            solfield = SolutionField(phenomenon,surface,Un[:,i,None],Un[:,i,None])
-            upts,tpts = solfield.temperatureField(numpoints,surfaceprep)
-            solfield.plotTemperatureField()
+    fig,ax = plt.subplots()
+    solfield = SolutionField(phenomenon,surface,Un[:,0,None],Un[:,0,None])
+    tpts,cpts = solfield.temperatureField(numpoints,surfaceprep)
+    field = ax.pcolormesh(cpts[0,:,:],cpts[1,:,:],tpts,vmin=tpts.min(),vmax=tpts.max())
+    # plt.title('Temperature Field')
+    # plt.xlabel('x')
+    # plt.ylabel('y')
+    # ax.set_aspect('equal')
+    # plt.tight_layout()
+
+    def animate(i):
+        solfield.updateControlPoints(Un[:,i,None],Un[:,i,None])
+        tpts,cpts = solfield.temperatureField(numpoints,surfaceprep)
+        field = ax.pcolormesh(cpts[0,:,:],cpts[1,:,:],tpts,vmin=tpts.min(),vmax=tpts.max())
+        return field,
+
+    cb = fig.colorbar(field,label='[°C]')
+
+    anim = animation.FuncAnimation(fig,animate,frames=Un.shape[1], interval=10,blit=False)
+    anim.save('first_animation.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
+    # plt.show()
+
+    # solfield = SolutionField(phenomenon,surface,Un[:,0,None],Un[:,0,None])
+    # for i in range(Un.shape[1]):
+    #     if i%20 == 0:
+    #         solfield.updateControlPoints(Un[:,i,None],Un[:,i,None])
+    #         tpts,cpts = solfield.temperatureField(numpoints,surfaceprep)
+    #         # solfield.plotTemperatureField()
+    #
+    #         cx = cpts[0,:,:]
+    #         cy = cpts[1,:,:]
+    #         T = tpts
+    #
+    #         fig,ax1 = plt.subplots()
+    #
+    #         field1 = ax1.pcolormesh(cx,cy,T,vmin=T.min(),vmax=T.max())
+    #         ax1.set_title('Temperature Field')
+    #         ax1.set_xlabel('x')
+    #         ax1.set_ylabel('y')
+    #         ax1.set_aspect('equal')
+    #         cb1 = fig.colorbar(field1,label='[°C]')
+    #
+    #         plt.tight_layout()
+    #         plt.show()
 
 def postProcessing(phenomenon,surface,D,dtot,surfaceprep,matprop):
     elementcorners = surfaceprep[2]

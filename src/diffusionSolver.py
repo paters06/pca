@@ -52,8 +52,6 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
     source = matprop[2]
     kMat = conductivityMatrix(kappa)
 
-    bvec = source
-
     # Precomputing info for the nurbs derivatives
     mU = len(U) - 1
     mV = len(V) - 1
@@ -102,8 +100,8 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
 
             # Body forces integral
             if abs(source) > 1e-5:
-                nMat = biRatGrad[0,:]
-                Fb[globalDOF] += (nMat.T@source)*wJac
+                nMat = biRatGrad[0,None,:]
+                Fb[globalDOF] += nMat.T*source*wJac
 
             # Mass integral
             if abs(rho) > 1e-5:

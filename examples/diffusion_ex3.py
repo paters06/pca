@@ -34,9 +34,9 @@ def mainProgram():
     phenomenon = "Heat"
     Rmax = 1.0
     Rmin = 0.7
-    kappa = 385 #Pa
-    rho = 10.0
-    source = 0.0 #kg/m3
+    kappa = 1 #Pa
+    rho = 1.0
+    source = 1.0 #kg/m3
     materialProperties = [kappa,rho,source]
     flux = 0.0 #Pa
 
@@ -59,13 +59,14 @@ def mainProgram():
     doRefinement = 'Y'
 
     if doRefinement == 'Y':
-        srfn.surfaceRefinement(geomsurface,1,'p','U')
-        srfn.surfaceRefinement(geomsurface,1,'p','V')
-        srfn.surfaceRefinement(geomsurface,1,'h','U')
-        srfn.surfaceRefinement(geomsurface,1,'h','V')
+        # srfn.surfaceRefinement(geomsurface,1,'p','U')
+        # srfn.surfaceRefinement(geomsurface,1,'p','V')
+        srfn.surfaceRefinement(geomsurface,2,'h','U')
+        srfn.surfaceRefinement(geomsurface,2,'h','V')
 
-    dirichletConditionsData = [[[1.0,0.0],[1.0,1.0],0.0],[[0.0,0.0],[1.0,0.0],0.0],
-                               [[0.0,1.0],[1.0,1.0],0.0],[[0.0,0.0],[0.0,1.0],100.0]]
+    dirichletConditionsData = [[[1.0,0.0],[1.0,1.0],0.0],[[0.0,1.0],[1.0,1.0],0.0]]
+    # dirichletConditionsData = [[[1.0,0.0],[1.0,1.0],0.0],[[0.0,0.0],[1.0,0.0],0.0],
+    #                            [[0.0,1.0],[1.0,1.0],0.0],[[0.0,0.0],[0.0,1.0],100.0]]
     # neumannConditionsData = [[[0.0,0.0],[1.0,0.0],"tangent",flux],[[0.0,1.0],[1.0,1.0],"tangent",flux]]
     neumannConditionsData = None
 
@@ -83,12 +84,12 @@ def mainProgram():
     T = 1.0
     dt = 0.005
     uInitial = np.full((F.shape[0],1),0.0)
-    uTransient = timeIntg.explicitScheme(M,K,F,uInitial,dt,T,enforcedDOF,enforcedValues)
-    # uTransient = timeIntg.implicitScheme(M,K,F,uInitial,dt,T,enforcedDOF,enforcedValues)
+    # uTransient = timeIntg.explicitScheme(M,K,F,uInitial,dt,T,enforcedDOF,enforcedValues)
+    uTransient = timeIntg.implicitScheme(M,K,F,uInitial,dt,T,enforcedDOF,enforcedValues)
     # print(uTransient)
 
     # post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
-    # post2D.plotTransientField(phenomenon,geomsurface,surfacePreprocessing,materialProperties,uTransient)
+    post2D.plotTransientField(phenomenon,geomsurface,surfacePreprocessing,materialProperties,uTransient)
 
 mainProgram()
 
