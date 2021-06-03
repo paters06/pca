@@ -413,7 +413,7 @@ class SolutionField:
         plt.tight_layout()
         plt.show()
 
-def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un):
+def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un,T,dt,savevideo):
     elementcorners = surfaceprep[2]
     numelems = len(elementcorners)
 
@@ -427,50 +427,64 @@ def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un):
         numpoints = 5
     # End if
 
-    fig,ax = plt.subplots()
-    solfield = SolutionField(phenomenon,surface,Un[:,0,None],Un[:,0,None])
-    tpts,cpts = solfield.temperatureField(numpoints,surfaceprep)
-    field = ax.pcolormesh(cpts[0,:,:],cpts[1,:,:],tpts,vmin=tpts.min(),vmax=tpts.max())
-    # plt.title('Temperature Field')
-    # plt.xlabel('x')
-    # plt.ylabel('y')
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    div = make_axes_locatable(ax)
+    cax = div.append_axes('right', '5%', '5%')
+
+    frames = []
+    numframes = Un.shape[1]
+    print("CALCULATING FIELDS FOR ANIMATION")
+    for i in range(numframes):
+        solfield = SolutionField(phenomenon,surface,Un[:,i,None],Un[:,i,None])
+        tpts,cpts = solfield.temperatureField(numpoints,surfaceprep)
+        frames.append(tpts)
+        if i == 0:
+            xcoor = cpts[0,:,:]
+            ycoor = cpts[1,:,:]
+        # End if
+    # End for loop
+    numsteps = int(T/dt + 1)
+    tsteps = np.linspace(0,T,numsteps)
+
+    extent = np.min(xcoor), np.max(xcoor), np.min(ycoor), np.max(ycoor)
+    print("CALCULATION FINISHED")
+
+    field = ax.imshow(frames[0],origin='lower',extent=extent)
+    time_text = ax.text(0.02,1.02,"Time: 0.0 s",transform=ax.transAxes)
+    # frame_text = ax.text(0.75,1.02,"Frame # 0",transform=ax.transAxes)
+    cb = fig.colorbar(field,cax=cax,label='[°C]')
+    vmax = np.max(frames[-1])
+    vmin = np.min(frames[0])
+    field.set_clim(vmin,vmax)
+    tx = ax.set_title('Temperature Field')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
     # ax.set_aspect('equal')
     # plt.tight_layout()
 
     def animate(i):
-        solfield.updateControlPoints(Un[:,i,None],Un[:,i,None])
-        tpts,cpts = solfield.temperatureField(numpoints,surfaceprep)
-        field = ax.pcolormesh(cpts[0,:,:],cpts[1,:,:],tpts,vmin=tpts.min(),vmax=tpts.max())
-        return field,
-
-    cb = fig.colorbar(field,label='[°C]')
+        arr = frames[i]
+        # vmax = np.max(arr)
+        # vmin = np.min(arr)
+        field.set_data(arr)
+        time_text.set_text('Time: %.2f s' % tsteps[i])
+        # frame_text.set_text('Frame # %d' % i)
+        # field.set_clim(vmin,vmax)
+        # return field,
 
     anim = animation.FuncAnimation(fig,animate,frames=Un.shape[1], interval=10,blit=False)
-    anim.save('first_animation.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
-    # plt.show()
-
-    # solfield = SolutionField(phenomenon,surface,Un[:,0,None],Un[:,0,None])
-    # for i in range(Un.shape[1]):
-    #     if i%20 == 0:
-    #         solfield.updateControlPoints(Un[:,i,None],Un[:,i,None])
-    #         tpts,cpts = solfield.temperatureField(numpoints,surfaceprep)
-    #         # solfield.plotTemperatureField()
-    #
-    #         cx = cpts[0,:,:]
-    #         cy = cpts[1,:,:]
-    #         T = tpts
-    #
-    #         fig,ax1 = plt.subplots()
-    #
-    #         field1 = ax1.pcolormesh(cx,cy,T,vmin=T.min(),vmax=T.max())
-    #         ax1.set_title('Temperature Field')
-    #         ax1.set_xlabel('x')
-    #         ax1.set_ylabel('y')
-    #         ax1.set_aspect('equal')
-    #         cb1 = fig.colorbar(field1,label='[°C]')
-    #
-    #         plt.tight_layout()
-    #         plt.show()
+    if savevideo:
+        print("SAVING VIDEO WITH FFMPEG LIBRARY")
+        # anim.save('first_animation.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
+        writer = animation.FFMpegWriter(fps=30, codec='h264', bitrate=-1)
+        anim.save("third_test_impl.mp4", writer=writer)
+    else:
+        print("SHOWING ANIMATION IN RUNTIME")
+        plt.show()
 
 def postProcessing(phenomenon,surface,D,dtot,surfaceprep,matprop):
     elementcorners = surfaceprep[2]

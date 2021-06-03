@@ -89,7 +89,7 @@ def mainProgram():
     # print(uTransient)
 
     # post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
-    post2D.plotTransientField(phenomenon,geomsurface,surfacePreprocessing,materialProperties,uTransient)
+    post2D.plotTransientField(phenomenon,geomsurface,surfacePreprocessing,materialProperties,uTransient,T,dt,False)
 
 mainProgram()
 
