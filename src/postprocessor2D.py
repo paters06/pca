@@ -267,7 +267,6 @@ class SolutionField:
             print("Check physics selection")
 
     def plotTemperatureField(self):
-        from mpl_toolkits.axes_grid1 import make_axes_locatable
 
         cx = self.cpts[0,:,:]
         cy = self.cpts[1,:,:]
@@ -280,26 +279,14 @@ class SolutionField:
 
         fig,ax1 = plt.subplots()
 
-        # if aspectRatio > 1.5:
-        #     fig, (ax1,ax2) = plt.subplots(2,1,sharex='col',sharey='row')
-        # else:
-        #     fig, (ax1,ax2) = plt.subplots(1,2,sharex='col',sharey='row')
-
-        # fig.suptitle('Temperature field')
-        # fig.subplots_adjust(hspace=0.4, wspace=0.4)
-
         field1 = ax1.pcolormesh(cx,cy,T,vmin=T.min(),vmax=T.max())
         ax1.set_title('Temperature Field')
         ax1.set_xlabel('x')
         ax1.set_ylabel('y')
-        ax1.set_aspect('equal')
-        # divider = make_axes_locatable(ax1)
-        # cax = divider.append_axes("right",size="5%",pad=0.1)
+        # ax1.set_aspect('equal')
         cb1 = fig.colorbar(field1,label='[°C]')
 
-        # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],["Sx Stress Field","[Pa]"])
-
-        plt.tight_layout()
+        # plt.tight_layout()
         plt.show()
 
     def plotDisplacementFields(self):
@@ -427,13 +414,8 @@ def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un,T,dt,savevideo)
         numpoints = 5
     # End if
 
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
-
     fig = plt.figure()
     ax = fig.add_subplot(111)
-
-    div = make_axes_locatable(ax)
-    cax = div.append_axes('right', '5%', '5%')
 
     frames = []
     numframes = Un.shape[1]
@@ -441,6 +423,7 @@ def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un,T,dt,savevideo)
     for i in range(numframes):
         solfield = SolutionField(phenomenon,surface,Un[:,i,None],Un[:,i,None])
         tpts,cpts = solfield.temperatureField(numpoints,surfaceprep)
+        # print(tpts)
         frames.append(tpts)
         if i == 0:
             xcoor = cpts[0,:,:]
@@ -450,38 +433,43 @@ def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un,T,dt,savevideo)
     numsteps = int(T/dt + 1)
     tsteps = np.linspace(0,T,numsteps)
 
-    extent = np.min(xcoor), np.max(xcoor), np.min(ycoor), np.max(ycoor)
     print("CALCULATION FINISHED")
 
-    field = ax.imshow(frames[0],origin='lower',extent=extent)
-    time_text = ax.text(0.02,1.02,"Time: 0.0 s",transform=ax.transAxes)
-    # frame_text = ax.text(0.75,1.02,"Frame # 0",transform=ax.transAxes)
-    cb = fig.colorbar(field,cax=cax,label='[°C]')
+    field = ax.pcolormesh(cpts[0,:,:],cpts[1,:,:],frames[0])
+    # field = ax.pcolormesh(cpts[0,:,:],cpts[1,:,:],frames[1])
     vmax = np.max(frames[-1])
     vmin = np.min(frames[0])
     field.set_clim(vmin,vmax)
+
+    time_text = ax.text(0.02,1.02,"Time: 0.0 s",transform=ax.transAxes)
+    # frame_text = ax.text(0.75,1.02,"Frame # 0",transform=ax.transAxes)
+    cb = fig.colorbar(field,label='[°C]')
+    # cb = fig.colorbar(field,cax=cax,label='[°C]')
     tx = ax.set_title('Temperature Field')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
-    # ax.set_aspect('equal')
+    ax.set_aspect('equal')
     # plt.tight_layout()
+    # plt.show()
 
     def animate(i):
         arr = frames[i]
+        # print(arr)
         # vmax = np.max(arr)
         # vmin = np.min(arr)
-        field.set_data(arr)
+        field.set_array(np.ravel(arr))
+        # field.set_array(arr.reshape(-1))
         time_text.set_text('Time: %.2f s' % tsteps[i])
         # frame_text.set_text('Frame # %d' % i)
         # field.set_clim(vmin,vmax)
-        # return field,
+        return field,
 
-    anim = animation.FuncAnimation(fig,animate,frames=Un.shape[1], interval=10,blit=False)
+    anim = animation.FuncAnimation(fig,animate,frames=Un.shape[1], interval=5,blit=False)
     if savevideo:
         print("SAVING VIDEO WITH FFMPEG LIBRARY")
         # anim.save('first_animation.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
         writer = animation.FFMpegWriter(fps=30, codec='h264', bitrate=-1)
-        anim.save("third_test_impl.mp4", writer=writer)
+        anim.save("Al_fin_impl.mp4", writer=writer)
     else:
         print("SHOWING ANIMATION IN RUNTIME")
         plt.show()

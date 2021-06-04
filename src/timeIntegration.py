@@ -21,7 +21,7 @@ def explicitScheme(M,K,F,u0,dt,T,enforceddof,enforcedvalues):
     print("Maximum time step for explicit scheme: {0} seconds".format(dt_cr))
 
     if dt < dt_cr:
-        Kmod,Fmod,totalDofs = matEqnSol.dirichletBCEnforcement_Modified(K,F,enforceddof,enforcedvalues)
+        Mmod,Kmod,Fmod,totalDofs = matEqnSol.dirichletBCEnforcement_Modified(M,K,F,enforceddof,enforcedvalues)
 
         # Initial Conditions
         print("STARTING TIME ITERATIONS")
@@ -32,6 +32,7 @@ def explicitScheme(M,K,F,u0,dt,T,enforceddof,enforcedvalues):
         # print(invM)
         # print(B)
 
+        u0[enforceddof] = np.reshape(enforcedvalues,(len(enforcedvalues),1))
         u_n[:,0,None] = u0
 
         # Following timesteps
@@ -56,13 +57,16 @@ def implicitScheme(M,K,F,u0,dt,T,enforceddof,enforcedvalues):
     numdof = F.shape[0]
     u_n = np.zeros((numdof,numsteps))
 
-    Kmod,Fmod,totalDofs = matEqnSol.dirichletBCEnforcement_Modified(K,F,enforceddof,enforcedvalues)
+    Mmod,Kmod,Fmod,totalDofs = matEqnSol.dirichletBCEnforcement_Modified(M,K,F,enforceddof,enforcedvalues)
+
+    # print(np.vstack((enforceddof,enforcedvalues)))
+    u0[enforceddof] = np.reshape(enforcedvalues,(len(enforcedvalues),1))
 
     # Initial Conditions
     print("STARTING TIME ITERATIONS")
     print("NUMBER OF ITERATIONS: {0}".format(numsteps))
-    E = M + dt*Kmod
-    D = M
+    E = Mmod + dt*Kmod
+    D = Mmod
     invE = np.linalg.inv(E)
 
     u_n[:,0,None] = u0

@@ -2,15 +2,22 @@
 import numpy as np
 import numpy.linalg
 
+import src.debugScripts as dbg_scrpt
+
 ################ MATRIX EQUATION SOLUTION ####################
 
-def dirichletBCEnforcement_Modified(Kmod,Fmod,enforceddof,enforcedvalues):
-    mRows = Kmod.shape[0]
-    mCols = Kmod.shape[1]
+def dirichletBCEnforcement_Modified(M,K,F,enforceddof,enforcedvalues):
+    mRows = K.shape[0]
+    mCols = K.shape[1]
     numdof = len(enforceddof)
+
+    Mmod = M.copy()
+    Kmod = K.copy()
+    Fmod = F.copy()
 
     print("First modification")
     Kmod[enforceddof,:] = np.zeros((numdof,mCols))
+    Mmod[enforceddof,:] = np.zeros((numdof,mCols))
 
     print("Second modification")
     for i in range(numdof):
@@ -22,11 +29,15 @@ def dirichletBCEnforcement_Modified(Kmod,Fmod,enforceddof,enforcedvalues):
     print("Third modification")
     Kmod[:,enforceddof] = np.zeros((mRows,numdof))
     Kmod[enforceddof,enforceddof] = np.ones((numdof))
+
+    Mmod[:,enforceddof] = np.zeros((mRows,numdof))
+    Mmod[enforceddof,enforceddof] = np.ones((numdof))
+
     Fmod[enforceddof] = np.reshape(enforcedvalues,(numdof,1))
 
     totaldofs = np.arange(Fmod.shape[0])
 
-    return Kmod,Fmod,totaldofs
+    return Mmod,Kmod,Fmod,totaldofs
 
 def dirichletBCEnforcement_Reduced(K,F,enforceddof,enforcedvalues):
     print("First reduction")
@@ -37,7 +48,6 @@ def dirichletBCEnforcement_Reduced(K,F,enforceddof,enforcedvalues):
     for i in range(len(enforceddof)):
         Kcol = Kred[:,enforceddof[i]]
         Kcol = np.reshape(Kcol,(Kcol.shape[0],1))
-        # print(values[i])
         Fred -= Kcol*enforcedvalues[i]
 
     print("Second reduction")

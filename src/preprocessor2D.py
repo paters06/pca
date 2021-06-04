@@ -218,9 +218,7 @@ def dirichletBCPreprocessing(dirichletconditions,Pl,U,V,p,q):
     enforcedvalues = []
 
     f = np.arange(0,Pl.shape[0])
-    # fg = np.reshape(f,(nu+1,nv+1),order='C')
     fg = np.reshape(f,(nv+1,nu+1),order='C')
-    # fgg = np.reshape(f,(nu+1,nv+1),order='F')
 
     for cond in dirichletconditions:
         apt = np.array(cond[0])
@@ -289,8 +287,6 @@ def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
     f = np.arange(0,Pl.shape[0])
     f = np.reshape(f,(len(f),1))
     fg = np.reshape(f,(nv+1,nu+1),order='C')
-    # print(fg)
-    # print(np.hstack((f,Pl)))
 
     for cond in dirichletconditions:
         apt = np.array(cond[0])
@@ -461,7 +457,7 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
     fieldplot = ax.fill(cbpts[:,0],cbpts[:,1],facecolor='none',edgecolor='black',linewidth=1.5)
 
     # Control Points
-    # ax.scatter(P[:,0],P[:,1])
+    ax.scatter(P[:,0],P[:,1])
 
     # Dirichlet Conditions
     dirctrlpts = []
@@ -470,6 +466,7 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
         dirctrlpts.append(inode)
 
     for i in range(0,len(dirichletconds)):
+        # print(dirichletconds[i][1][1])
         if len(dirichletconds[i][1]) == 2:
             dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "r",marker = "^")
         else:
@@ -544,8 +541,8 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
                     loadcoor = geomcoor
                     loadfield = fieldpatch
                 else:
-                    print("******")
-                    print(fieldpatch)
+                    # print("******")
+                    # print(fieldpatch)
                     loadcoor = np.vstack((loadcoor,geomcoor))
                     loadfield = np.vstack((loadfield,fieldpatch))
                 # End if

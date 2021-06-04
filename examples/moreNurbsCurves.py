@@ -35,32 +35,32 @@ import src.plottingScripts as plts
 #w = np.array([[1],[1],[1],[1],[1]])
 #p = 2
 
-#P = np.array([[1,0],
-#              [1,1],
-#              [0,1],
-#              [-1,1],
-#              [-1,0],
-#              [-1,-1],
-#              [0,-1],
-#              [1,-1],
-#              [1,0]])
-
-#w = np.array([[1],[1/np.sqrt(2)],[1],[1/np.sqrt(2)],[1],[1/np.sqrt(2)],[1],[1/np.sqrt(2)],[1]])
-
-#U = np.array([0,0,0,0.25,0.25,0.5,0.5,0.75,0.75,1,1,1])
-#p = 2
-
 P = np.array([[1,0],
-              [1,1],
-              [0,1]])
+             [1,1],
+             [0,1],
+             [-1,1],
+             [-1,0],
+             [-1,-1],
+             [0,-1],
+             [1,-1],
+             [1,0]])
 
-w = np.array([[1],[1/np.sqrt(2)],[1]])
+w = np.array([[1],[1/np.sqrt(2)],[1],[1/np.sqrt(2)],[1],[1/np.sqrt(2)],[1],[1/np.sqrt(2)],[1]])
 
-U = np.array([0,0,0,1,1,1])
+U = np.array([0,0,0,0.25,0.25,0.5,0.5,0.75,0.75,1,1,1])
 p = 2
+
+# P = np.array([[1,0],
+#               [1,1],
+#               [0,1]])
+#
+# w = np.array([[1],[1/np.sqrt(2)],[1]])
+#
+# U = np.array([0,0,0,1,1,1])
+# p = 2
 
 curve1 = rbs.NURBSCurve(P,w,p,U)
 cpts = curve1.createCurve()
-cppts = curve1.createTangentCurve()
-#curve1.plotCurve()
-curve1.plotTangentCurve()
+# cppts = curve1.createTangentCurve()
+curve1.plotCurve()
+# curve1.plotTangentCurve()

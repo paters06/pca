@@ -24,13 +24,14 @@ def elasticMatrix(E,nu):
 
 ################ ISOGEOMETRIC ANALYSIS ####################
 
-def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep,neumannconditions):
+def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
     U,V,p,q,P,w = surface.retrieveSurfaceInformation()
 
     K = np.zeros((2*P.shape[0],2*P.shape[0]))
     F = np.zeros((2*P.shape[0],1))
     Fb = np.zeros((2*P.shape[0],1))
     Fl = np.zeros((2*P.shape[0],1))
+    M = np.zeros((2*P.shape[0],2*P.shape[0]))
 
     numquad2d = numquad[0]
     numquad1d = numquad[1]
@@ -40,24 +41,14 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep,neumanncon
     surfacespan = surfaceprep[1]
     elementcorners = surfaceprep[2]
 
-    # Extraction of boundary preprocessing
-    nonzeroctrlptsload = boundaryprep[0]
-    boundaryspan = boundaryprep[1]
-    boundarycorners = boundaryprep[2]
-    axisselector = boundaryprep[3]
-
     paramGrad = np.zeros((2,2))
     numElems = len(elementcorners)
-    numLoadedElems = len(boundarycorners)
 
     Pwl = rbs.weightedControlPoints(P,w)
     Pw = rbs.listToGridControlPoints(Pwl,U,V,p,q)
 
     # Rotation matrix for -pi/2
     rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
-
-    loadtype = neumannconditions[0][2]
-    loadvalue = neumannconditions[0][3]
 
     # Definition of the material matrix
     E = matprop[0]
@@ -127,72 +118,86 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep,neumanncon
             # Global indexing
             K[globalDOFx,globalDOFy] += (bMat.T@dMat@bMat)*wJac
 
-            # Body forces integral
+            # Body forces and mass integrals
             if abs(rho) > 1e-5:
                 nMat = np.zeros((2,2*biRatGrad.shape[1]))
                 nMat[0,0::2] = biRatGrad[0,:]
                 nMat[1,1::2] = biRatGrad[0,:]
 
                 Fb[globalDOF] += (nMat.T@bvec)*wJac
+                M[globalDOFx,globalDOFy] += rho*(nMat.T@nMat)*wJac
+            # End if
         # End iquad loop
     # End ielem loop
 
-    # Load integrals
-    print('Computing the load integrals')
-    for iload in range(0,numLoadedElems):
-        # Extracting the indices of the non-zero control points of the loaded elements
-        idR = nonzeroctrlptsload[iload]
-        # Extracting the indices for the location of the parametric segment
-        uspan = boundaryspan[iload][0]
-        vspan = boundaryspan[iload][1]
-        # Extracting the corners of the parametric segment
-        aPoint = boundarycorners[iload][0]
-        bPoint = boundarycorners[iload][1]
-        # Extracting the non-zero column index of the boundary jacobian
-        paramaxis = axisselector[iload]
+    if boundaryprep is not None:
+        # Extraction of boundary preprocessing
+        nonzeroctrlpts_neumannbc = boundaryprep[0]
+        boundaryspan = boundaryprep[1]
+        boundarycorners = boundaryprep[2]
+        axisselector = boundaryprep[3]
+        neumannbc_type = boundaryprep[4]
+        neumannbc_value = boundaryprep[5]
 
-        # Global degrees of freedom
-        globalDOF = np.zeros(2*len(idR),dtype=int)
-        dof0 = 2*np.array(idR)
-        dof1 = dof0 + 1
-        globalDOF[0::2] = dof0
-        globalDOF[1::2] = dof1
+        numLoadedElems = len(boundarycorners)
+        # Load integrals
+        print('Computing the load integrals')
+        for ineumann in range(0,numLoadedElems):
+            # Extracting the indices of the non-zero control points of the loaded elements
+            idR = nonzeroctrlpts_neumannbc[ineumann]
+            # Extracting the indices for the location of the parametric segment
+            uspan = boundaryspan[ineumann][0]
+            vspan = boundaryspan[ineumann][1]
+            # Extracting the corners of the parametric segment
+            aPoint = boundarycorners[ineumann][0]
+            bPoint = boundarycorners[ineumann][1]
+            # Extracting the non-zero column index of the boundary jacobian
+            paramaxis = axisselector[ineumann]
+            # Extracting the type and value of the neumann conditions
+            neumanntype = neumannbc_type[ineumann]
+            neumannval = neumannbc_value[ineumann]
 
-        for iquad in range(numquad1d.shape[0]):
-            coor = parametricCoordinate(aPoint[0],bPoint[0],aPoint[1],bPoint[1],numquad1d[iquad][0],numquad1d[iquad][0])
+            # Global degrees of freedom
+            globalDOF = np.zeros(2*len(idR),dtype=int)
+            dof0 = 2*np.array(idR)
+            dof1 = dof0 + 1
+            globalDOF[0::2] = dof0
+            globalDOF[1::2] = dof1
 
-            biRatGrad = rbs.bivariateRationalGradient(mU,mV,p,q,uspan,vspan,coor[0][0],coor[0][1],U,V,Pw)
-            Jac = (biRatGrad[1:3,:]@P[idR,:]).T
-            jac1 = np.linalg.norm(Jac[:,paramaxis])
-            jac2 = 0.5*np.sum(bPoint-aPoint)
+            for iquad in range(numquad1d.shape[0]):
+                coor = parametricCoordinate(aPoint[0],bPoint[0],aPoint[1],bPoint[1],numquad1d[iquad][0],numquad1d[iquad][0])
 
-            if jac1 > 1e-6:
-                unitTangetVec = Jac[:,paramaxis]/jac1
-            else:
-                unitTangetVec = np.zeros((2,1))
+                biRatGrad = rbs.bivariateRationalGradient(mU,mV,p,q,uspan,vspan,coor[0][0],coor[0][1],U,V,Pw)
+                Jac = (biRatGrad[1:3,:]@P[idR,:]).T
+                jac1 = np.linalg.norm(Jac[:,paramaxis])
+                jac2 = 0.5*np.sum(bPoint-aPoint)
 
-            if loadtype == "tangent":
-                # tvec = (loadvalue/abs(loadvalue))*unitTangetVec
-                tvec = loadvalue*unitTangetVec
-            elif loadtype == "normal":
-                unitNormalVec = rotMat@unitTangetVec
-                # tvec = (loadvalue/abs(loadvalue))*unitNormalVec
-                tvec = loadvalue*unitNormalVec
-            else:
-                print("Wrong load configuration")
+                if jac1 > 1e-6:
+                    unitTangetVec = Jac[:,paramaxis]/jac1
+                else:
+                    unitTangetVec = np.zeros((2,1))
 
-            tvec = np.reshape(tvec,(2,1))
-            nMat = np.zeros((2,2*biRatGrad.shape[1]))
+                if neumanntype == "tangent":
+                    tvec = neumannval*unitTangetVec
+                elif neumanntype == "normal":
+                    unitNormalVec = rotMat@unitTangetVec
+                    tvec = neumannval*unitNormalVec
+                else:
+                    print("Wrong load configuration")
 
-            nMat[0,0::2] = biRatGrad[0,:]
-            nMat[1,1::2] = biRatGrad[0,:]
+                tvec = np.reshape(tvec,(2,1))
+                nMat = np.zeros((2,2*biRatGrad.shape[1]))
 
-            Fl[globalDOF] += (nMat.T@tvec)*jac1*jac2*numquad1d[iquad][1]
-        # End iquad loop
-    # End iload loop
+                nMat[0,0::2] = biRatGrad[0,:]
+                nMat[1,1::2] = biRatGrad[0,:]
+
+                Fl[globalDOF] += (nMat.T@tvec)*jac1*jac2*numquad1d[iquad][1]
+            # End iquad loop
+        # End iload loop
+    # End if boundary is not None
 
     F = Fb + Fl
-    return K,F
+    return K,F,M
 
 def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundaryprep):
     multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints = multisurface.retrieveSurfaceInformation()
