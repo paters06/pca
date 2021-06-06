@@ -1,5 +1,6 @@
 # Python libraries
 import numpy as np
+import numpy.linalg
 import matplotlib.pyplot as plt
 
 # Local project
@@ -354,7 +355,7 @@ class MultiPatchNURBSSurface():
     A class that represents an object conformed
     by multiple patches of nurbs surfaces
     """
-    def __init__(self,multiU,multiV,multip,multiq,fullP,fullw,idctrlpts):
+    def __init__(self,multiU,multiV,multip,multiq,multiP,multiw):
         """
         Constructor for the multipatch object
         It will be implemented as an class of arrays
@@ -363,17 +364,19 @@ class MultiPatchNURBSSurface():
         self.multiV = multiV
         self.multip = multip
         self.multiq = multiq
-        self.fullP = fullP
-        self.fullw = fullw
-        self.idcontrolpoints = idctrlpts
+        self.multiP = multiP
+        self.multiw = multiw
+        self.createFullControlPolygon()
+    # End function
 
     def retrieveSurfaceInformation(self):
         """
         Getter method for the multipatch surface class
         """
-        return self.multiU,self.multiV,self.multip,self.multiq,self.fullP,self.fullw,self.idcontrolpoints
+        return self.multiU,self.multiV,self.multip,self.multiq,self.multiP,self.multiw
+    # End function
 
-    def updateSurfaceInformation(self,multiU,multiV,multip,multiq,fullP,fullw,idctrlpts):
+    def updateMultiPatchInformation(self,multiU,multiV,multip,multiq,multiP,multiw):
         """
         Setter method for the multipatch surface class
         """
@@ -381,9 +384,24 @@ class MultiPatchNURBSSurface():
         self.multiV = multiV
         self.multip = multip
         self.multiq = multiq
-        self.fullP = fullP
-        self.fullw = fullw
-        self.idcontrolpoints = idctrlpts
+        self.multiP = multiP
+        self.multiw = multiw
+        self.createFullControlPolygon()
+    # End function
+
+    def createFullControlPolygon(self):
+        for i in range(len(self.multiP)):
+            if i == 0:
+                joinedP = self.multiP[i]
+                joinedw = self.multiw[i]
+            else:
+                joinedP = np.vstack((joinedP,self.multiP[i]))
+                joinedw = np.vstack((joinedw,self.multiw[i]))
+            # End if
+
+        self.fullP,indices = np.unique(joinedP,axis=0,return_index=True)
+        self.fullw = joinedw[indices]
+    # End function
 
     def createMultipatchSurface(self):
         """
@@ -405,8 +423,8 @@ class MultiPatchNURBSSurface():
             urank = np.linspace(Ui.min(),Ui.max(),numpoints)
             vrank = np.linspace(Vi.min(),Vi.max(),numpoints)
 
-            Pi = self.fullP[self.idcontrolpoints[ipatch],:]
-            wi = self.fullw[self.idcontrolpoints[ipatch],:]
+            Pi = self.multiP[ipatch]
+            wi = self.multiw[ipatch]
 
             Pwl = weightedControlPoints(Pi,wi)
             Pw = listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
@@ -436,6 +454,7 @@ class MultiPatchNURBSSurface():
         # End patch loop
 
         return self.fullcpts
+    # End function
 
     def createMultipatchTangentSurface(self):
         """
@@ -459,8 +478,8 @@ class MultiPatchNURBSSurface():
             urank = np.linspace(Ui.min(),Ui.max(),numpoints)
             vrank = np.linspace(Vi.min(),Vi.max(),numpoints)
 
-            Pi = self.fullP[self.idcontrolpoints[ipatch]]
-            wi = self.fullw[self.idcontrolpoints[ipatch]]
+            Pi = self.multiP[ipatch]
+            wi = self.multiw[ipatch]
 
             Pwl = weightedControlPoints(Pi,wi)
             Pw = listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
@@ -495,6 +514,7 @@ class MultiPatchNURBSSurface():
             self.fullcpv.append(cpv)
 
         return self.fullcpu,self.fullcpv
+    # End function
 
     def plotMultipatchSurface(self):
         """
@@ -517,6 +537,7 @@ class MultiPatchNURBSSurface():
         ax.set_ylabel('y')
         ax.set_zlabel('z')
         plt.show()
+    # End function
 
     def plotMultipatchTangentSurface(self,component):
         """
@@ -546,6 +567,8 @@ class MultiPatchNURBSSurface():
         ax.set_ylabel('y')
         ax.set_zlabel('z')
         plt.show()
+    # End function
+# End class
 
 #####################################################
 ################# CONTROL POINTS ####################

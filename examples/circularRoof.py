@@ -73,8 +73,8 @@ def mainProgram():
     pre2D.problemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
     numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
-    print(geomsurface.P)
-    print(np.vstack((enforcedDOF,enforcedValues)))
+    # print(geomsurface.P)
+    # print(np.vstack((enforcedDOF,enforcedValues)))
 
     pre2D.plotGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 

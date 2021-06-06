@@ -7,6 +7,169 @@ import src.nurbs as rbs
 
 tol = 1e-5
 
+############# SINGLE KNOT INSERTION FOR SURFACE #################
+
+def knotInsertion(unew,vnew,dir,U,V,p,q,Pwg):
+    if dir == "UDIR":
+        Unew = np.zeros(len(U) + 1)
+        Vnew = np.zeros(len(V) + 1)
+
+        k = bfunc.findKnotInterval(len(U)-p-1,p,unew,U)
+        r = 1 #Single insertion
+        s = 0 #Multiplicity of the knots
+
+        # nP is the number of rows of control points minus 1
+        # before the knot insertion
+        # Np is the number of rows of control points
+        # before the knot insertion
+
+        # mp is the number of columns of control points minus 1
+        # before the knot insertion
+
+        nP = Pwg.shape[1] - 1
+        Np = nP + 1
+        mP = nP + p + 1
+        mp = Pwg.shape[2] - 1
+
+        # nq is the number of rows of control points minus one
+        # after the knot insertion
+
+        nq = nP + r
+        Nq = nq + 1
+
+        Qwg = np.zeros((Pwg.shape[0],Nq,Pwg.shape[2]))
+        Rw = np.zeros((p+1,Pwg.shape[0]))
+        alpha = np.zeros((p-r-s+1,r+1))
+
+        #Load new vector
+        for i in range(0,k+1):
+            Unew[i] = U[i]
+
+        for i in range(1,r+1):
+            Unew[k+i] = unew
+
+        for i in range(k+1,mP+1):
+            Unew[i+r] = U[i]
+
+        #Copy old vector in new vector
+        Vnew = V
+
+        #Save the alphas
+        for j in range(1,r+1):
+            L = k - p + j
+
+            for i in range(0,p-j-s+1):
+                alpha[i][j] = (unew - U[L+i])/(U[i+k+1] - U[L+i])
+
+        #For each row do
+        for row in range(0,mp+1):
+
+            #Save unaltered control points
+            for i in range(0,k-p+1):
+                Qwg[:,i,row] = Pwg[:,i,row]
+
+            for i in range(k-s,nP+1):
+                Qwg[:,i+r,row] = Pwg[:,i,row]
+
+            #Load auxiliary control points
+            for i in range(0,p-s+1):
+                Rw[i,:] = Pwg[:,k-p+i,row]
+
+            #Insert the knot r times
+            for j in range(1,r+1):
+                L = k-p+j
+
+                for i in range(0,p-j-s+1):
+                    Rw[i,:] = alpha[i][j]*Rw[i+1,:] + (1.0 - alpha[i][j])*Rw[i,:]
+
+                Qwg[:,L,row] = Rw[0,:]
+                Qwg[:,k+r-j-s,row] = Rw[p-j-s,:]
+
+            #Load remaining control points
+            for i in range(L+1,k-s):
+                Qwg[:,i,row] = Rw[i-L,:]
+
+    if dir == "VDIR":
+        Unew = np.zeros(len(U) + 1)
+        Vnew = np.zeros(len(V) + 1)
+
+        k = bfunc.findKnotInterval(len(V)-q-1,q,vnew,V)
+        r = 1 #Single insertion
+        s = 0 #Multiplicity of the knots
+
+        # nP is the number of columns of control points minus 1
+        # before the knot insertion
+        # Np is the number of colums of control points
+        # before the knot insertion
+
+        # mp is the number of rows of control points minus 1
+        # before the knot insertion
+
+        nP = Pwg.shape[2] - 1
+        Np = nP + 1
+        mP = nP + q + 1
+        mp = Pwg.shape[1] - 1
+
+        # nq is the number of columns of control points minus one
+        # after the knot insertion
+
+        nq = nP + r
+        Nq = nq + 1
+
+        Qwg = np.zeros((Pwg.shape[0],Pwg.shape[1],Nq))
+        Rw = np.zeros((q+1,Pwg.shape[0]))
+        alpha = np.zeros((q-r-s+1,r+1))
+
+        #Load new vector
+        for i in range(0,k+1):
+            Vnew[i] = V[i]
+
+        for i in range(1,r+1):
+            Vnew[k+i] = vnew
+
+        for i in range(k+1,mP+1):
+            Vnew[i+r] = V[i]
+
+        #Copy old vector in new vector
+        Unew = U
+
+        #Save the alphas
+        for j in range(1,r+1):
+            L = k - q + j
+
+            for i in range(0,q-j-s+1):
+                alpha[i][j] = (vnew - V[L+i])/(V[i+k+1] - V[L+i])
+
+        #For each row do
+        for col in range(0,mp+1):
+
+            #Save unaltered control points
+            for i in range(0,k-q+1):
+                Qwg[:,col,i] = Pwg[:,col,i]
+
+            for i in range(k-s,nP+1):
+                Qwg[:,col,i+r] = Pwg[:,col,i]
+
+            #Load auxiliary control points
+            for i in range(0,q-s+1):
+                Rw[i,:] = Pwg[:,col,k-q+i]
+
+            #Insert the knot r times
+            for j in range(1,r+1):
+                L = k-q+j
+
+                for i in range(0,q-j-s+1):
+                    Rw[i,:] = alpha[i][j]*Rw[i+1,:] + (1.0 - alpha[i][j])*Rw[i,:]
+
+                Qwg[:,col,L] = Rw[0,:]
+                Qwg[:,col,k+r-j-s] = Rw[q-j-s,:]
+
+            #Load remaining control points
+            for i in range(L+1,k-s):
+                Qwg[:,col,i] = Rw[i-L,:]
+
+    return Unew,Vnew,Qwg
+
 ################ KNOT REFINEMENT FOR SURFACE ####################
 
 def knotRefinement(dir,X,U,V,p,q,Pwg):
@@ -131,6 +294,26 @@ def knotRefinement(dir,X,U,V,p,q,Pwg):
             k -= 1
 
     return Ubar,Vbar,Qwg
+
+################ Pre-SPLINE DECOMPOSITION FOR SURFACE ####################
+
+def preSplineDecomposition(refdir,U,V,p,q,Pw):
+    X = np.array([])
+    multiVec = np.ones(p)
+    for u in U:
+        if abs(u-U.min()) > 1e-5 and abs(u-U.max()) > 1e-5:
+            X = np.concatenate([X,u*multiVec])
+
+    if len(X) > 0:
+        # refdir = "UDIR"
+        Usplit,Vsplit,Qsplit = knotRefinement(X,refdir,U,V,p,q,Pw)
+    else:
+        Usplit = U
+        Vsplit = V
+        Qsplit = Pw
+        print("The spline only has one element")
+
+    return Usplit,Vsplit,Qsplit
 
 ################ DEGREE ELEVATION FOR SURFACE ####################
 

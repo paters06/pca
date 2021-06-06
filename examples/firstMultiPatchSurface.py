@@ -31,13 +31,14 @@ import src.surfaceRefinements as srfn
 
 
 # Complete list of control points
-fullP = np.array([[0,0,0],[0.2,0,0],[0,0.6,0],[0.2,0.4,0],
-                  [0.6,0.4,0],[0.6,0.6,0]])
+controlPointsPatch1 = np.array([[0.0,0.0,0.0],[0.2,0,0],[0.0,0.6,0],[0.2,0.4,0.0]])
+weightsPatch1 = np.ones((controlPointsPatch1.shape[0],1))
 
-fullw = np.array([[1],[1],[1],[1],[1],[1]])
+controlPointsPatch2 = np.array([[0.2,0.4,0.0],[0.6,0.4,0.0],[0.0,0.6,0.0],[0.6,0.6,0.0]])
+weightsPatch2 = np.ones((controlPointsPatch2.shape[0],1))
 
-idcontrolpoints = [[0,1,2,3],[3,4,2,5]]
-localcontrolpoints = [fullP[idcontrolpoints[0],:],fullP[idcontrolpoints[1],:]]
+multiP = [controlPointsPatch1,controlPointsPatch2]
+multiw = [weightsPatch1,weightsPatch2]
 
 multip = [1,1]
 multiq = [1,1]
@@ -45,46 +46,17 @@ multiq = [1,1]
 multiU = [np.array([0,0,1,1]),np.array([1,1,2,2])]
 multiV = [np.array([0,0,1,1]),np.array([0,0,1,1])]
 
-# First Patch
-#P = np.array([[0,0,0],
-#              [0.2,0,0],
-#              [0,0.6,0],
-#              [0.2,0.4,0]])
-
-#w = np.array([[1],[1],[1],[1]])
-
-#p = 1
-#q = 1
-
-#U = np.array([0,0,1,1])
-#V = np.array([0,0,1,1])
-
-# Second Patch
-#P = np.array([[0.2,0.4,0],
-#              [0.6,0.4,0],
-#              [0,0.6,0],
-#              [0.6,0.6,0]])
-
-#w = np.array([[1],[1],[1],[1]])
-
-#p = 1
-#q = 1
-
-#U = np.array([0,0,1,1])
-#V = np.array([0,0,1,1])
-
 surface = rbs.MultiPatchNURBSSurface(multiU,multiV,multip,multiq,\
-                                     fullP,fullw,idcontrolpoints)
-
-
+                                     multiP,multiw)
 
 localRefinement = 'Y'
 patchesToRefine = [0,1]
-reflist = [['h','h','h','h'],['h','h']]
-dirlist = [['U','V','U','V'],['U','V']]
+numreflist = [2,1]
+reflist = [['h'],['h']]
+dirlist = [['U','V'],['U','V']]
 
 if localRefinement == 'Y':
-    localcontrolpoints = srfn.localPatchRefinement(surface,patchesToRefine,reflist,dirlist,localcontrolpoints)
+    srfn.localPatchRefinement(surface,patchesToRefine,numreflist,reflist,dirlist)
 
 fullcpts = surface.createMultipatchSurface()
 fullcpu,fullcpv = surface.createMultipatchTangentSurface()
