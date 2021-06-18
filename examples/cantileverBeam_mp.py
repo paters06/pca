@@ -19,6 +19,7 @@ sys.path.append(dir2)
 
 # Local project
 import src.nurbs as rbs
+import src.preprocessor2D as pre2D
 import src.multipatchPreprocessor2D as multipatchpre2D
 import src.linearElastoStaticsSolver as linElastStat
 import src.matrixEquationSolver as matEqnSol
@@ -57,40 +58,40 @@ def mainProgram():
     multiU = [np.array([0,0,1,1]),np.array([0,0,1,1])]
     multiV = [np.array([0,0,1,1]),np.array([0,0,1,1])]
 
-    localRefinement = 'Y'
+    geomsurface = rbs.MultiPatchNURBSSurface(multiU,multiV,multip,multiq,\
+                                             multiP,multiw)
+
+    localRefinement = 'N'
     patchesToRefine = [0,1]
+    numreflist = [2,1]
+    reflist = [['h'],['h']]
+    dirlist = [['U','V'],['U','V']]
 
     if localRefinement == 'Y':
-        multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints,localcontrolpoints = \
-        srfn.localPatchRefinement(patchesToRefine,reflist,dirlist,multiU,multiV,multip,multiq,fullP,fullw,\
-        idcontrolpoints,localcontrolpoints)
+        srfn.localPatchRefinement(geomsurface,patchesToRefine,numreflist,reflist,dirlist)
+    # End if
 
-    for mU in multiU:
-        print(mU)
+    #disp_i = [startpt,endpt,value,restriction]
+    dirichletData_0 = [[0.0,0.0],[0.0,1.0],0.0,"C"]
+    dirichletConditionsData = [dirichletData_0,None]
+    #neumann_i = [startpt,endpt,type_load,value]
+    neumannData_1 = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
+    neumannConditionsData = [None,neumannData_1]
 
-    #disp_i = [id patch,[startpt,endpt],restriction,value]
-    displacementConditions = [[0,[0.0,0.0],[0.0,0.2],"C",0.0]]
-    #neumann_i = [id patch,[startpt,endpt],type_load,value]
-    neumannConditions = [[1,[1.0,0.0],[1.0,1.0],"tangent",tv]]
+    surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues = \
+    multipatchpre2D.multiPatchProblemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
+    numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
-    fullParametricNodes,fullNodesInElement,fullSurfacePreprocessing = multipatchpre2D.parametricGrid(multiU,multiV,multip,multiq)
-    boundaryPreprocessing = multipatchpre2D.loadPreprocessing(fullParametricNodes,fullNodesInElement,neumannConditions,\
-                            multiU,multiV,multip,multiq)
-    dirichletBCList = multipatchpre2D.dirichletBCPreprocessingOnFaces(fullP,idcontrolpoints,displacementConditions)
-    numericalquadrature = multipatchpre2D.numericalIntegrationPreprocessing(numGaussPoints)
+    # multipatchpre2D.plotMultiPatchGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
-#    multipatchpre2D.plotMultipatchGeometry(multiU,multiV,multip,multiq,fullP,fullw,\
-#                                           idcontrolpoints,dirichletBCList,boundaryPreprocessing)
+    Ktotal,Ftotal,Mtotal = linElastStat.assemblyMultipatchWeakForm(geomsurface,surfacePreprocessing,\
+            numericalquadrature,materialProperties,boundaryPreprocessing)
 
-    # K,F = linElastStat.assemblyMultipatchWeakForm(multiU,multiV,fullw,multip,multiq,fullP,idcontrolpoints, \
-    #       fullSurfacePreprocessing,numericalquadrature,materialProperties,boundaryPreprocessing)
+    Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(Ktotal,Ftotal,enforcedDOF,enforcedValues)
 
-    # Kred,Fred,removedDofs,totalDofs = matEqnSol.boundaryConditionsEnforcement(K,F,dirichletBCList)
+    dtotal,D = matEqnSol.solveReducedMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
 
-    # dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
-
-    # multipatchpost2D.postProcessing(multiU,multiV,multip,multiq,fullP,D,fullw,dtotal, \
-    #                                 idcontrolpoints,fullSurfacePreprocessing,materialProperties)
+    multipatchpost2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 
 mainProgram()
 

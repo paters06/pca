@@ -373,7 +373,7 @@ class MultiPatchNURBSSurface():
         """
         Getter method for the multipatch surface class
         """
-        return self.multiU,self.multiV,self.multip,self.multiq,self.multiP,self.multiw
+        return self.multiU,self.multiV,self.multip,self.multiq,self.multiP,self.multiw,self.globalPatchIndices
     # End function
 
     def updateMultiPatchInformation(self,multiU,multiV,multip,multiq,multiP,multiw):
@@ -398,9 +398,19 @@ class MultiPatchNURBSSurface():
                 joinedP = np.vstack((joinedP,self.multiP[i]))
                 joinedw = np.vstack((joinedw,self.multiw[i]))
             # End if
-
+        # End for loop
         self.fullP,indices = np.unique(joinedP,axis=0,return_index=True)
         self.fullw = joinedw[indices]
+
+        self.globalPatchIndices = []
+        for i in range(len(self.multiP)):
+            boolCoincidentRows = self.multiP[i][:,None] == self.fullP
+            patchIndices = []
+            for j in range(len(boolCoincidentRows)):
+                idx_i = list(np.where(boolCoincidentRows[j].all(axis=1))[0])
+                patchIndices += idx_i
+            self.globalPatchIndices.append(patchIndices)
+        #End for loop
     # End function
 
     def createMultipatchSurface(self):

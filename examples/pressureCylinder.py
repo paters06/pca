@@ -73,7 +73,7 @@ def mainProgram():
 
     # pre2D.plotGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
-    K,F = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
+    K,F,M = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
                                         materialProperties,boundaryPreprocessing)
 
     Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(K,F,enforcedDOF,enforcedValues)

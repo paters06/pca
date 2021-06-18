@@ -217,11 +217,15 @@ class SolutionField:
                         svec[:] = np.NaN
                         print(svec.shape)
                         nanArray.append([iu*numpoints + i,jv*numpoints + j])
+                    # End if
 
                     self.sigma[:,iu*numpoints + i,jv*numpoints + j] = svec.T
+                # End for loop
+            # End for loop
+        # End for loop
 
         xsize,ysize = numelemsu*numpoints,numelemsv*numpoints
-    #    print(nanArray)
+       # print(nanArray)
         # Recomputing NaN values
         for nanA in nanArray:
             print("Recomputing NaN values")
@@ -246,9 +250,10 @@ class SolutionField:
                         if not np.any(np.isnan(self.sigma[:,neigh[0],neigh[1]])):
                             sumSigma += self.sigma[:,neigh[0],neigh[1]]
                             numneigh += 1
+            # End for loop
 
             self.sigma[:,iu,jv] = sumSigma/numneigh
-
+        # End for loop
         return self.sigma
 
     def showExtremaValues(self):

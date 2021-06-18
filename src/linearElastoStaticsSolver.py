@@ -200,12 +200,85 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
     return K,F,M
 
 def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundaryprep):
-    multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints = multisurface.retrieveSurfaceInformation()
+    multiU,multiV,multip,multiq,multiP,multiw,globalPatchIndices = multisurface.retrieveSurfaceInformation()
 
-    Ktotal = np.zeros((2*fullP.shape[0],2*fullP.shape[0]))
-    Ftotal = np.zeros((2*fullP.shape[0],1))
-    Fbtotal = np.zeros((2*fullP.shape[0],1))
-    Fltotal = np.zeros((2*fullP.shape[0],1))
+    multisurface.createFullControlPolygon()
+    fullNumberControlPoints = multisurface.fullP.shape[0]
+    Ktotal = np.zeros((2*fullNumberControlPoints,2*fullNumberControlPoints))
+    Mtotal = np.zeros((2*fullNumberControlPoints,2*fullNumberControlPoints))
+    Ftotal = np.zeros((2*fullNumberControlPoints,1))
+    Fbtotal = np.zeros((2*fullNumberControlPoints,1))
+    Fltotal = np.zeros((2*fullNumberControlPoints,1))
+
+    # numquad2d = numquad[0]
+    # numquad1d = numquad[1]
+
+    # Definition of the material matrix
+    # E = matprop[0]
+    # nu = matprop[1]
+    # rho = matprop[2]
+    # dMat = elasticMatrix(E,nu)
+
+    # Rotation matrix for -pi/2
+    # rotMat = np.array([[0.0,1.0],[-1.0,0.0]])
+
+    # paramGrad = np.zeros((2,2))
+
+    # bvec = np.zeros((2,1))
+    # bvec[1][0] = -rho*9.8
+
+    numpatches = len(multiU)
+
+    # Patch loop
+    print('Computing the strain-energy and body forces integrals')
+    for ipatch in range(numpatches):
+        print('Patch #',ipatch)
+
+        Uinit = multiU[ipatch]
+        Vinit = multiV[ipatch]
+        pinit = multip[ipatch]
+        qinit = multiq[ipatch]
+        Pinit = multiP[ipatch]
+        winit = multiw[ipatch]
+
+        surface_i = rbs.NURBSSurface(Pinit,winit,pinit,qinit,U=Uinit,V=Vinit)
+        surfaceprep_i = surfaceprep[ipatch]
+
+        if boundaryprep[ipatch] is not None:
+            boundaryprep_i = boundaryprep[ipatch][1:]
+            # print(boundaryprep_i)
+        else:
+            boundaryprep_i = boundaryprep[ipatch]
+        # End if
+
+        Kpatch,Fpatch,Mpatch = assemblyWeakForm(surface_i,surfaceprep_i,numquad,matprop,boundaryprep_i)
+
+        # Patch degrees of freedom
+        patchDOF = np.zeros(2*len(globalPatchIndices[ipatch]),dtype=int)
+        dof0 = 2*np.array(globalPatchIndices[ipatch])
+        dof1 = dof0 + 1
+        patchDOF[0::2] = dof0
+        patchDOF[1::2] = dof1
+
+        patchDOFx,patchDOFy = np.meshgrid(patchDOF,patchDOF,indexing='xy')
+
+        Ktotal[patchDOFx,patchDOFy] += Kpatch
+        Mtotal[patchDOFx,patchDOFy] += Mpatch
+        Ftotal[patchDOF] += Fpatch
+    # End patch for loop
+
+    return Ktotal,Ftotal,Mtotal
+
+def assemblyMultipatchWeakFormv2(multisurface,surfaceprep,numquad,matprop,boundaryprep):
+    multiU,multiV,multip,multiq,multiP,multiw,globalPatchIndices = multisurface.retrieveSurfaceInformation()
+
+    #fullP is not known
+    multisurface.createFullControlPolygon()
+    fullNumberControlPoints = multisurface.fullP.shape[0]
+    Ktotal = np.zeros((2*fullNumberControlPoints,2*fullNumberControlPoints))
+    Ftotal = np.zeros((2*fullNumberControlPoints,1))
+    Fbtotal = np.zeros((2*fullNumberControlPoints,1))
+    Fltotal = np.zeros((2*fullNumberControlPoints,1))
 
     numquad2d = numquad[0]
     numquad1d = numquad[1]
@@ -226,6 +299,8 @@ def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundary
 
     numpatches = len(multiU)
 
+    print(len(surfaceprep))
+
     # Patch loop
     print('Computing the strain-energy and body forces integrals')
     for ipatch in range(0,numpatches):
@@ -235,8 +310,8 @@ def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundary
         pi = multip[ipatch]
         qi = multiq[ipatch]
 
-        Pi = fullP[idcontrolpoints[ipatch],:]
-        wi = fullw[idcontrolpoints[ipatch],:]
+        Pi = multiP[ipatch]
+        wi = multiw[ipatch]
 
         Kpatch = np.zeros((2*Pi.shape[0],2*Pi.shape[0]))
         Fbpatch = np.zeros((2*Pi.shape[0],1))
@@ -257,8 +332,8 @@ def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundary
         nV = mV - qi - 1
 
         # Global degrees of freedom
-        globalDOF = np.zeros(2*len(idcontrolpoints[ipatch]),dtype=int)
-        dof0 = 2*np.array(idcontrolpoints[ipatch])
+        globalDOF = np.zeros(2*len(globalPatchIndices[ipatch]),dtype=int)
+        dof0 = 2*np.array(globalPatchIndices[ipatch])
         dof1 = dof0 + 1
         globalDOF[0::2] = dof0
         globalDOF[1::2] = dof1
@@ -328,106 +403,108 @@ def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundary
         # End of element loop
         Ktotal[globalDOFx,globalDOFy] += Kpatch
         Fbtotal[globalDOF] += Fbpatch
+
+        if boundaryprep[ipatch] is not None:
+            # Load conditions loop
+            # Extraction of boundary preprocessing
+            loadedpatches = boundaryprep[ipatch][0]
+            nonzeroctrlptsload = boundaryprep[ipatch][1]
+            boundaryspan = boundaryprep[ipatch][2]
+            boundarycorners = boundaryprep[ipatch][3]
+            axisselector = boundaryprep[ipatch][4]
+            valuesload = boundaryprep[ipatch][6]
+            loadtype = boundaryprep[ipatch][5]
+
+            numLoadedElems = len(boundarycorners)
+
+            # Load integrals
+            print('Computing the load integrals')
+            for iload in range(0,numLoadedElems):
+                # Extracting the indices of the patch
+                # ipatch = loadedpatches[iload]
+                ipatch = loadedpatches
+                # Extracting the indices of the non-zero control points of the loaded elements
+                idR = nonzeroctrlptsload[iload]
+                # Extracting the indices for the location of the parametric segment
+                uspan = boundaryspan[iload][0]
+                vspan = boundaryspan[iload][1]
+                # Extracting the corners of the parametric segment
+                aPoint = boundarycorners[iload][0]
+                bPoint = boundarycorners[iload][1]
+                # Extracting the non-zero column index of the boundary jacobian
+                paramaxis = axisselector[iload]
+                # Extracting the value of the load in the face
+                load = valuesload[iload]
+
+                Ui = multiU[ipatch]
+                Vi = multiV[ipatch]
+
+                pi = multip[ipatch]
+                qi = multiq[ipatch]
+
+                Pi = multiP[ipatch]
+                wi = multiw[ipatch]
+
+                Flpatch = np.zeros((2*Pi.shape[0],1))
+
+                mu = len(Ui) - 1
+                mv = len(Vi) - 1
+
+                Pwl = rbs.weightedControlPoints(Pi,wi)
+                Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
+
+                # Global degrees of freedom
+                globalDOF = np.zeros(2*len(globalPatchIndices[ipatch]),dtype=int)
+                dof0 = 2*np.array(globalPatchIndices[ipatch])
+                dof1 = dof0 + 1
+                globalDOF[0::2] = dof0
+                globalDOF[1::2] = dof1
+
+                globalDOFx,globalDOFy = np.meshgrid(globalDOF,globalDOF,indexing='xy')
+
+                # Patch degrees of freedom
+                patchDOF = np.zeros(2*len(idR),dtype=int)
+                dof0 = 2*np.array(idR)
+                dof1 = dof0 + 1
+                patchDOF[0::2] = dof0
+                patchDOF[1::2] = dof1
+
+                patchDOFx,patchDOFy = np.meshgrid(patchDOF,patchDOF,indexing='xy')
+
+                for iquad in range(numquad1d.shape[0]):
+                    coor = parametricCoordinate(aPoint[0],bPoint[0],aPoint[1],bPoint[1],numquad1d[iquad][0],numquad1d[iquad][0])
+
+                    biRatGrad = rbs.bivariateRationalGradient(mU,mV,pi,qi,uspan,vspan,coor[0][0],coor[0][1],Ui,Vi,Pwi)
+                    Jac = (biRatGrad[1:3,:]@Pi[idR,:]).T
+                    jac1 = np.linalg.norm(Jac[:,paramaxis])
+                    jac2 = 0.5*np.sum(bPoint-aPoint)
+
+                    if jac1 > 1e-6:
+                        unitTangetVec = Jac[:,paramaxis]/jac1
+                    else:
+                        unitTangetVec = np.zeros((2,1))
+
+                    if loadtype[iload] == "tangent":
+                        # tvec = (loadvalue/abs(loadvalue))*unitTangetVec
+                        tvec = load*unitTangetVec
+                    elif loadtype[iload] == "normal":
+                        unitNormalVec = rotMat@unitTangetVec
+                        # tvec = (loadvalue/abs(loadvalue))*unitNormalVec
+                        tvec = load*unitNormalVec
+                    else:
+                        print("Wrong load configuration")
+
+                    tvec = np.reshape(tvec,(2,1))
+                    nMat = np.zeros((2,2*biRatGrad.shape[1]))
+
+                    nMat[0,0::2] = biRatGrad[0,:]
+                    nMat[1,1::2] = biRatGrad[0,:]
+
+                    Flpatch[patchDOF] += (nMat.T@tvec)*jac1*jac2*numquad1d[iquad][1]
+                # End quadrature loop
+                Fltotal[globalDOF] += Flpatch
+            # End load loop
     # End of patch loop
-
-    # Load conditions loop
-    # Extraction of boundary preprocessing
-    loadedpatches = boundaryprep[0]
-    nonzeroctrlptsload = boundaryprep[1]
-    boundaryspan = boundaryprep[2]
-    boundarycorners = boundaryprep[3]
-    axisselector = boundaryprep[4]
-    valuesload = boundaryprep[5]
-    loadtype = boundaryprep[6]
-
-    numLoadedElems = len(boundarycorners)
-
-    # Load integrals
-    print('Computing the load integrals')
-    for iload in range(0,numLoadedElems):
-        # Extracting the indices of the patch
-        ipatch = loadedpatches[iload]
-        # Extracting the indices of the non-zero control points of the loaded elements
-        idR = nonzeroctrlptsload[iload]
-        # Extracting the indices for the location of the parametric segment
-        uspan = boundaryspan[iload][0]
-        vspan = boundaryspan[iload][1]
-        # Extracting the corners of the parametric segment
-        aPoint = boundarycorners[iload][0]
-        bPoint = boundarycorners[iload][1]
-        # Extracting the non-zero column index of the boundary jacobian
-        paramaxis = axisselector[iload]
-        # Extracting the value of the load in the face
-        load = valuesload[iload]
-
-        Ui = multiU[ipatch]
-        Vi = multiV[ipatch]
-
-        pi = multip[ipatch]
-        qi = multiq[ipatch]
-
-        Pi = fullP[idcontrolpoints[ipatch],:]
-        wi = fullw[idcontrolpoints[ipatch],:]
-
-        Flpatch = np.zeros((2*Pi.shape[0],1))
-
-        mu = len(Ui) - 1
-        mv = len(Vi) - 1
-
-        Pwl = rbs.weightedControlPoints(Pi,wi)
-        Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
-
-        # Global degrees of freedom
-        globalDOF = np.zeros(2*len(idcontrolpoints[ipatch]),dtype=int)
-        dof0 = 2*np.array(idcontrolpoints[ipatch])
-        dof1 = dof0 + 1
-        globalDOF[0::2] = dof0
-        globalDOF[1::2] = dof1
-
-        globalDOFx,globalDOFy = np.meshgrid(globalDOF,globalDOF,indexing='xy')
-
-        # Patch degrees of freedom
-        patchDOF = np.zeros(2*len(idR),dtype=int)
-        dof0 = 2*np.array(idR)
-        dof1 = dof0 + 1
-        patchDOF[0::2] = dof0
-        patchDOF[1::2] = dof1
-
-        patchDOFx,patchDOFy = np.meshgrid(patchDOF,patchDOF,indexing='xy')
-
-        for iquad in range(numquad1d.shape[0]):
-            coor = parametricCoordinate(aPoint[0],bPoint[0],aPoint[1],bPoint[1],numquad1d[iquad][0],numquad1d[iquad][0])
-
-            biRatGrad = rbs.bivariateRationalGradient(mU,mV,pi,qi,uspan,vspan,coor[0][0],coor[0][1],Ui,Vi,Pwi)
-            Jac = (biRatGrad[1:3,:]@Pi[idR,:]).T
-            jac1 = np.linalg.norm(Jac[:,paramaxis])
-            jac2 = 0.5*np.sum(bPoint-aPoint)
-
-            if jac1 > 1e-6:
-                unitTangetVec = Jac[:,paramaxis]/jac1
-            else:
-                unitTangetVec = np.zeros((2,1))
-
-            if loadtype[iload] == "tangent":
-                # tvec = (loadvalue/abs(loadvalue))*unitTangetVec
-                tvec = load*unitTangetVec
-            elif loadtype[iload] == "normal":
-                unitNormalVec = rotMat@unitTangetVec
-                # tvec = (loadvalue/abs(loadvalue))*unitNormalVec
-                tvec = load*unitNormalVec
-            else:
-                print("Wrong load configuration")
-
-            tvec = np.reshape(tvec,(2,1))
-            nMat = np.zeros((2,2*biRatGrad.shape[1]))
-
-            nMat[0,0::2] = biRatGrad[0,:]
-            nMat[1,1::2] = biRatGrad[0,:]
-
-            Flpatch[patchDOF] += (nMat.T@tvec)*jac1*jac2*numquad1d[iquad][1]
-        # End quadrature loop
-        Fltotal[globalDOF] += Flpatch
-    # End load loop
 
     Ftotal = Fbtotal + Fltotal
     return Ktotal,Ftotal

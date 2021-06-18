@@ -545,7 +545,7 @@ def surfaceRefinement(surface,rfnnum,rfntype,rfndir,paramlist=None):
     surface.updateSurfaceInformation(Uout,Vout,pout,qout,Pout,wout)
 
 def localPatchRefinement(multisurface,patchlist,numreflist,reflist,dirlist):
-    multiU,multiV,multip,multiq,multiP,multiw = multisurface.retrieveSurfaceInformation()
+    multiU,multiV,multip,multiq,multiP,multiw,globalPatchIndices = multisurface.retrieveSurfaceInformation()
 
     for idpatch in range(len(patchlist)):
         print('Patch #',idpatch)
@@ -558,6 +558,7 @@ def localPatchRefinement(multisurface,patchlist,numreflist,reflist,dirlist):
         qinit = multiq[idPatchToRefine]
         Pinit = multiP[idPatchToRefine]
         winit = multiw[idPatchToRefine]
+        globalPatchIndicesinit = globalPatchIndices[idPatchToRefine]
 
         numrefs = numreflist[idPatchToRefine]
         reftypes = reflist[idPatchToRefine]

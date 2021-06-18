@@ -114,6 +114,35 @@ def plotMultipatchField(fullc,fullf,comp,*argv):
     titlestring = ""
     colorbarstring = "value"
 
+    for ifc in range(len(fullc)):
+        field = ax.pcolormesh(fullc[ifc][0,:,:],fullc[ifc][1,:,:],fullf[ifc][comp,:,:])
+        # field = ax.scatter(fullc[:,0],fullc[:,1],fullf[:,comp],c=fullf[:,comp])
+    # End for loop
+    vmax = np.max(fullf[-1])
+    vmin = np.min(fullf[0])
+    field.set_clim(vmin,vmax)
+
+    if argv != ():
+        stringlegends = argv[0]
+        titlestring = stringlegends[0]
+        colorbarstring = stringlegends[1]
+
+    cb = fig.colorbar(field)
+    # cb = fig.colorbar(field,extend='both')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_title(titlestring)
+    # cb.set_label(colorbarstring)
+    plt.show()
+# End function
+
+def plotMultipatchFieldv2(fullc,fullf,comp,*argv):
+    fig = plt.figure()
+    ax = plt.axes()
+    # ax = plt.axes(projection = '3d')
+    titlestring = ""
+    colorbarstring = "value"
+
     field = ax.scatter(fullc[:,0],fullc[:,1],c=fullf[:,comp])
     # field = ax.scatter(fullc[:,0],fullc[:,1],fullf[:,comp],c=fullf[:,comp])
 
@@ -129,6 +158,7 @@ def plotMultipatchField(fullc,fullf,comp,*argv):
     ax.set_title(titlestring)
     # cb.set_label(colorbarstring)
     plt.show()
+# End function
 
 ##################### SURFACE REFINEMENT ########################
 

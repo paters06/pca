@@ -376,7 +376,12 @@ def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
         # End fs for loop
     # End cond for loop
 
-    dirichletconds = [[a,b] for a,b in dcconds_dict.items()]
+    # dirichletconds = [[a,b] for a,b in dcconds_dict.items()]
+    for key,value in dcconds_dict.items():
+        # print(key,value)
+        dcond = [key] + [v for v in value]
+        # print(dcond)
+        dirichletconds.append(dcond)
     # print(enforceddof)
     # print(enforcedvalues)
 
@@ -466,8 +471,9 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
         dirctrlpts.append(inode)
 
     for i in range(0,len(dirichletconds)):
-        # print(dirichletconds[i][1][1])
-        if len(dirichletconds[i][1]) == 2:
+        dofs = dirichletconds[i][2]
+        # print(dofs)
+        if len(dofs) == 2:
             dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "r",marker = "^")
         else:
             dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "g",marker = "o")

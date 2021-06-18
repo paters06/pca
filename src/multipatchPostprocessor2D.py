@@ -32,15 +32,15 @@ class SolutionField:
         """
         Constructor of the class
         """
-        multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints = multisurface.retrieveSurfaceInformation()
+        multiU,multiV,multip,multiq,multiP,multiw,globalPatchIndices = multisurface.retrieveSurfaceInformation()
         self.multiU = multiU
         self.multiV = multiV
         self.multip = multip
         self.multiq = multiq
-        self.fullP = fullP
-        self.fullw = fullw
-        self.idcontrolpoints = idcontrolpoints
-        self.fullD = D
+        self.multiP = multiP
+        self.multiw = multiw
+        self.globalPatchIndices = globalPatchIndices
+        self.Dsol = D
         self.dtot = dtot
 
     def displacementFieldGrid(self,surfaceprep):
@@ -59,9 +59,9 @@ class SolutionField:
             pi = self.multip[ipatch]
             qi = self.multiq[ipatch]
 
-            Pi = self.fullP[self.idcontrolpoints[ipatch],:]
-            wi = self.fullw[self.idcontrolpoints[ipatch],:]
-            Di = self.fullD[self.idcontrolpoints[ipatch],:]
+            Pi = self.multiP[ipatch]
+            wi = self.multiw[ipatch]
+            Di = self.Dsol[self.globalPatchIndices[ipatch],:]
 
             mu = len(Ui) - 1
             mv = len(Vi) - 1
@@ -135,9 +135,9 @@ class SolutionField:
             pi = self.multip[ipatch]
             qi = self.multiq[ipatch]
 
-            Pi = self.fullP[self.idcontrolpoints[ipatch],:]
-            wi = self.fullw[self.idcontrolpoints[ipatch],:]
-            Di = self.fullD[self.idcontrolpoints[ipatch],:]
+            Pi = self.multiP[ipatch]
+            wi = self.multiw[ipatch]
+            Di = self.Dsol[self.globalPatchIndices[ipatch],:]
 
             mu = len(Ui) - 1
             mv = len(Vi) - 1
@@ -224,8 +224,9 @@ class SolutionField:
             pi = self.multip[ipatch]
             qi = self.multiq[ipatch]
 
-            Pi = self.fullP[self.idcontrolpoints[ipatch],:]
-            wi = self.fullw[self.idcontrolpoints[ipatch],:]
+            Pi = self.multiP[ipatch]
+            wi = self.multiw[ipatch]
+            Di = self.Dsol[self.globalPatchIndices[ipatch],:]
 
             mu = len(Ui) - 1
             mv = len(Vi) - 1
@@ -250,8 +251,8 @@ class SolutionField:
             nanArray = []
 
             # Global degrees of freedom
-            globalDOF = np.zeros(2*len(self.idcontrolpoints[ipatch]),dtype=int)
-            dof0 = 2*np.array(self.idcontrolpoints[ipatch])
+            globalDOF = np.zeros(2*len(self.globalPatchIndices[ipatch]),dtype=int)
+            dof0 = 2*np.array(self.globalPatchIndices[ipatch])
             dof1 = dof0 + 1
             globalDOF[0::2] = dof0
             globalDOF[1::2] = dof1
@@ -373,8 +374,9 @@ class SolutionField:
             pi = self.multip[ipatch]
             qi = self.multiq[ipatch]
 
-            Pi = self.fullP[self.idcontrolpoints[ipatch],:]
-            wi = self.fullw[self.idcontrolpoints[ipatch],:]
+            Pi = self.multiP[ipatch]
+            wi = self.multiw[ipatch]
+            Di = self.Dsol[self.globalPatchIndices[ipatch],:]
 
             mu = len(Ui) - 1
             mv = len(Vi) - 1
@@ -399,8 +401,8 @@ class SolutionField:
             nanArray = []
 
             # Global degrees of freedom
-            globalDOF = np.zeros(2*len(self.idcontrolpoints[ipatch]),dtype=int)
-            dof0 = 2*np.array(self.idcontrolpoints[ipatch])
+            globalDOF = np.zeros(2*len(self.globalPatchIndices[ipatch]),dtype=int)
+            dof0 = 2*np.array(self.globalPatchIndices[ipatch])
             dof1 = dof0 + 1
             globalDOF[0::2] = dof0
             globalDOF[1::2] = dof1
@@ -628,10 +630,13 @@ class SolutionField:
 
 def postProcessing(multisurface,D,dtot,surfaceprep,matprop):
     solfield = SolutionField(multisurface,D,dtot)
-    fullupts,fullcpts = solfield.displacementFieldList(surfaceprep)
-    fullsigmapts = solfield.stressFieldList(matprop,surfaceprep)
+    # fullupts,fullcpts = solfield.displacementFieldList(surfaceprep)
+    # fullsigmapts = solfield.stressFieldList(matprop,surfaceprep)
 
-    # plts.plotMultipatchField(fullcpts,fullupts,0,["Ux Displacement Field","[m]"])
-    plts.plotMultipatchField(fullcpts,fullsigmapts,0,["Sx Stress Field","[Pa]"])
+    fullupts,fullcpts = solfield.displacementFieldGrid(surfaceprep)
+    fullsigmapts = solfield.stressFieldGrid(matprop,surfaceprep)
+
+    plts.plotMultipatchField(fullcpts,fullupts,0,["Ux Displacement Field","[m]"])
+    # plts.plotMultipatchField(fullcpts,fullsigmapts,0,["Sx Stress Field","[Pa]"])
     # solfield.plotDisplacementFields()
     # plotStressFields(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],sigmapts[1,:,:],sigmapts[2,:,:],svm)

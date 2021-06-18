@@ -16,7 +16,8 @@ sys.path.append(dir2)
 #######################################################################
 
 # Local project
-import src.plottingScripts as plts
+import src.nurbs as rbs
+import src.preprocessor2D as pre2D
 import src.multipatchPreprocessor2D as multipatchpre2D
 import src.linearElastoStaticsSolver as linElastStat
 import src.matrixEquationSolver as matEqnSol
@@ -30,6 +31,14 @@ import src.debugScripts as dbg_scrpt
 
 def mainProgram():
     #Data
+    phenomenon = "Elasticity"
+    E = 2e5 #Pa
+    nu = 0.31
+    rho = 0.0 #kg/m3
+    materialProperties = [E,nu,rho]
+    u0 = 0.0
+    tv = -1 #Pa
+    numGaussPoints = 4
 
     Ra = 2.0
     Rb = 4.0
@@ -41,15 +50,26 @@ def mainProgram():
     kw = 0.5*np.sqrt(2 + np.sqrt(2))
 
     # Complete list of control points
-    fullP = np.array([[0,Ra],[Ra*ka,Ra],[Ra*kb,Ra*kb],
-                      [0,Rb],[Rb*ka,Rb],[Rb,Rb],
-                      [Ra,Ra*ka],[Ra,0],[Rb,Rb*ka],
-                      [Rb,0]])
+    # fullP = np.array([[0,Ra],[Ra*ka,Ra],[Ra*kb,Ra*kb],
+    #                   [0,Rb],[Rb*ka,Rb],[Rb,Rb],
+    #                   [Ra,Ra*ka],[Ra,0],[Rb,Rb*ka],
+    #                   [Rb,0]])
 
-    fullw = np.array([[1],[kw],[1],[1],[kw],[1],[kw],[1],[kw],[1]])
+    # fullw = np.array([[1],[kw],[1],[1],[kw],[1],[kw],[1],[kw],[1]])
 
-    idcontrolpoints = [[0,1,2,3,4,5],[2,6,7,5,8,9]]
-    localcontrolpoints = [fullP[idcontrolpoints[0],:],fullP[idcontrolpoints[1],:]]
+    controlPointsPatch1 = np.array([[0,Ra],[Ra*ka,Ra],[Ra*kb,Ra*kb],
+                                    [0,Rb],[Rb*ka,Rb],[Rb,Rb]])
+    weightsPatch1 = np.array([[1],[kw],[1],[1],[kw],[1]])
+
+    controlPointsPatch2 = np.array([[Ra*kb,Ra*kb],[Ra,Ra*ka],[Ra,0],[Rb,Rb],[Rb,Rb*ka],
+                                    [Rb,0]])
+    weightsPatch2 = np.array([[1],[kw],[1],[1],[kw],[1]])
+
+    multiP = [controlPointsPatch1,controlPointsPatch2]
+    multiw = [weightsPatch1,weightsPatch2]
+
+    # idcontrolpoints = [[0,1,2,3,4,5],[2,6,7,5,8,9]]
+    # localcontrolpoints = [fullP[idcontrolpoints[0],:],fullP[idcontrolpoints[1],:]]
 
     multip = [2,2]
     multiq = [1,1]
@@ -57,50 +77,52 @@ def mainProgram():
     multiU = [np.array([0,0,0,1,1,1]),np.array([0,0,0,1,1,1])]
     multiV = [np.array([0,0,1,1]),np.array([0,0,1,1])]
 
-    E = 2e5 #Pa
-    nu = 0.31
-    rho = 0.0 #kg/m3
-    materialProperties = [E,nu,rho]
-    u0 = 0.0
-    tv = -1 #Pa
+    geomsurface = rbs.MultiPatchNURBSSurface(multiU,multiV,multip,multiq,\
+                                             multiP,multiw)
 
-    numGaussPoints = 4
-    numericalquadrature = multipatchpre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
-    localRefinement = 'Y'
+    localRefinement = 'N'
     patchesToRefine = [0,1]
-    reflist = [['p','p','h','h'],['p','p','h','h']]
-    dirlist = [['U','V','U','V'],['U','V','U','V']]
-#    reflist = [['k','k','h','h'],['k','k','h','h']]
-#    dirlist = [['U','V','U','V'],['U','V','U','V']]
+    numreflist = [2,2]
+    reflist = [['p'],['h']]
+    dirlist = [['U','V'],['U','V']]
 
     if localRefinement == 'Y':
-        multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints,localcontrolpoints = \
-        srfn.localPatchRefinement(patchesToRefine,reflist,dirlist,multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints,localcontrolpoints)
+        srfn.localPatchRefinement(geomsurface,patchesToRefine,numreflist,reflist,dirlist)
+    # End if
 
-#    for pi in fullP:
-#        print(pi)
+    # reflist = [['p','p','h','h'],['p','p','h','h']]
+    # dirlist = [['U','V','U','V'],['U','V','U','V']]
+   # reflist = [['k','k','h','h'],['k','k','h','h']]
+   # dirlist = [['U','V','U','V'],['U','V','U','V']]
 
     #disp_i = [id patch,startpt,endpt,restriction,value]
-    displacementConditions = [[0,[0.0,Ra],[0.0,Rb],"S",0.0],[1,[Ra,0.0],[Rb,0.0],"S",0.0]]
+    # displacementConditions = [[0,[0.0,Ra],[0.0,Rb],"S",0.0],[1,[Ra,0.0],[Rb,0.0],"S",0.0]]
     #neumann_i = [id patch,startpt,endpt,type_load,value]
-    neumannConditions = [[1,[0.0,1.0],[1.0,1.0],"normal",tv]]
+    # neumannConditions = [[1,[0.0,1.0],[1.0,1.0],"normal",tv]]
 
-    fullSurfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
-    multipatchpre2D.problemPreprocessing(multiU,multiV,multip,multiq,fullP,idcontrolpoints,displacementConditions,neumannConditions)
+    #disp_i = [startpt,endpt,value,restriction]
+    dirichletData_0 = [[0.0,0.0],[0.0,1.0],0.0,"S"]
+    dirichletData_1 = [[1.0,0.0],[1.0,1.0],0.0,"S"]
+    dirichletConditionsData = [dirichletData_0,dirichletData_1]
+    #neumann_i = [startpt,endpt,type_load,value]
+    neumannData_1 = [[[0.0,1.0],[1.0,1.0],"normal",tv]]
+    neumannConditionsData = [None,neumannData_1]
 
-#    multipatchpre2D.plotMultipatchGeometry(multiU,multiV,multip,multiq,fullP,fullw,\
-#                                           idcontrolpoints,dirichletBCList,boundaryPreprocessing)
+    surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues = \
+    multipatchpre2D.multiPatchProblemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
+    numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
-    K,F = linElastStat.assemblyMultipatchWeakForm(multiU,multiV,fullw,multip,multiq,fullP,idcontrolpoints, \
-          fullSurfacePreprocessing,numericalquadrature,materialProperties,boundaryPreprocessing)
+    # multipatchpre2D.plotMultiPatchGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
-    Kred,Fred,removedDofs,totalDofs = matEqnSol.boundaryConditionsEnforcement(K,F,dirichletBCList)
+    Ktotal,Ftotal,Mtotal = linElastStat.assemblyMultipatchWeakForm(geomsurface,surfacePreprocessing,\
+            numericalquadrature,materialProperties,boundaryPreprocessing)
 
-    dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
+    Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(Ktotal,Ftotal,enforcedDOF,enforcedValues)
 
-    multipatchpost2D.postProcessing(multiU,multiV,multip,multiq,fullP,D,fullw,dtotal, \
-                                    idcontrolpoints,fullSurfacePreprocessing,materialProperties)
+    dtotal,D = matEqnSol.solveReducedMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
+
+    multipatchpost2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 
 mainProgram()
 
