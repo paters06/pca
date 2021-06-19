@@ -36,13 +36,25 @@ def multiPatchProblemPreprocessing(phenomenon,multisurface,dirichletconditionsda
             numdirichletzones += 1
             if phenomenon == "Elasticity":
                 surface_i = rbs.NURBSSurface(P_i,w_i,p_i,q_i,U=U_i,V=V_i)
-                dirichletBCList_i,enforcedDOF_i,enforcedValues_i = \
+                dirichletBCList_i,enforcedDOF_patch,enforcedValues_i = \
                 pre2D.dirichletBCPreprocessing_Elasticity(P_i,surface_i,[dirichletconditionsdata[ipatch]],U_i,V_i,p_i,q_i)
             # End if
             if phenomenon == "Heat":
-                dirichletBCList_i,enforcedDOF_i,enforcedValues_i = \
+                dirichletBCList_i,enforcedDOF_patch,enforcedValues_i = \
                 pre2D.dirichletBCPreprocessing([dirichletconditionsdata[ipatch]],P_i,U_i,V_i,p_i,q_i)
             # End if
+            localdofs = np.array(enforcedDOF_patch)
+            localPositions = localdofs//2
+            localaxis = localdofs%2
+            recomputeddof = [2*globalPatchIndices[ipatch][x] + y for x,y in zip(localPositions,localaxis)]
+            enforcedDOF_i = recomputeddof
+            # [print(globalPatchIndices[ipatch][x]) for x in localPositions]
+            # print("Local enforced DOF in patch #{0}".format(ipatch))
+            # print(enforcedDOF_patch)
+            # print(globalPatchIndices[ipatch])
+            # print(localPositions)
+            # print(localaxis)
+            # print(recomputeddof)
         else:
             dirichletBCList_i = None
             enforcedDOF_i = None
@@ -65,6 +77,9 @@ def multiPatchProblemPreprocessing(phenomenon,multisurface,dirichletconditionsda
             dirichletBCList_patch = [[ipatch] + dbci for dbci in dirichletBCList_i]
             dirichletBCList += dirichletBCList_patch
             enforcedDOF += enforcedDOF_i
+            # print("Local enforced DOF in patch #{0}".format(ipatch))
+            # print(enforcedDOF_i)
+            # print(globalPatchIndices[ipatch])
             enforcedValues += enforcedValues_i
         # End if
     # End ipatch for loop

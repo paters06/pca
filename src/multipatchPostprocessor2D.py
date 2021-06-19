@@ -636,7 +636,7 @@ def postProcessing(multisurface,D,dtot,surfaceprep,matprop):
     fullupts,fullcpts = solfield.displacementFieldGrid(surfaceprep)
     fullsigmapts = solfield.stressFieldGrid(matprop,surfaceprep)
 
-    plts.plotMultipatchField(fullcpts,fullupts,0,["Ux Displacement Field","[m]"])
-    # plts.plotMultipatchField(fullcpts,fullsigmapts,0,["Sx Stress Field","[Pa]"])
+    # plts.plotMultipatchField(fullcpts,fullupts,0,["Ux Displacement Field","[m]"])
+    plts.plotMultipatchField(fullcpts,fullsigmapts,0,["Sx Stress Field","[Pa]"])
     # solfield.plotDisplacementFields()
     # plotStressFields(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],sigmapts[1,:,:],sigmapts[2,:,:],svm)

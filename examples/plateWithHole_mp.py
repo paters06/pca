@@ -84,22 +84,12 @@ def mainProgram():
     localRefinement = 'N'
     patchesToRefine = [0,1]
     numreflist = [2,2]
-    reflist = [['p'],['h']]
+    reflist = [['h'],['h']]
     dirlist = [['U','V'],['U','V']]
 
     if localRefinement == 'Y':
         srfn.localPatchRefinement(geomsurface,patchesToRefine,numreflist,reflist,dirlist)
     # End if
-
-    # reflist = [['p','p','h','h'],['p','p','h','h']]
-    # dirlist = [['U','V','U','V'],['U','V','U','V']]
-   # reflist = [['k','k','h','h'],['k','k','h','h']]
-   # dirlist = [['U','V','U','V'],['U','V','U','V']]
-
-    #disp_i = [id patch,startpt,endpt,restriction,value]
-    # displacementConditions = [[0,[0.0,Ra],[0.0,Rb],"S",0.0],[1,[Ra,0.0],[Rb,0.0],"S",0.0]]
-    #neumann_i = [id patch,startpt,endpt,type_load,value]
-    # neumannConditions = [[1,[0.0,1.0],[1.0,1.0],"normal",tv]]
 
     #disp_i = [startpt,endpt,value,restriction]
     dirichletData_0 = [[0.0,0.0],[0.0,1.0],0.0,"S"]
@@ -121,6 +111,7 @@ def mainProgram():
     Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(Ktotal,Ftotal,enforcedDOF,enforcedValues)
 
     dtotal,D = matEqnSol.solveReducedMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
+    # print(np.hstack((geomsurface.fullP,D)))
 
     multipatchpost2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 

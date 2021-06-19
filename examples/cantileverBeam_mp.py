@@ -90,6 +90,7 @@ def mainProgram():
     Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(Ktotal,Ftotal,enforcedDOF,enforcedValues)
 
     dtotal,D = matEqnSol.solveReducedMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
+    print(np.hstack((geomsurface.fullP,D)))
 
     multipatchpost2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
 
