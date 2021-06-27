@@ -49,6 +49,8 @@ def parametricGrid(U,V,p,q):
             elemmat[elemIndex,3] = (j+1)*numU + i #D
 
             elemIndex += 1
+        # End for loop
+    # End for loop
 
     mu = len(U) - 1
     mv = len(V) - 1
@@ -93,10 +95,12 @@ def parametricGrid(U,V,p,q):
         nonzeroctrlpts.append(idR)
         surfacespan.append([uspan,vspan])
         elementcorners.append([apt,cpt])
+    # End for loop
 
     surfaceprep = [nonzeroctrlpts,surfacespan,elementcorners]
 
     return paramnodes,elemmat,surfaceprep
+# End function
 
 def checkColinearPoints(apt,bpt,cpt):
     abdist = np.sqrt( (apt[0] - bpt[0])**2 + (apt[1] - bpt[1])**2 )
@@ -108,6 +112,8 @@ def checkColinearPoints(apt,bpt,cpt):
         return True
     else:
         return False
+    # End if
+# End function
 
 def neumannBCPreprocessing(paramnodes,nodeselem,neumannconditionsdata,U,V,p,q):
     mu = len(U) - 1
@@ -135,6 +141,8 @@ def neumannBCPreprocessing(paramnodes,nodeselem,neumannconditionsdata,U,V,p,q):
         for inode in range(0,paramnodes.shape[0]):
             if checkColinearPoints(startpt,endpt,paramnodes[inode,:]):
                 neumannnodes.append(inode)
+            # End if
+        # End function
 
         # Check the nodes that have applied load and match them
         # with the list of parametric elements
@@ -142,6 +150,8 @@ def neumannBCPreprocessing(paramnodes,nodeselem,neumannconditionsdata,U,V,p,q):
             commom_nodes = set.intersection(set(neumannnodes),set(nodeselem[ielem,:]))
             if len(commom_nodes) == 2:
                 neumannelements.append(ielem)
+            # End if
+        # End if
 
         # Check the sides of the loaded parametric elements that
         # belong to the neumann boundary condition
@@ -151,9 +161,11 @@ def neumannBCPreprocessing(paramnodes,nodeselem,neumannconditionsdata,U,V,p,q):
                     side_nodes = [nodeselem[ldnelm][j],nodeselem[ldnelm][j+1]]
                 else:
                     side_nodes = [nodeselem[ldnelm][j],nodeselem[ldnelm][0]]
+                # End if
                 face = set.intersection(set(side_nodes),set(neumannnodes))
                 if len(face) == 2:
                     neumannfaces.append(j)
+                # End if
             # End j for loop
         # End neumannelements for loop
 
@@ -382,10 +394,12 @@ def dirichletBCPreprocessing_Elasticity(Pl,surface,dirichletconditions,U,V,p,q):
         dcond = [key] + [v for v in value]
         # print(dcond)
         dirichletconds.append(dcond)
+    # End for loop
     # print(enforceddof)
     # print(enforcedvalues)
 
     return dirichletconds,enforceddof,enforcedvalues
+# End function
 
 def numericalIntegrationPreprocessing(numgauss):
     numericalquadrature = np.polynomial.legendre.leggauss(numgauss)
@@ -401,6 +415,7 @@ def numericalIntegrationPreprocessing(numgauss):
         gausslegendre1d[igauss][0] = quadraturepoints[i]
         gausslegendre1d[igauss][1] = quadratureweights[i]
         igauss += 1
+    # End for loop
 
     igauss = 0
     for j in range(numgauss):
@@ -409,10 +424,13 @@ def numericalIntegrationPreprocessing(numgauss):
             gausslegendre2d[igauss][1] = quadraturepoints[j]
             gausslegendre2d[igauss][2] = quadratureweights[i]*quadratureweights[j]
             igauss += 1
+        # End for loop
+    # End for loop
 
     numericalquad = [gausslegendre2d,gausslegendre1d]
 
     return numericalquad
+# End function
 
 def problemPreprocessing(phenomenon,surface,dirichletconditionsdata,neumannconditionsdata):
     U,V,p,q,P,w = surface.retrieveSurfaceInformation()
@@ -421,13 +439,17 @@ def problemPreprocessing(phenomenon,surface,dirichletconditionsdata,neumanncondi
         boundaryPreprocessing = neumannBCPreprocessing(parametricNodes,nodesInElement,neumannconditionsdata,U,V,p,q)
     else:
         boundaryPreprocessing = None
+    # End if
 
     if phenomenon == "Elasticity":
         dirichletBCList,enforcedDOF,enforcedValues = dirichletBCPreprocessing_Elasticity(P,surface,dirichletconditionsdata,U,V,p,q)
-    if phenomenon == "Heat":
+    # End if
+    if phenomenon == "Heat" or phenomenon == "Schrodinger":
         dirichletBCList,enforcedDOF,enforcedValues = dirichletBCPreprocessing(dirichletconditionsdata,P,U,V,p,q)
+    # End if
 
     return surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues
+# End function
 
 def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
     if phenomenon == "Elasticity":
@@ -436,6 +458,9 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
     elif phenomenon == "Heat":
         first_string = "Temperature BC"
         second_string = "Flux BC"
+    elif phenomenon == "Schrodinger":
+        first_string = "Wave Function BC"
+        second_string = "Derivative Wave Function BC"
     else:
         first_string = "Null BC"
         second_string = "Null BC"
@@ -448,6 +473,7 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
     ax.use_sticky_edges = False
     titlestring = "Geometry with boundary conditions"
     ax.axis("off")
+    # plt.xticks([])
 
     jmat = np.zeros((2,2))
     numpt = 5
@@ -471,12 +497,18 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
         dirctrlpts.append(inode)
 
     for i in range(0,len(dirichletconds)):
-        dofs = dirichletconds[i][2]
-        # print(dofs)
-        if len(dofs) == 2:
-            dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "r",marker = "^")
-        else:
+        # print(dirichletconds[i])
+        if len(dirichletconds[i]) == 2:
             dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "g",marker = "o")
+        else:
+            dofs = dirichletconds[i][2]
+            if len(dofs) == 2:
+                dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "r",marker = "^")
+            else:
+                dirichletplot = ax.scatter(P[dirctrlpts,0],P[dirctrlpts,1],c = "g",marker = "o")
+            # End if
+        # End if
+    # End for loop
 
     mu = len(U) - 1
     mv = len(V) - 1
@@ -575,6 +607,8 @@ def plotGeometry(phenomenon,surface,dirichletconds,boundaryprep):
         plt.legend([dirichletplot],[first_string],loc='upper right',bbox_to_anchor=(1.2,1.0))
         # Uncomment for example3
         # plt.legend((dirichletplot),('Displacement restrictions'),loc='lower right',bbox_to_anchor=(1.2,0.0))
+    # End if
 
     plt.tight_layout()
     plt.show()
+# End function

@@ -1,5 +1,7 @@
 # Python libraries
 import numpy as np
+import matplotlib.pyplot as plt
+import time
 
 #######################################################################
 # DO NOT REMOVE THIS SEGMENT
@@ -18,7 +20,7 @@ sys.path.append(dir2)
 # Local project
 import src.nurbs as rbs
 import src.preprocessor2D as pre2D
-import src.diffusionSolver as diffSol
+import src.schrodingerEquationSolver as schroSol
 import src.matrixEquationSolver as matEqnSol
 import src.postprocessor2D as post2D
 import src.surfaceRefinements as srfn
@@ -30,20 +32,35 @@ import src.debugScripts as dbg_scrpt
 
 def mainProgram():
     #Data
-    phenomenon = "Heat"
-    Rmax = 1.0
-    Rmin = 0.7
-    kappa = 385 #Pa
-    rho = 0.0
-    source = 0.0 #kg/m3
-    materialProperties = [kappa,rho,source]
-    flux = 0.0 #Pa
+    phenomenon = "Schrodinger"
+    hbar = 1.0
+    m = 1.0
+    L = 1.0
+
+    x = np.linspace(0,L)
+    y = np.linspace(0,L)
+    X,Y = np.meshgrid(x,y)
+
+    def potentialField(x):
+        # return 0*x[0]
+        return 1e3*np.exp(-(x[0]-0.3)**2/(2*0.1**2))*np.exp(-(x[1]-0.3)**2/(2*0.1**2))
+    # End function
+
+    def anotherPotentialField(xf,yf):
+        coef = 100
+        # return 0*xf
+        return coef*np.exp(-(xf-0.3)**2/(2*0.05**2))*np.exp(-(yf-0.3)**2/(2*0.05**2))
+    # End function
+
+    F = anotherPotentialField(X,Y)
+    # plt.contourf(X,Y,F)
+    # plt.colorbar()
+    # plt.show()
 
     numGaussPoints = 4
     # gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
 
     Pinit = np.array([[0.0,0.0],[1.0,0.0],[0.0,1.0],[1.0,1.0]])
-
     winit = np.ones((Pinit.shape[0],1))
 
     #Isogeometric routines
@@ -58,13 +75,13 @@ def mainProgram():
     doRefinement = 'Y'
 
     if doRefinement == 'Y':
-        srfn.surfaceRefinement(geomsurface,1,'p','U')
-        srfn.surfaceRefinement(geomsurface,1,'p','V')
-        srfn.surfaceRefinement(geomsurface,1,'h','U')
-        srfn.surfaceRefinement(geomsurface,1,'h','V')
+        # srfn.surfaceRefinement(geomsurface,1,'p','U')
+        # srfn.surfaceRefinement(geomsurface,1,'p','V')
+        srfn.surfaceRefinement(geomsurface,5,'h','U')
+        srfn.surfaceRefinement(geomsurface,5,'h','V')
 
     dirichletConditionsData = [[[1.0,0.0],[1.0,1.0],0.0],[[0.0,0.0],[1.0,0.0],0.0],
-                               [[0.0,1.0],[1.0,1.0],0.0],[[0.0,0.0],[0.0,1.0],100.0]]
+                               [[0.0,1.0],[1.0,1.0],0.0],[[0.0,0.0],[0.0,1.0],0.0]]
     # neumannConditionsData = [[[0.0,0.0],[1.0,0.0],"tangent",flux],[[0.0,1.0],[1.0,1.0],"tangent",flux]]
     neumannConditionsData = None
 
@@ -76,20 +93,23 @@ def mainProgram():
 
     # pre2D.plotGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
-    K,F,M = diffSol.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
-                                        materialProperties,boundaryPreprocessing)
+    K,F,M = schroSol.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
+                                      potentialField,boundaryPreprocessing)
 
-    # Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(K,F,enforcedDOF,enforcedValues)
+    Mred,Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(M,K,F,enforcedDOF,enforcedValues)
     # dSolution = matEqnSol.solveReducedMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
 
-    Mmod,Kmod,Fmod,totalDofs = matEqnSol.dirichletBCEnforcement_Modified(M,K,F,enforcedDOF,enforcedValues)
-    dSolution = matEqnSol.solveModifiedMatrixEquations(Kmod,Fmod,totalDofs)
+    eigenSolution = matEqnSol.solveReducedEigenvalueProblem(Mred,Kred,4,totalDofs,enforcedDOF,enforcedValues)
 
-    # print(np.hstack((dtotal,dtotal2)))
+    # print(np.hstack((geomsurface.P,eigenSolution)))
 
-    post2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,dSolution,materialProperties)
+    post2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,eigenSolution)
+# End function
 
+start = time.time()
 mainProgram()
+end = time.time()
+print("Elapsed time {:.3f} seconds".format(end - start))
 
 # import cProfile
 # import pstats

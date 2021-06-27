@@ -184,11 +184,11 @@ class NURBSSurface:
         spt = R@self.P[idR,:]
         return spt
 
-    def createSurface(self):
+    def createSurface(self,numpoints=41):
         """
         Create a nurbs surface for further plotting
         """
-        numpoints = 41
+        # numpoints = 41
         urank = np.linspace(self.U.min(),self.U.max(),numpoints)
         vrank = np.linspace(self.V.min(),self.V.max(),numpoints)
 

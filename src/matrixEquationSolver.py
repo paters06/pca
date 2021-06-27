@@ -1,7 +1,7 @@
 # Python libraries
 import numpy as np
-import numpy.linalg
 
+# Local project
 import src.debugScripts as dbg_scrpt
 
 ################ MATRIX EQUATION SOLUTION ####################
@@ -9,6 +9,11 @@ import src.debugScripts as dbg_scrpt
 def dirichletBCEnforcement_Modified(M,K,F,enforceddof,enforcedvalues):
     mRows = K.shape[0]
     mCols = K.shape[1]
+
+    # enforceddof = np.array(enforceddof)
+    # enforceddof,iddof = np.unique(enforceddof,return_index=True)
+    # enforcedvalues = np.array(enforcedvalues)[iddof]
+
     numdof = len(enforceddof)
 
     Mmod = M.copy()
@@ -25,6 +30,7 @@ def dirichletBCEnforcement_Modified(M,K,F,enforceddof,enforcedvalues):
         Kcol = Kmod[:,enforceddof[i]]
         Kcol = np.reshape(Kcol,(Kcol.shape[0],1))
         Fmod -= Kcol*enforcedvalues[i]
+    # End for loop
 
     print("Third modification")
     Kmod[:,enforceddof] = np.zeros((mRows,numdof))
@@ -38,26 +44,36 @@ def dirichletBCEnforcement_Modified(M,K,F,enforceddof,enforcedvalues):
     totaldofs = np.arange(Fmod.shape[0])
 
     return Mmod,Kmod,Fmod,totaldofs
+# End function
 
-def dirichletBCEnforcement_Reduced(K,F,enforceddof,enforcedvalues):
+def dirichletBCEnforcement_Reduced(M,K,F,enforceddof,enforcedvalues):
     print("First reduction")
+
+    # Mred = M.copy()
+    # Kred = K.copy()
+    # Fred = F.copy()
+
     Fred = np.delete(F,enforceddof,0)
     Kred = np.delete(K,enforceddof,0)
+    Mred = np.delete(M,enforceddof,0)
 
     print("Modification of Freduced")
     for i in range(len(enforceddof)):
         Kcol = Kred[:,enforceddof[i]]
         Kcol = np.reshape(Kcol,(Kcol.shape[0],1))
         Fred -= Kcol*enforcedvalues[i]
+    # End for loop
 
     print("Second reduction")
     Kred = np.delete(Kred,enforceddof,1)
+    Mred = np.delete(Mred,enforceddof,1)
 
     totaldofs = np.arange(F.shape[0])
 
-    return Kred,Fred,totaldofs
+    return Mred,Kred,Fred,totaldofs
+# End function
 
-def solveModifiedMatrixEquations(phenomenon,Kmod,Fmod,totaldofs):
+def solveModifiedMatrixEquations(Kmod,Fmod,totaldofs):
     # Checking full rank in matrix
     mRank = np.linalg.matrix_rank(Kmod)
     mRows = Kmod.shape[0]
@@ -67,6 +83,7 @@ def solveModifiedMatrixEquations(phenomenon,Kmod,Fmod,totaldofs):
         fullRank = True
     else:
         fullRank = False
+    # End if
 
     # fullRank = True
     if fullRank:
@@ -75,20 +92,12 @@ def solveModifiedMatrixEquations(phenomenon,Kmod,Fmod,totaldofs):
     else:
         print("The matrix has not full rank. It is not invertible")
         dsol = np.linalg.lstsq(Kmod,Fmod,rcond=None)[0]
-
-    if phenomenon == "Elasticity":
-        dx = dsol[0::2]
-        dy = dsol[1::2]
-        D = np.hstack((dx,dy))
-        return dsol,D
-    elif phenomenon == "Heat":
-        return dsol,dsol
-    else:
-        print("Check physics selection")
-        return dsol,dsol
     # End if
 
-def solveReducedMatrixEquations(phenomenon,Kred,Fred,totaldofs,remdofs,values):
+    return dsol
+# End function
+
+def solveReducedMatrixEquations(Kred,Fred,totaldofs,remdofs,values):
     # Checking full rank in matrix
     mRank = np.linalg.matrix_rank(Kred)
     mRows = Kred.shape[0]
@@ -106,6 +115,7 @@ def solveReducedMatrixEquations(phenomenon,Kred,Fred,totaldofs,remdofs,values):
     else:
         print("The matrix has not full rank. It is not invertible")
         dred = np.linalg.lstsq(Kred,Fred,rcond=None)[0]
+    # End if
 
     reduceddofs = np.setdiff1d(totaldofs,remdofs)
     dtotal = np.zeros((totaldofs.shape[0],1))
@@ -113,15 +123,40 @@ def solveReducedMatrixEquations(phenomenon,Kred,Fred,totaldofs,remdofs,values):
 
     values = np.reshape(values,(len(values),1))
     dtotal[remdofs,:] = values
+    return dtotal
+# End Function
 
-    if phenomenon == "Elasticity":
-        dx = dtotal[0::2]
-        dy = dtotal[1::2]
-        D = np.hstack((dx,dy))
-        return dtotal,D
-    elif phenomenon == "Heat":
-        return dtotal,dtotal
-    else:
-        print("Check physics selection")
-        return dtotal,dtotal
-    # End if
+def solveReducedEigenvalueProblem(Mred,Kred,numeig,totaldofs,remdofs,values):
+    # from scipy.linalg import eig
+    # from scipy import linalg
+    from scipy.sparse.linalg import eigs,eigsh
+
+    # dbg_scrpt.checkingSymmetricMatrix(Mred)
+    # dbg_scrpt.plotSparsity(Kred)
+    # for m in Mred:
+    #     print(np.sum(m))
+    # End for loop
+
+    # eigenvalues,eigenvectors = linalg.eig(Kred,b=Mred)
+    # print(eigenvalues)
+
+    # eigenvalues,eigenvectors = eigs(Kred,M=Mred,k=10,which='SM')
+    # print(eigenvalues)
+    # print(np.real(eigenvalues))
+
+    eigenvalues,eigenvectors = eigsh(Kred,M=Mred,k=10,which='SM')
+    # print(eigenvalues)
+    # print(np.real(eigenvalues))
+
+    redeigensol = eigenvectors[:,numeig].reshape(-1,1)
+    # print(eigensol.T)
+
+    reduceddofs = np.setdiff1d(totaldofs,remdofs)
+    eigensol = np.zeros((totaldofs.shape[0],1))
+    eigensol[reduceddofs,:] = redeigensol
+
+    values = np.reshape(values,(len(values),1))
+    eigensol[remdofs,:] = values
+
+    return eigensol
+# End Function

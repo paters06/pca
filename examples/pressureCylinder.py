@@ -76,10 +76,10 @@ def mainProgram():
     K,F,M = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
                                         materialProperties,boundaryPreprocessing)
 
-    Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(K,F,enforcedDOF,enforcedValues)
-    dtotal,D = matEqnSol.solveReducedMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
+    Mred,Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(M,K,F,enforcedDOF,enforcedValues)
+    dSolution = matEqnSol.solveReducedMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
 
-    post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
+    post2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,dSolution,materialProperties)
 
 mainProgram()
 

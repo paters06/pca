@@ -27,9 +27,9 @@ def checkFullRankMatrix(A):
 
 def plotSparsity(A):
     fig = plt.figure()
-    plt.spy(A,markersize=5)
-    # plt.imshow(A,cmap=cm.viridis)
-    # plt.colorbar()
+    # plt.spy(A,markersize=5)
+    plt.imshow(A,cmap=cm.viridis)
+    plt.colorbar()
     plt.show()
 
 ################ AREA INTEGRALS ####################

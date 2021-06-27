@@ -2,26 +2,28 @@
 import math
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy.linalg
 from matplotlib import animation
 
 # Local project
-import src.basisFunctions as bfunc
 import src.nurbs as rbs
 from src.linearElastoStaticsSolver import elasticMatrix
 import src.plottingScripts as plts
 
 ################ POSTPROCESSING ####################
+
+#######################################################
+################# CLASS DEFINITION ####################
+#######################################################
+
 class SolutionField:
     """
     A class for the solution field
     """
-    def __init__(self,phenomenon,surface,D,dtot):
+    def __init__(self,surface,D,dtot):
         """
         Constructor of the class
         """
         U,V,p,q,P,w = surface.retrieveSurfaceInformation()
-        self.phenomenon = phenomenon
         self.Usol = U
         self.Vsol = V
         self.psol = p
@@ -30,10 +32,20 @@ class SolutionField:
         self.wsol = w
         self.Dsol = D
         self.dtot = dtot
+    # End constructor method
 
     def updateControlPoints(self,D_new,dtotal_new):
         self.Dsol = D_new
         self.dtot = dtotal_new
+    # Enf function
+# End parent class
+
+class HeatSolution(SolutionField):
+    def __init__(self,surface,D,dtot):
+        SolutionField.__init__(self,surface,D,dtot)
+        # self.Dsol = D
+        # self.dtot = dtot
+    # End constructor method
 
     def temperatureField(self,numpoints,surfaceprep):
         mu = len(self.Usol) - 1
@@ -83,6 +95,120 @@ class SolutionField:
                     self.cpts[:,iu*numpoints + i,jv*numpoints + j] = R@self.Psol[idR,:]
 
         return self.tpts,self.cpts
+    # End function
+
+    def plotTemperatureField(self):
+        cx = self.cpts[0,:,:]
+        cy = self.cpts[1,:,:]
+        T = self.tpts
+
+        xlength = np.amax(np.absolute(cx))
+        ylength = np.amax(np.absolute(cy))
+
+        aspectRatio = xlength/ylength
+
+        fig,ax1 = plt.subplots()
+
+        field1 = ax1.pcolormesh(cx,cy,T,vmin=T.min(),vmax=T.max())
+        ax1.set_title('Temperature Field')
+        ax1.set_xlabel('x')
+        ax1.set_ylabel('y')
+        # ax1.set_aspect('equal')
+        cb1 = fig.colorbar(field1,label='[°C]')
+
+        # plt.tight_layout()
+        plt.show()
+    # End function
+
+    def showExtremaValues(self):
+        print("Temperature")
+        print("T ==> Max: {:.5f} °C. Min: {:.5f} °C".format(np.max(self.tpts),np.min(self.tpts)))
+    # End function
+# End child class
+
+class SchrodingerSolution(SolutionField):
+    def __init__(self,surface,D,dtot):
+        SolutionField.__init__(self,surface,D,dtot)
+    # End constructor method
+
+    def waveFunctionField(self,numpoints,surfaceprep):
+        mu = len(self.Usol) - 1
+        mv = len(self.Vsol) - 1
+        nu = mu - self.psol - 1
+        nv = mv - self.qsol - 1
+
+        # Extraction of surface preprocessing
+        nonzeroctrlpts = surfaceprep[0]
+        surfacespan = surfaceprep[1]
+        elementcorners = surfaceprep[2]
+
+        numElems = len(elementcorners)
+        numelemsu = len(np.unique(self.Usol)) - 1
+        numelemsv = len(np.unique(self.Vsol)) - 1
+
+        Pwl = rbs.weightedControlPoints(self.Psol,self.wsol)
+        Pw = rbs.listToGridControlPoints(Pwl,self.Usol,self.Vsol,self.psol,self.qsol)
+
+        # Geometric coordinates
+        self.cpts = np.zeros((2,numelemsu*numpoints,numelemsv*numpoints))
+
+        # Wave function
+        self.wfpts = np.zeros((numelemsu*numpoints,numelemsv*numpoints))
+
+        # print(self.Dsol)
+
+        for ielem in range(0,numElems):
+            # Extracting the indices of the non-zero control points
+            idR = nonzeroctrlpts[ielem]
+            # Extracting the indices for the location of the parametric element
+            uspan = surfacespan[ielem][0]
+            vspan = surfacespan[ielem][1]
+            # Extracting the corners of the parametric element
+            apt = elementcorners[ielem][0]
+            cpt = elementcorners[ielem][1]
+
+            urank = np.linspace(apt[0],cpt[0],numpoints)
+            vrank = np.linspace(apt[1],cpt[1],numpoints)
+
+            jv = ielem//numelemsu
+            iu = ielem%numelemsu
+
+            for j in range(0,numpoints):
+                for i in range(0,numpoints):
+                    R = rbs.bivariateRationalFunction(mu,mv,self.psol,self.qsol,uspan,vspan,urank[i],vrank[j],self.Usol,self.Vsol,Pw)
+
+                    self.wfpts[iu*numpoints + i,jv*numpoints + j] = R@self.Dsol[idR,:]
+                    self.cpts[:,iu*numpoints + i,jv*numpoints + j] = R@self.Psol[idR,:]
+
+        return self.wfpts,self.cpts
+    # End function
+
+    def plotWaveFunctionField(self):
+        cx = self.cpts[0,:,:]
+        cy = self.cpts[1,:,:]
+        WF = self.wfpts**2
+
+        fig,ax1 = plt.subplots()
+
+        # field1 = ax1.pcolormesh(cx,cy,WF,vmin=WF.min(),vmax=WF.max())
+        field1 = ax1.contourf(cx,cy,WF,20)
+        ax1.set_title('Wave Function')
+        ax1.set_xlabel('x')
+        ax1.set_ylabel('y')
+        # ax1.set_aspect('equal')
+        cb1 = fig.colorbar(field1)
+
+        # plt.tight_layout()
+        plt.show()
+    # End function
+#End child class
+
+class ElasticitySolution(SolutionField):
+    def __init__(self,surface,D,dtot):
+        SolutionField.__init__(self,surface,D,dtot)
+        # self.Dsol = D
+        # self.dtot = dtot
+    # End constructor method
 
     def displacementField(self,numpoints,surfaceprep):
         mu = len(self.Usol) - 1
@@ -132,6 +258,7 @@ class SolutionField:
                     self.cpts[:,iu*numpoints + i,jv*numpoints + j] = R@self.Psol[idR,:]
 
         return self.upts,self.cpts
+    # End function
 
     # Improve this function
     def stressField(self,numpoints,matprop,surfaceprep):
@@ -225,7 +352,7 @@ class SolutionField:
         # End for loop
 
         xsize,ysize = numelemsu*numpoints,numelemsv*numpoints
-       # print(nanArray)
+        # print(nanArray)
         # Recomputing NaN values
         for nanA in nanArray:
             print("Recomputing NaN values")
@@ -250,49 +377,15 @@ class SolutionField:
                         if not np.any(np.isnan(self.sigma[:,neigh[0],neigh[1]])):
                             sumSigma += self.sigma[:,neigh[0],neigh[1]]
                             numneigh += 1
+                        # End if
+                    # End if
+                # End if
             # End for loop
 
             self.sigma[:,iu,jv] = sumSigma/numneigh
         # End for loop
         return self.sigma
-
-    def showExtremaValues(self):
-        if self.phenomenon == "Elasticity":
-            print("Displacements")
-            print("UX ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.upts[0,:,:]),np.min(self.upts[0,:,:])))
-            print("UY ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.upts[1,:,:]),np.min(self.upts[1,:,:])))
-            print("Stresses")
-            print("SXX ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[0,:,:]),np.min(self.sigma[0,:,:])))
-            print("SYY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[1,:,:]),np.min(self.sigma[1,:,:])))
-            print("SXY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[2,:,:]),np.min(self.sigma[2,:,:])))
-        elif self.phenomenon == "Heat":
-            print("Temperature")
-            print("T ==> Max: {:.5f} °C. Min: {:.5f} °C".format(np.max(self.tpts),np.min(self.tpts)))
-        else:
-            print("Check physics selection")
-
-    def plotTemperatureField(self):
-
-        cx = self.cpts[0,:,:]
-        cy = self.cpts[1,:,:]
-        T = self.tpts
-
-        xlength = np.amax(np.absolute(cx))
-        ylength = np.amax(np.absolute(cy))
-
-        aspectRatio = xlength/ylength
-
-        fig,ax1 = plt.subplots()
-
-        field1 = ax1.pcolormesh(cx,cy,T,vmin=T.min(),vmax=T.max())
-        ax1.set_title('Temperature Field')
-        ax1.set_xlabel('x')
-        ax1.set_ylabel('y')
-        # ax1.set_aspect('equal')
-        cb1 = fig.colorbar(field1,label='[°C]')
-
-        # plt.tight_layout()
-        plt.show()
+    # End function
 
     def plotDisplacementFields(self):
         from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -311,6 +404,7 @@ class SolutionField:
             fig, (ax1,ax2) = plt.subplots(2,1,sharex='col',sharey='row')
         else:
             fig, (ax1,ax2) = plt.subplots(1,2,sharex='col',sharey='row')
+        # End if
 
         fig.suptitle('Displacement field components')
         fig.subplots_adjust(hspace=0.4, wspace=0.4)
@@ -335,6 +429,7 @@ class SolutionField:
 
         plt.tight_layout()
         plt.show()
+    # End function
 
     def plotStressFields(self):
         from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -356,6 +451,7 @@ class SolutionField:
             fig, (ax1,ax2,ax3,ax4) = plt.subplots(4,1,sharex='col',sharey='row')
         else:
             fig, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,sharex='col',sharey='row')
+        # End if
 
         # Uncomment for cantileverBeam.py
         # fig, axs = plt.subplots(4,1,sharex='col',sharey='row')
@@ -404,6 +500,22 @@ class SolutionField:
 
         plt.tight_layout()
         plt.show()
+    # End function
+
+    def showExtremaValues(self):
+        print("Displacements")
+        print("UX ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.upts[0,:,:]),np.min(self.upts[0,:,:])))
+        print("UY ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.upts[1,:,:]),np.min(self.upts[1,:,:])))
+        print("Stresses")
+        print("SXX ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[0,:,:]),np.min(self.sigma[0,:,:])))
+        print("SYY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[1,:,:]),np.min(self.sigma[1,:,:])))
+        print("SXY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.sigma[2,:,:]),np.min(self.sigma[2,:,:])))
+    # End function
+# End child class
+
+######################################################
+################# OTHER FUNCTIONS ####################
+######################################################
 
 def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un,T,dt,savevideo):
     elementcorners = surfaceprep[2]
@@ -479,7 +591,7 @@ def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un,T,dt,savevideo)
         print("SHOWING ANIMATION IN RUNTIME")
         plt.show()
 
-def postProcessing(phenomenon,surface,D,dtot,surfaceprep,matprop):
+def postProcessing(phenomenon,surface,surfaceprep,dsol,matprop=None):
     elementcorners = surfaceprep[2]
     numelems = len(elementcorners)
 
@@ -493,17 +605,49 @@ def postProcessing(phenomenon,surface,D,dtot,surfaceprep,matprop):
         numpoints = 5
     # End if
 
-    solfield = SolutionField(phenomenon,surface,D,dtot)
+    # solfield = SolutionField(phenomenon,surface,D,dtot)
     if phenomenon == "Elasticity":
-        upts,cpts = solfield.displacementField(numpoints,surfaceprep)
-        sigmapts = solfield.stressField(numpoints,matprop,surfaceprep)
+        dx = dsol[0::2]
+        dy = dsol[1::2]
+        D = np.hstack((dx,dy))
+        elastfield = ElasticitySolution(surface,D,dsol)
+        upts,cpts = elastfield.displacementField(numpoints,surfaceprep)
+        sigmapts = elastfield.stressField(numpoints,matprop,surfaceprep)
         # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],upts[0,:,:],["Ux Displacement Field","[m]"])
         # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],["Sx Stress Field","[Pa]"])
 
-        # solfield.plotDisplacementFields()
-        solfield.plotStressFields()
+        # elastfield.plotDisplacementFields()
+        elastfield.plotStressFields()
+        elastfield.showExtremaValues()
     elif phenomenon == "Heat":
-        upts,tpts = solfield.temperatureField(numpoints,surfaceprep)
-        solfield.plotTemperatureField()
+        heatfield = HeatSolution(surface,dsol,dsol)
+        tpts,cpts = heatfield.temperatureField(numpoints,surfaceprep)
+        heatfield.plotTemperatureField()
+        heatfield.showExtremaValues()
+    elif phenomenon == "Schrodinger":
+        wavefield = SchrodingerSolution(surface,dsol,dsol)
+        wfpts,cpts = wavefield.waveFunctionField(numpoints,surfaceprep)
+        wavefield.plotWaveFunctionField()
+    # End if
+# End Function
 
-    solfield.showExtremaValues()
+def plotEigenvalueSolution(phenomenon,surface,surfaceprep,eigsol):
+    elementcorners = surfaceprep[2]
+    numelems = len(elementcorners)
+
+    if numelems < 5:
+        numpoints = 11
+    elif numelems >= 5 and numelems < 10:
+        numpoints = 9
+    elif numelems >= 10 and numelems < 20:
+        numpoints = 7
+    else:
+        numpoints = 5
+    # End if
+
+    cpts = surface.createSurface(10)
+
+    plt.figure(figsize=(9,9))
+    plt.contourf(cpts[0,:,:],cpts[1,:,:],eigsol**2, 20)
+    plt.show()
+# End Function
