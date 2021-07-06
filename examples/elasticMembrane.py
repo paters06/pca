@@ -18,12 +18,23 @@ sys.path.append(dir2)
 # Local project
 import src.nurbs as rbs
 import src.preprocessor2D as pre2D
-import src.diffusionSolver as diffSol
+import src.waveEquationSolver as waveEq
 import src.timeIntegration as timeIntg
 import src.matrixEquationSolver as matEqnSol
 import src.postprocessor2D as post2D
 import src.surfaceRefinements as srfn
 import src.debugScripts as dbg_scrpt
+
+def defineInitialConditions(P):
+    icu = np.zeros((P.shape[0],1))
+    icv = np.zeros((P.shape[0],1))
+    for i in range(P.shape[0]):
+        xt = P[i][0]# + 2.0
+        yt = P[i][1]# + 1.0
+        icu[i][0] = 0.1*(4*xt - xt**2)*(2*yt - yt**2)
+    # End for loop
+    return icu,icv
+# End function
 
 ####################################################
 ################## MAIN PROBLEM ####################
@@ -32,18 +43,17 @@ import src.debugScripts as dbg_scrpt
 def mainProgram():
     #Data
     phenomenon = "Heat"
-    Rmax = 1.0
-    Rmin = 0.7
-    kappa = 1 #Pa
-    rho = 1.0
-    source = 1.0 #kg/m3
+    a = 4.0
+    b = 2.0
+    kappa = 12.5 #Pa
+    rho = 2.5
+    source = 0.0 #kg/m3
     materialProperties = [kappa,rho,source]
-    flux = 0.0 #Pa
 
     numGaussPoints = 4
     # gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
 
-    Pinit = np.array([[0.0,0.0],[1.0,0.0],[0.0,1.0],[1.0,1.0]])
+    Pinit = np.array([[0.0,0.0],[a,0.0],[0.0,b],[a,b]])
 
     winit = np.ones((Pinit.shape[0],1))
 
@@ -63,10 +73,11 @@ def mainProgram():
         # srfn.surfaceRefinement(geomsurface,1,'p','V')
         srfn.surfaceRefinement(geomsurface,2,'h','U')
         srfn.surfaceRefinement(geomsurface,2,'h','V')
+    # End if
 
     # dirichletConditionsData = [[[1.0,0.0],[1.0,1.0],0.0],[[0.0,1.0],[1.0,1.0],0.0]]
     dirichletConditionsData = [[[1.0,0.0],[1.0,1.0],0.0],[[0.0,0.0],[1.0,0.0],0.0],
-                               [[0.0,1.0],[1.0,1.0],0.0],[[0.0,0.0],[0.0,1.0],100.0]]
+                               [[0.0,1.0],[1.0,1.0],0.0],[[0.0,0.0],[0.0,1.0],0.0]]
     # neumannConditionsData = [[[0.0,0.0],[1.0,0.0],"tangent",flux],[[0.0,1.0],[1.0,1.0],"tangent",flux]]
     neumannConditionsData = None
 
@@ -78,24 +89,28 @@ def mainProgram():
 
     # pre2D.plotGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
-    K,F,M = diffSol.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
+    K,F,M = waveEq.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
                                         materialProperties,boundaryPreprocessing)
 
+    # Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(K,F,enforcedDOF,enforcedValues)
+    # dSolution = matEqnSol.solveReducedMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
+
     T = 1.0
-    dt = 0.005
-    uInitial = np.full((F.shape[0],1),0.0)
-    uTransient = timeIntg.parabolicExplicitScheme(M,K,F,uInitial,dt,T,enforcedDOF,enforcedValues)
-    # uTransient = timeIntg.parabolicImplicitScheme(M,K,F,uInitial,dt,T,enforcedDOF,enforcedValues)
+    dt = 0.025
+    # uInitial = np.full((F.shape[0],1),0.0)
+    d0,v0 = defineInitialConditions(geomsurface.P)
+    # uTransient = timeIntg.hyperbolicExplicitScheme(M,K,F,d0,v0,dt,T,enforcedDOF,enforcedValues)
+    uTransient = timeIntg.hyperbolicImplicitScheme(M,K,F,d0,v0,dt,T,enforcedDOF,enforcedValues)
+    # print(uTransient)
 
-    # print(np.hstack((geomsurface.P,uTransient[:,5,None])))
+    # Mmod,Kmod,Fmod,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(M,K,F,enforcedDOF,enforcedValues)
+    # dSolution = matEqnSol.solveReducedMatrixEquations(Kmod,Fmod,totalDofs)
 
-    # Mred,Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement(M,K,F,enforcedDOF,enforcedValues)
-    # dSolution = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
-
-    # print(np.hstack((geomsurface.P,uTransient[:,-1,None],dSolution)))
+    # print(np.hstack((dtotal,dtotal2)))
 
     # post2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,dSolution,materialProperties)
     post2D.plotTransientField(geomsurface,surfacePreprocessing,materialProperties,uTransient,T,dt,False)
+# End function
 
 mainProgram()
 

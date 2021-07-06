@@ -93,6 +93,9 @@ class HeatSolution(SolutionField):
 
                     self.tpts[iu*numpoints + i,jv*numpoints + j] = R@self.Dsol[idR,:]
                     self.cpts[:,iu*numpoints + i,jv*numpoints + j] = R@self.Psol[idR,:]
+                # End for loop
+            # End for loop
+        # End for loop
 
         return self.tpts,self.cpts
     # End function
@@ -179,6 +182,8 @@ class SchrodingerSolution(SolutionField):
 
                     self.wfpts[iu*numpoints + i,jv*numpoints + j] = R@self.Dsol[idR,:]
                     self.cpts[:,iu*numpoints + i,jv*numpoints + j] = R@self.Psol[idR,:]
+                # End for loop
+            # End for loop
 
         return self.wfpts,self.cpts
     # End function
@@ -517,9 +522,12 @@ class ElasticitySolution(SolutionField):
 ################# OTHER FUNCTIONS ####################
 ######################################################
 
-def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un,T,dt,savevideo):
+def plotTransientField(surface,surfaceprep,matprop,Un,T,dt,savevideo):
     elementcorners = surfaceprep[2]
     numelems = len(elementcorners)
+
+    numsteps = int(T/dt + 1)
+    tsteps = np.linspace(0,T,numsteps)
 
     if numelems < 5:
         numpoints = 11
@@ -536,27 +544,33 @@ def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un,T,dt,savevideo)
 
     frames = []
     numframes = Un.shape[1]
+    maxvals = np.zeros(numframes)
+    minvals = np.zeros(numframes)
     print("CALCULATING FIELDS FOR ANIMATION")
     for i in range(numframes):
-        solfield = SolutionField(phenomenon,surface,Un[:,i,None],Un[:,i,None])
-        tpts,cpts = solfield.temperatureField(numpoints,surfaceprep)
-        # print(tpts)
+        # print(Un[:,i,None].T)
+        print(i,tsteps[i],Un[12,i])
+        heatfield = HeatSolution(surface,Un[:,i,None],Un[:,i,None])
+        tpts,cpts = heatfield.temperatureField(numpoints,surfaceprep)
+        maxvals[i] = np.max(tpts)
+        minvals[i] = np.min(tpts)
+        # print("Wave Amplitude ==> Max: {:.5f}. Min: {:.5f} ".format(np.max(tpts),np.min(tpts)))
         frames.append(tpts)
-        if i == 0:
-            xcoor = cpts[0,:,:]
-            ycoor = cpts[1,:,:]
-        # End if
     # End for loop
     numsteps = int(T/dt + 1)
     tsteps = np.linspace(0,T,numsteps)
 
     print("CALCULATION FINISHED")
 
-    field = ax.pcolormesh(cpts[0,:,:],cpts[1,:,:],frames[0])
-    # field = ax.pcolormesh(cpts[0,:,:],cpts[1,:,:],frames[1])
-    vmax = np.max(frames[-1])
-    vmin = np.min(frames[0])
+    # field = ax.pcolormesh(cpts[0,:,:],cpts[1,:,:],frames[0])
+    field = ax.contourf(cpts[0,:,:],cpts[1,:,:],frames[0],20)
+    vmax = np.max(maxvals)
+    vmin = np.min(minvals)
+    # vmax = np.max(frames[0])
+    # vmin = np.min(frames[0])
     field.set_clim(vmin,vmax)
+    print(vmax)
+    print(vmin)
 
     time_text = ax.text(0.02,1.02,"Time: 0.0 s",transform=ax.transAxes)
     # frame_text = ax.text(0.75,1.02,"Frame # 0",transform=ax.transAxes)
@@ -571,13 +585,13 @@ def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un,T,dt,savevideo)
 
     def animate(i):
         arr = frames[i]
-        # print(arr)
-        # vmax = np.max(arr)
-        # vmin = np.min(arr)
-        field.set_array(np.ravel(arr))
+        # field.set_array(np.ravel(arr))
+        field = ax.contourf(cpts[0,:,:],cpts[1,:,:],frames[i],20)
         # field.set_array(arr.reshape(-1))
         time_text.set_text('Time: %.2f s' % tsteps[i])
         # frame_text.set_text('Frame # %d' % i)
+        # vmax = np.max(frames[i])
+        # vmin = np.min(frames[i])
         # field.set_clim(vmin,vmax)
         return field,
 
@@ -586,10 +600,11 @@ def plotTransientField(phenomenon,surface,surfaceprep,matprop,Un,T,dt,savevideo)
         print("SAVING VIDEO WITH FFMPEG LIBRARY")
         # anim.save('first_animation.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
         writer = animation.FFMpegWriter(fps=30, codec='h264', bitrate=-1)
-        anim.save("Al_fin_impl.mp4", writer=writer)
+        anim.save("diff_3_expl.mp4", writer=writer)
     else:
         print("SHOWING ANIMATION IN RUNTIME")
         plt.show()
+    # End if
 
 def postProcessing(phenomenon,surface,surfaceprep,dsol,matprop=None):
     elementcorners = surfaceprep[2]
@@ -629,25 +644,4 @@ def postProcessing(phenomenon,surface,surfaceprep,dsol,matprop=None):
         wfpts,cpts = wavefield.waveFunctionField(numpoints,surfaceprep)
         wavefield.plotWaveFunctionField()
     # End if
-# End Function
-
-def plotEigenvalueSolution(phenomenon,surface,surfaceprep,eigsol):
-    elementcorners = surfaceprep[2]
-    numelems = len(elementcorners)
-
-    if numelems < 5:
-        numpoints = 11
-    elif numelems >= 5 and numelems < 10:
-        numpoints = 9
-    elif numelems >= 10 and numelems < 20:
-        numpoints = 7
-    else:
-        numpoints = 5
-    # End if
-
-    cpts = surface.createSurface(10)
-
-    plt.figure(figsize=(9,9))
-    plt.contourf(cpts[0,:,:],cpts[1,:,:],eigsol**2, 20)
-    plt.show()
 # End Function

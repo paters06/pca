@@ -1,5 +1,7 @@
 # Python libraries
 import numpy as np
+import time
+import math
 
 #######################################################################
 # DO NOT REMOVE THIS SEGMENT
@@ -18,8 +20,7 @@ sys.path.append(dir2)
 # Local project
 import src.nurbs as rbs
 import src.preprocessor2D as pre2D
-import src.diffusionSolver as diffSol
-import src.timeIntegration as timeIntg
+import src.schrodingerEquationSolver as schroSol
 import src.matrixEquationSolver as matEqnSol
 import src.postprocessor2D as post2D
 import src.surfaceRefinements as srfn
@@ -31,20 +32,24 @@ import src.debugScripts as dbg_scrpt
 
 def mainProgram():
     #Data
-    phenomenon = "Heat"
-    Rmax = 1.0
-    Rmin = 0.7
-    kappa = 1 #Pa
-    rho = 1.0
-    source = 1.0 #kg/m3
-    materialProperties = [kappa,rho,source]
-    flux = 0.0 #Pa
+    phenomenon = "Schrodinger"
+    hbar = 1.0
+    m = 1.0
+    L = 5.0
+
+    x = np.linspace(0,L)
+    y = np.linspace(0,L)
+    X,Y = np.meshgrid(x,y)
+
+    def potentialField(x):
+        # return 0*x[0]
+        return -(1.6e-19)**2*1.0/(2*8.854e-12*math.sqrt((x[0] - 2.5)**2 + (x[1] - 2.5)**2))
+    # End function
 
     numGaussPoints = 4
     # gaussLegendreQuadrature = np.polynomial.legendre.leggauss(numGaussPoints)
 
-    Pinit = np.array([[0.0,0.0],[1.0,0.0],[0.0,1.0],[1.0,1.0]])
-
+    Pinit = np.array([[0.0,0.0],[L,0.0],[0.0,L],[L,L]])
     winit = np.ones((Pinit.shape[0],1))
 
     #Isogeometric routines
@@ -61,12 +66,11 @@ def mainProgram():
     if doRefinement == 'Y':
         # srfn.surfaceRefinement(geomsurface,1,'p','U')
         # srfn.surfaceRefinement(geomsurface,1,'p','V')
-        srfn.surfaceRefinement(geomsurface,2,'h','U')
-        srfn.surfaceRefinement(geomsurface,2,'h','V')
+        srfn.surfaceRefinement(geomsurface,4,'h','U')
+        srfn.surfaceRefinement(geomsurface,4,'h','V')
 
-    # dirichletConditionsData = [[[1.0,0.0],[1.0,1.0],0.0],[[0.0,1.0],[1.0,1.0],0.0]]
     dirichletConditionsData = [[[1.0,0.0],[1.0,1.0],0.0],[[0.0,0.0],[1.0,0.0],0.0],
-                               [[0.0,1.0],[1.0,1.0],0.0],[[0.0,0.0],[0.0,1.0],100.0]]
+                               [[0.0,1.0],[1.0,1.0],0.0],[[0.0,0.0],[0.0,1.0],0.0]]
     # neumannConditionsData = [[[0.0,0.0],[1.0,0.0],"tangent",flux],[[0.0,1.0],[1.0,1.0],"tangent",flux]]
     neumannConditionsData = None
 
@@ -78,26 +82,23 @@ def mainProgram():
 
     # pre2D.plotGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
-    K,F,M = diffSol.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
-                                        materialProperties,boundaryPreprocessing)
+    K,F,M = schroSol.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
+                                      potentialField,boundaryPreprocessing)
 
-    T = 1.0
-    dt = 0.005
-    uInitial = np.full((F.shape[0],1),0.0)
-    uTransient = timeIntg.parabolicExplicitScheme(M,K,F,uInitial,dt,T,enforcedDOF,enforcedValues)
-    # uTransient = timeIntg.parabolicImplicitScheme(M,K,F,uInitial,dt,T,enforcedDOF,enforcedValues)
+    Mred,Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(M,K,F,enforcedDOF,enforcedValues)
+    # dSolution = matEqnSol.solveReducedMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
 
-    # print(np.hstack((geomsurface.P,uTransient[:,5,None])))
+    eigenSolution = matEqnSol.solveReducedEigenvalueProblem(Mred,Kred,6,totalDofs,enforcedDOF,enforcedValues)
 
-    # Mred,Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement(M,K,F,enforcedDOF,enforcedValues)
-    # dSolution = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
+    # print(np.hstack((geomsurface.P,eigenSolution)))
 
-    # print(np.hstack((geomsurface.P,uTransient[:,-1,None],dSolution)))
+    post2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,eigenSolution)
+# End function
 
-    # post2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,dSolution,materialProperties)
-    post2D.plotTransientField(geomsurface,surfacePreprocessing,materialProperties,uTransient,T,dt,False)
-
+start = time.time()
 mainProgram()
+end = time.time()
+print("Elapsed time {:.3f} seconds".format(end - start))
 
 # import cProfile
 # import pstats
