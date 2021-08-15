@@ -55,6 +55,7 @@ def findKnotInterval(n,p,u,U):
     # Special case
     if abs(u - U[n+1]) < 1e-5:
         return n
+    # End if
 
     # Starting binary search
     low = p
@@ -66,10 +67,13 @@ def findKnotInterval(n,p,u,U):
             high = mid
         else:
             low = mid
+        # End if
 
         mid = (low + high)//2
+    # End while loop
 
     return mid
+# End function
 
 ####################################################
 #################BASIS FUNCTIONS####################

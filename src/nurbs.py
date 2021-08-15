@@ -10,8 +10,9 @@ def binomial(a,b):
     bc = 1.0
     for j in range(1,b+1):
         bc *= ((a+1-j)//j)
-
+    # End for loop
     return bc
+# End function
 
 #######################################################
 ################# CLASS DEFINITION ####################
@@ -178,7 +179,7 @@ class NURBSSurface:
         uspan = bfunc.findKnotInterval(nu,self.p,upt,self.U)
         vspan = bfunc.findKnotInterval(nv,self.q,vpt,self.V)
 
-        idR = nonZeroIndicesSurface(uspan,vspan,self.p,self.q,nu)
+        idR = nonZeroIndicesElement(uspan,vspan,self.p,self.q,nu)
 
         R = bivariateRationalFunction(mu,mv,self.p,self.q,uspan,vspan,upt,vpt,self.U,self.V,Pw)
         spt = R@self.P[idR,:]
@@ -210,7 +211,7 @@ class NURBSSurface:
                 uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
                 vspan = bfunc.findKnotInterval(nv,self.q,vrank[j],self.V)
 
-                idR = nonZeroIndicesSurface(uspan,vspan,self.p,self.q,nu)
+                idR = nonZeroIndicesElement(uspan,vspan,self.p,self.q,nu)
 
                 R = bivariateRationalFunction(mu,mv,self.p,self.q,uspan,vspan,urank[i],vrank[j],self.U,self.V,Pw)
                 S = R@self.P[idR,:]
@@ -247,7 +248,7 @@ class NURBSSurface:
                 uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
                 vspan = bfunc.findKnotInterval(nv,self.q,vrank[j],self.V)
 
-                idR = nonZeroIndicesSurface(uspan,vspan,self.p,self.q,nu)
+                idR = nonZeroIndicesElement(uspan,vspan,self.p,self.q,nu)
 
                 Ralph = bivariateRationalGradient(mu,mv,self.p,self.q,uspan,vspan,urank[i],vrank[j],self.U,self.V,Pw)
                 dS = Ralph@self.P[idR,:]
@@ -289,7 +290,7 @@ class NURBSSurface:
             for ppath in parampath:
                 uspan = bfunc.findKnotInterval(nu,self.p,ppath[0],self.U)
                 vspan = bfunc.findKnotInterval(nv,self.q,ppath[1],self.V)
-                idR = nonZeroIndicesSurface(uspan,vspan,self.p,self.q,nu)
+                idR = nonZeroIndicesElement(uspan,vspan,self.p,self.q,nu)
 
                 R = bivariateRationalFunction(mu,mv,self.p,self.q,uspan,vspan,ppath[0],ppath[1],self.U,self.V,Pw)
                 S = R@self.P[idR,:]
@@ -451,7 +452,7 @@ class MultiPatchNURBSSurface():
                     uspan = bfunc.findKnotInterval(nui,pi,urank[i],Ui)
                     vspan = bfunc.findKnotInterval(nvi,qi,vrank[j],Vi)
 
-                    idR = nonZeroIndicesSurface(uspan,vspan,pi,qi,nui)
+                    idR = nonZeroIndicesElement(uspan,vspan,pi,qi,nui)
 
                     R = bivariateRationalFunction(mui,mvi,pi,qi,uspan,vspan,urank[i],vrank[j],Ui,Vi,Pw)
                     S = R@Pi[idR,:]
@@ -508,7 +509,7 @@ class MultiPatchNURBSSurface():
                     uspan = bfunc.findKnotInterval(nui,pi,urank[i],Ui)
                     vspan = bfunc.findKnotInterval(nvi,qi,vrank[j],Vi)
 
-                    idR = nonZeroIndicesSurface(uspan,vspan,pi,qi,nui)
+                    idR = nonZeroIndicesElement(uspan,vspan,pi,qi,nui)
 
                     R = bivariateRationalFunction(mui,mvi,pi,qi,uspan,vspan,urank[i],vrank[j],Ui,Vi,Pw)
                     S = R@Pi[idR,:]
@@ -589,6 +590,7 @@ def weightedControlPoints(P,w):
     Pw = np.hstack((P,np.ones((P.shape[0],1))))
     Pw *= w
     return Pw
+# End function
 
 #Convert from homogeneous to real projection
 def geometricControlPoints(Pw):
@@ -596,6 +598,7 @@ def geometricControlPoints(Pw):
     w = np.reshape(w,(len(w),1))
     P = Pw[:,:-1]/w
     return P,w
+# End function
 
 #Convert list of control points to a spatial grid
 def listToGridControlPoints(Pl,U,V,p,q):
@@ -612,30 +615,66 @@ def listToGridControlPoints(Pl,U,V,p,q):
 
     for i in range(0,Pl.shape[1]):
         Pg[i,:,:] = np.reshape(Pl[:,i],(NU,NV),order='F')
+    # End for loop
 
     return Pg
+# End function
 
 def gridToListControlPoints(Pg):
     Pl = np.zeros((Pg.shape[1]*Pg.shape[2],Pg.shape[0]))
 
     for i in range(0,Pg.shape[0]):
         Pl[:,i] = np.reshape(Pg[i,:,:],(Pg.shape[1]*Pg.shape[2]),order='F')
+    # End for loop
 
     return Pl
+# End function
 
 #########################################################################
 ###################### RATIONAL BASIS FUNCTIONS #########################
 #########################################################################
 
-def nonZeroIndicesSurface(uspan,vspan,p,q,nu):
+def nonZeroIndicesElement(uspan,vspan,p,q,nu):
     idr = []
 
     for l in range(0,q+1):
         for k in range(0,p+1):
             i = (vspan-q+l)*(nu+1) + (uspan-p+k)
             idr.append(i)
+        # End for loop
+    # End for loop
 
     return idr
+# End function
+
+def nonZeroIndiceBoundary(apt,bpt,uspan,vspan,p,q,nu):
+    idr = []
+    cpt = bpt - apt
+
+    if abs(cpt[0]) < 1e-5:
+        for l in range(0,q+1):
+            if abs(apt[0]) < 1e-5:
+                i = (vspan - q + l)*(nu + 1) + (uspan - p)
+            elif abs(apt[0] - 1.0) < 1e-5:
+                i = (vspan - q + l)*(nu + 1) + (uspan)
+            # End if
+            idr.append(i)
+        # End l for loop
+    elif abs(cpt[1]) < 1e-5:
+        for k in range(0,p+1):
+            if abs(apt[1]) < 1e-5:
+                i = (vspan - q)*(nu + 1) + (uspan - p + k)
+            elif abs(apt[1] - 1.0) < 1e-5:
+                i = (vspan)*(nu + 1) + (uspan - p + k)
+            # End if
+            idr.append(i)
+        # End k for loop
+    else:
+        print("Wrong dimensions")
+    # End if
+
+    return idr
+# Enf function
 
 def rationalCurveDerivative(aders,wders,d):
     Ck = np.zeros((d+1,2))
@@ -644,10 +683,13 @@ def rationalCurveDerivative(aders,wders,d):
         v = aders[k,:]
         for i in range(1,k+1):
             v -= binomial(k,i)*wders[i]*Ck[k-i,:]
+        # End for loop
 
         Ck[k,:] = v/wders[0]
+    # End for loop
 
     return Ck
+# End function
 
 def univariateRationalDerivative(aders,wders,d):
     drat = np.zeros((d+1,aders.shape[1]))
@@ -656,10 +698,13 @@ def univariateRationalDerivative(aders,wders,d):
         v = aders[k,:]
         for i in range(1,k+1):
             v -= binomial(k,i)*wders[i]*drat[k-i,:]
+        # End for loop
 
         drat[k,:] = v/wders[0]
+    # End for loop
 
     return drat
+# End function
 
 def bivariateRationalFunction(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
     Nu = bfunc.basisFunction(uspan,u,mu,p,U)
@@ -672,10 +717,13 @@ def bivariateRationalFunction(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
         for k in range(0,p+1):
             R[0][i] = Nu[k]*Nv[l]*Pw[-1,uspan-p+k,vspan-q+l]
             i += 1
+        # End for loop
+    # End for loop
 
     R /= np.sum(R)
 
     return R
+# End function
 
 def bivariateRationalGradient(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
     # Derivative order
@@ -695,7 +743,7 @@ def bivariateRationalGradient(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
     # The first row for dA and dW has the derivative w.r.t u
     # The second row for dA and dW has the derivative w.r.t v
     dA = np.zeros((2,(p+1)*(q+1)))
-#    dW = np.zeros((2,1))
+    # dW = np.zeros((2,1))
     i = 0
 
     for l in range(0,q+1):
@@ -706,6 +754,8 @@ def bivariateRationalGradient(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
             dA[0][i] = dNu[d][k]*dNv[0][l]*Pw[-1,iu,jv]
             dA[1][i] = dNu[0][k]*dNv[d][l]*Pw[-1,iu,jv]
             i += 1
+        # End for loop
+    # End for loop
 
     W = np.sum(dR[0,:])
     dW = np.sum(dA,axis = 1)
@@ -716,3 +766,4 @@ def bivariateRationalGradient(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
     dR[2,:] = (dA[1,:] - dW[1]*biN)/W
 
     return dR
+# End function

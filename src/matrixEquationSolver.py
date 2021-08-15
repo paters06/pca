@@ -32,10 +32,12 @@ def solveMatrixEquations(Kred,Fred,totaldofs,remdofs,values):
     mRows = Kred.shape[0]
     print("Number of rows: ",mRows)
     print("Rank of matrix: ",mRank)
+    
     if mRank == mRows:
         fullRank = True
     else:
         fullRank = False
+    # End if
 
     # fullRank = True
     if fullRank:

@@ -11,6 +11,7 @@ def parametricCoordinate(ua,ub,va,vb,gausspta,gaussptb):
     localpts[0][0] = 0.5*(ub - ua)*gausspta + 0.5*(ub + ua)
     localpts[0][1] = 0.5*(vb - va)*gaussptb + 0.5*(vb + va)
     return localpts
+# End function
 
 def elasticMatrix(E,nu):
     dmat = np.zeros((3,3))
@@ -21,6 +22,7 @@ def elasticMatrix(E,nu):
     dmat[1][0] = nu
     dmat *= E/((1+nu)*(1-2*nu))
     return dmat
+# End function
 
 ################ ISOGEOMETRIC ANALYSIS ####################
 
@@ -198,6 +200,7 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
 
     F = Fb + Fl
     return K,F,M
+# End function
 
 def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundaryprep):
     multiU,multiV,multip,multiq,multiP,multiw,globalPatchIndices = multisurface.retrieveSurfaceInformation()
