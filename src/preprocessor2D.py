@@ -90,7 +90,7 @@ def parametricGrid(U,V,p,q):
         uspan = bfunc.findKnotInterval(nu,p,0.5*(uC + uA),U)
         vspan = bfunc.findKnotInterval(nv,q,0.5*(vC + vA),V)
 
-        idR = rbs.nonZeroIndicesSurface(uspan,vspan,p,q,nu)
+        idR = rbs.nonZeroIndicesElement(uspan,vspan,p,q,nu)
 
         nonzeroctrlpts.append(idR)
         surfacespan.append([uspan,vspan])
@@ -204,7 +204,7 @@ def neumannBCPreprocessing(paramnodes,nodeselem,neumannconditionsdata,U,V,p,q):
             uspan = bfunc.findKnotInterval(nu,p,0.5*(uB + uA),U)
             vspan = bfunc.findKnotInterval(nv,q,0.5*(vB + vA),V)
 
-            idR = rbs.nonZeroIndicesSurface(uspan,vspan,p,q,nu)
+            idR = rbs.nonZeroIndicesElement(uspan,vspan,p,q,nu)
 
             boundarycorners.append([apt,bpt])
             boundaryspan.append([uspan,vspan])

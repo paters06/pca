@@ -1,9 +1,9 @@
 # Python libraries
 import numpy as np
-import numpy.linalg
+# import numpy.linalg
 
 # Local project
-import src.basisFunctions as bfunc
+# import src.basisFunctions as bfunc
 import src.nurbs as rbs
 
 def parametricCoordinate(ua,ub,va,vb,gausspta,gaussptb):
@@ -11,7 +11,6 @@ def parametricCoordinate(ua,ub,va,vb,gausspta,gaussptb):
     localpts[0][0] = 0.5*(ub - ua)*gausspta + 0.5*(ub + ua)
     localpts[0][1] = 0.5*(vb - va)*gaussptb + 0.5*(vb + va)
     return localpts
-# End function
 
 def elasticMatrix(E,nu):
     dmat = np.zeros((3,3))
@@ -22,7 +21,6 @@ def elasticMatrix(E,nu):
     dmat[1][0] = nu
     dmat *= E/((1+nu)*(1-2*nu))
     return dmat
-# End function
 
 ################ ISOGEOMETRIC ANALYSIS ####################
 
@@ -128,9 +126,6 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
 
                 Fb[globalDOF] += (nMat.T@bvec)*wJac
                 M[globalDOFx,globalDOFy] += rho*(nMat.T@nMat)*wJac
-            # End if
-        # End iquad loop
-    # End ielem loop
 
     if boundaryprep is not None:
         # Extraction of boundary preprocessing
@@ -194,13 +189,9 @@ def assemblyWeakForm(surface,surfaceprep,numquad,matprop,boundaryprep):
                 nMat[1,1::2] = biRatGrad[0,:]
 
                 Fl[globalDOF] += (nMat.T@tvec)*jac1*jac2*numquad1d[iquad][1]
-            # End iquad loop
-        # End iload loop
-    # End if boundary is not None
 
     F = Fb + Fl
     return K,F,M
-# End function
 
 def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundaryprep):
     multiU,multiV,multip,multiq,multiP,multiw,globalPatchIndices = multisurface.retrieveSurfaceInformation()
@@ -247,28 +238,30 @@ def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundary
         surface_i = rbs.NURBSSurface(Pinit,winit,pinit,qinit,U=Uinit,V=Vinit)
         surfaceprep_i = surfaceprep[ipatch]
 
+        print(Pinit)
+
         if boundaryprep[ipatch] is not None:
             boundaryprep_i = boundaryprep[ipatch][1:]
             # print(boundaryprep_i)
         else:
             boundaryprep_i = boundaryprep[ipatch]
-        # End if
 
         Kpatch,Fpatch,Mpatch = assemblyWeakForm(surface_i,surfaceprep_i,numquad,matprop,boundaryprep_i)
 
         # Patch degrees of freedom
+        # print(globalPatchIndices[ipatch])
         patchDOF = np.zeros(2*len(globalPatchIndices[ipatch]),dtype=int)
         dof0 = 2*np.array(globalPatchIndices[ipatch])
-        dof1 = dof0 + 1
+        dof1 = dof0 + 1.0
         patchDOF[0::2] = dof0
         patchDOF[1::2] = dof1
+        # print(patchDOF)
 
         patchDOFx,patchDOFy = np.meshgrid(patchDOF,patchDOF,indexing='xy')
 
         Ktotal[patchDOFx,patchDOFy] += Kpatch
         Mtotal[patchDOFx,patchDOFy] += Mpatch
         Ftotal[patchDOF] += Fpatch
-    # End patch for loop
 
     return Ktotal,Ftotal,Mtotal
 
@@ -279,6 +272,7 @@ def assemblyMultipatchWeakFormv2(multisurface,surfaceprep,numquad,matprop,bounda
     multisurface.createFullControlPolygon()
     fullNumberControlPoints = multisurface.fullP.shape[0]
     Ktotal = np.zeros((2*fullNumberControlPoints,2*fullNumberControlPoints))
+    Mtotal = np.zeros((2*fullNumberControlPoints,2*fullNumberControlPoints))
     Ftotal = np.zeros((2*fullNumberControlPoints,1))
     Fbtotal = np.zeros((2*fullNumberControlPoints,1))
     Fltotal = np.zeros((2*fullNumberControlPoints,1))
@@ -402,8 +396,6 @@ def assemblyMultipatchWeakFormv2(multisurface,surfaceprep,numquad,matprop,bounda
                     nMat[1,1::2] = biRatGrad[0,:]
 
                     Fbpatch[patchDOF] += (nMat.T@bvec)*wJac
-            # End of quadrature loop
-        # End of element loop
         Ktotal[globalDOFx,globalDOFy] += Kpatch
         Fbtotal[globalDOF] += Fbpatch
 
@@ -504,10 +496,7 @@ def assemblyMultipatchWeakFormv2(multisurface,surfaceprep,numquad,matprop,bounda
                     nMat[1,1::2] = biRatGrad[0,:]
 
                     Flpatch[patchDOF] += (nMat.T@tvec)*jac1*jac2*numquad1d[iquad][1]
-                # End quadrature loop
                 Fltotal[globalDOF] += Flpatch
-            # End load loop
-    # End of patch loop
 
     Ftotal = Fbtotal + Fltotal
-    return Ktotal,Ftotal
+    return Ktotal,Ftotal, Mtotal

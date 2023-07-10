@@ -114,12 +114,17 @@ def plotMultipatchField(fullc,fullf,comp,*argv):
     titlestring = ""
     colorbarstring = "value"
 
-    for ifc in range(len(fullc)):
-        field = ax.pcolormesh(fullc[ifc][0,:,:],fullc[ifc][1,:,:],fullf[ifc][comp,:,:])
+    # for ifc in range(len(fullc)):
+        # field = ax.pcolormesh(fullc[ifc][0,:,:],fullc[ifc][1,:,:],fullf[ifc][comp,:,:])
         # field = ax.scatter(fullc[:,0],fullc[:,1],fullf[:,comp],c=fullf[:,comp])
     # End for loop
-    vmax = np.max(fullf[-1])
-    vmin = np.min(fullf[0])
+    
+    print(fullc.shape)
+    print(fullf.shape)
+    field = ax.scatter(fullc[:,0],fullc[:,1],c=fullf[:,comp])
+    
+    vmax = np.max(fullf[:,comp])
+    vmin = np.min(fullf[:,comp])
     field.set_clim(vmin,vmax)
 
     if argv != ():

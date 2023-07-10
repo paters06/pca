@@ -38,11 +38,11 @@ def multiPatchProblemPreprocessing(phenomenon,multisurface,dirichletconditionsda
                 surface_i = rbs.NURBSSurface(P_i,w_i,p_i,q_i,U=U_i,V=V_i)
                 dirichletBCList_i,enforcedDOF_patch,enforcedValues_i = \
                 pre2D.dirichletBCPreprocessing_Elasticity(P_i,surface_i,[dirichletconditionsdata[ipatch]],U_i,V_i,p_i,q_i)
-            # End if
+
             if phenomenon == "Heat":
                 dirichletBCList_i,enforcedDOF_patch,enforcedValues_i = \
                 pre2D.dirichletBCPreprocessing([dirichletconditionsdata[ipatch]],P_i,U_i,V_i,p_i,q_i)
-            # End if
+
             localdofs = np.array(enforcedDOF_patch)
             localPositions = localdofs//2
             localaxis = localdofs%2
@@ -59,7 +59,6 @@ def multiPatchProblemPreprocessing(phenomenon,multisurface,dirichletconditionsda
             dirichletBCList_i = None
             enforcedDOF_i = None
             enforcedValues_i = None
-        # End if
 
         if neumannconditionsdata[ipatch] is not None:
             print("There are Neumann BC on the patch #{0}".format(ipatch))
@@ -69,7 +68,6 @@ def multiPatchProblemPreprocessing(phenomenon,multisurface,dirichletconditionsda
             boundaryPreprocessing_i.insert(0,ipatch)
         else:
             boundaryPreprocessing_i = None
-        # End if
 
         surfacePreprocessing.append(surfacePreprocessing_i)
         boundaryPreprocessing.append(boundaryPreprocessing_i)
@@ -81,12 +79,9 @@ def multiPatchProblemPreprocessing(phenomenon,multisurface,dirichletconditionsda
             # print(enforcedDOF_i)
             # print(globalPatchIndices[ipatch])
             enforcedValues += enforcedValues_i
-        # End if
-    # End ipatch for loop
     # print(enforcedDOF)
     # print(enforcedValues)
     return surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues
-# End function
 
 def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
     if phenomenon == "Elasticity":
@@ -98,7 +93,6 @@ def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
     else:
         first_string = "Null BC"
         second_string = "Null BC"
-    # End if
 
     fig = plt.figure()
     ax = plt.axes()
@@ -126,10 +120,9 @@ def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
         cbpts = surface_i.createBoundary()
         # cbpts = rbs.nurbs2DBoundary(Ui,Vi,pi,qi,Pi,wi)
         fieldplot = ax.fill(cbpts[:,0],cbpts[:,1],facecolor='none',edgecolor='black',linewidth=1.5)
-    # End for loop
 
     # Control Points
-    # ax.scatter(multisurface.fullP[:,0],multisurface.fullP[:,1])
+    ax.scatter(multisurface.fullP[:,0],multisurface.fullP[:,1])
 
     # Dirichlet Conditions
     dirctrlpts = []
@@ -138,7 +131,6 @@ def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
         idpatch = drchcond[0]
         idnode = drchcond[1]
         dirctrlpts.append(multiP[idpatch][idnode,:])
-    # End for loop
     dirctrlpts = np.array(dirctrlpts)
 
     # Improve this part
@@ -148,8 +140,6 @@ def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
             dirichletplot = ax.scatter(dirctrlpts[:,0],dirctrlpts[:,1],c = "r",marker = "^")
         else:
             dirichletplot = ax.scatter(dirctrlpts[:,0],dirctrlpts[:,1],c = "g",marker = "o")
-        # End if
-    # End for loop
 
     jmat = np.zeros((2,2))
     numpt = 5
@@ -222,7 +212,6 @@ def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
                         unitTangetVec = jvec/normjvec
                     else:
                         unitTangetVec = np.zeros((2,1))
-                    # End if
 
                     if loadtype[iload] == "tangent":
                         loadvec = (load/abs(load))*unitTangetVec
@@ -231,17 +220,12 @@ def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
                         loadvec = (load/abs(load))*unitNormalVec
                     else:
                         print("Wrong load configuration")
-                    # End if
 
                     geomcoor[ipath,:] = biRatGrad[0,:]@Pi[idR,:]
                     fieldpatch[ipath,:] = loadvec.T
                     ipath += 1
-                # End for loop
                 loadcoor.append(geomcoor)
                 loadfield.append(fieldpatch)
-            # End for loop
-        # End if
-    # End for loop
 
     for ld in range(len(loadcoor)):
         if ld == 0:
@@ -263,4 +247,3 @@ def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
     plt.legend((dirichletplot,neumannplot),('Restrictions','Loads'),loc='right',bbox_to_anchor=(1.2,0.5))
     plt.tight_layout()
     plt.show()
-# End function

@@ -16,6 +16,7 @@ sys.path.append(dir2)
 #######################################################################
 
 # Local project
+from src.profiling_script import profiling_script
 import src.nurbs as rbs
 import src.preprocessor2D as pre2D
 import src.linearElastoStaticsSolver as linElastStat
@@ -99,14 +100,6 @@ def mainProgram():
 
     # post2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,dSolution,materialProperties)
 
-mainProgram()
-
-# import cProfile
-# import pstats
-# profiler = cProfile.Profile()
-# profiler.enable()
-# mainProgram()
-# profiler.disable()
-# # stats = pstats.Stats(profiler).sort_stats('ncalls')
-# stats = pstats.Stats(profiler).sort_stats('tottime')
-# stats.print_stats()
+if __name__ == '__main__':
+    # mainProgram()
+    profiling_script(mainProgram)

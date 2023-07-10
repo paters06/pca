@@ -78,14 +78,14 @@ def mainProgram():
 
     # pre2D.plotGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
-    K,F = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
-                                        materialProperties,boundaryPreprocessing,neumannConditionsData)
+    K, F, M = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
+                                        materialProperties,boundaryPreprocessing)
 
-    Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement(K,F,enforcedDOF,enforcedValues)
+    Mred, Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement(M, K,F,enforcedDOF,enforcedValues)
 
-    dtotal,D = matEqnSol.solveMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
+    dtotal = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
 
-    # post2D.postProcessing(phenomenon,geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
+    post2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,dtotal,materialProperties)
 
 mainProgram()
 

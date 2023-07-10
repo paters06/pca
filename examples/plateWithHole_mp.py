@@ -16,6 +16,7 @@ sys.path.append(dir2)
 #######################################################################
 
 # Local project
+from src.profiling_script import profiling_script
 import src.nurbs as rbs
 import src.preprocessor2D as pre2D
 import src.multipatchPreprocessor2D as multipatchpre2D
@@ -81,15 +82,14 @@ def mainProgram():
                                              multiP,multiw)
 
 
-    localRefinement = 'N'
+    localRefinement = False
     patchesToRefine = [0,1]
     numreflist = [2,2]
     reflist = [['h'],['h']]
     dirlist = [['U','V'],['U','V']]
 
-    if localRefinement == 'Y':
+    if localRefinement:
         srfn.localPatchRefinement(geomsurface,patchesToRefine,numreflist,reflist,dirlist)
-    # End if
 
     #disp_i = [startpt,endpt,value,restriction]
     dirichletData_0 = [[0.0,0.0],[0.0,1.0],0.0,"S"]
@@ -105,24 +105,15 @@ def mainProgram():
 
     # multipatchpre2D.plotMultiPatchGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
-    Ktotal,Ftotal,Mtotal = linElastStat.assemblyMultipatchWeakForm(geomsurface,surfacePreprocessing,\
-            numericalquadrature,materialProperties,boundaryPreprocessing)
+    Ktotal,Ftotal,Mtotal = linElastStat.assemblyMultipatchWeakForm(geomsurface,surfacePreprocessing, \
+          numericalquadrature,materialProperties,boundaryPreprocessing)
 
-    Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(Ktotal,Ftotal,enforcedDOF,enforcedValues)
+    Mtotal,Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement(Mtotal,Ktotal,Ftotal,enforcedDOF,enforcedValues)
 
-    dtotal,D = matEqnSol.solveReducedMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
-    # print(np.hstack((geomsurface.fullP,D)))
+    dtotal = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
 
-    multipatchpost2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
+    multipatchpost2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,dtotal,materialProperties)
 
-mainProgram()
-
-#import cProfile
-#import pstats
-#profiler = cProfile.Profile()
-#profiler.enable()
-#mainProgram()
-#profiler.disable()
-## stats = pstats.Stats(profiler).sort_stats('ncalls')
-#stats = pstats.Stats(profiler).sort_stats('tottime')
-#stats.print_stats()
+if __name__ == '__main__':
+    mainProgram()
+    # profiling_script(mainProgram)

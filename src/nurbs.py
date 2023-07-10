@@ -10,9 +10,7 @@ def binomial(a,b):
     bc = 1.0
     for j in range(1,b+1):
         bc *= ((a+1-j)//j)
-    # End for loop
     return bc
-# End function
 
 #######################################################
 ################# CLASS DEFINITION ####################
@@ -22,7 +20,7 @@ class NURBSCurve:
     """
     A class that represent a nurbs curve
     """
-    def __init__(self,P,w,p,U=None):
+    def __init__(self, P: np.ndarray, w: np.ndarray, p: int, U: np.ndarray=None) -> None:
         """
         Initialize the nurbs object with the control points
         and their respective weights,the degree of the spline,
@@ -38,12 +36,9 @@ class NURBSCurve:
         else:
             self.U = U
 
-    # End constructor method
-
     def createCurve(self):
         """
         Create a nurbs curve for further plotting
-
         """
         numpoints = 41
         urank = np.linspace(self.U.min(),self.U.max(),numpoints)
@@ -64,7 +59,6 @@ class NURBSCurve:
             ratFunc = (nbas*self.w[idxU,:].T)/(nbas@self.w[idxU,:])
 
             self.cpts[i,:] = ratFunc@self.P[idxU,:]
-        # End for loop
         return self.cpts
 
     def createTangentCurve(self):
@@ -99,13 +93,38 @@ class NURBSCurve:
             Ck = dRatdU@self.P[idxU,:]
 
             self.cppts[i,:] = Ck[d,:]
-        # End for loop
         return self.cppts
+
+    def plotBasisFunctions(self) -> None:
+        """
+        Put legend outside the plot
+        https://stackoverflow.com/questions/4700614/how-to-put-the-legend-outside-the-plot/4700762#4700762
+        """
+        numpoints = 81
+        urank = np.linspace(self.U.min(),self.U.max(),numpoints)
+        mu = len(self.U) - 1
+        nu = mu - self.p - 1
+        idx = np.arange(0,self.p+1)
+        N_bas = np.zeros((nu+1,numpoints))
+
+        for i in range(len(urank)):
+            # uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
+            for j in range(0, nu+1):
+                Npi = bfunc.oneBasisFunction(self.p, self.U, j, urank[i])
+                N_bas[j,i] = Npi
+        
+        fig, ax = plt.subplots()
+        for j in range(0, nu+1):
+            label_i = "N("+str(j)+","+str(self.p)+")"
+            plt.plot(urank, N_bas[j,:], label=label_i)
+        fig.legend(loc=5)
+        # plt.subplots_adjust(right=0.8)
+        fig.tight_layout(rect=[0, 0, 0.85, 1])
+        plt.show()
 
     def plotCurve(self):
         """
         Plot the curve
-
         """
         fig,ax = plt.subplots()
         plt.plot(self.cpts[:,0],self.cpts[:,1])
@@ -117,7 +136,6 @@ class NURBSCurve:
     def plotTangentCurve(self):
         """
         Plot the tangent curve
-
         """
         fig = plt.figure()
         plt.plot(self.P[:,0],self.P[:,1],'ro')
@@ -147,8 +165,6 @@ class NURBSSurface:
         else:
             self.U = U
             self.V = V
-
-    # End constructor method
 
     def retrieveSurfaceInformation(self):
         """
@@ -217,8 +233,6 @@ class NURBSSurface:
                 S = R@self.P[idR,:]
 
                 self.cpts[:,i,j] = S
-            # End i loop
-        # End j loop
         return self.cpts
 
     def createTangentSurface(self):
@@ -351,7 +365,7 @@ class NURBSSurface:
         ax.set_zlabel('z')
         plt.show()
 
-class MultiPatchNURBSSurface():
+class MultiPatchNURBSSurface:
     """
     A class that represents an object conformed
     by multiple patches of nurbs surfaces
@@ -368,14 +382,12 @@ class MultiPatchNURBSSurface():
         self.multiP = multiP
         self.multiw = multiw
         self.createFullControlPolygon()
-    # End function
 
     def retrieveSurfaceInformation(self):
         """
         Getter method for the multipatch surface class
         """
         return self.multiU,self.multiV,self.multip,self.multiq,self.multiP,self.multiw,self.globalPatchIndices
-    # End function
 
     def updateMultiPatchInformation(self,multiU,multiV,multip,multiq,multiP,multiw):
         """
@@ -388,7 +400,6 @@ class MultiPatchNURBSSurface():
         self.multiP = multiP
         self.multiw = multiw
         self.createFullControlPolygon()
-    # End function
 
     def createFullControlPolygon(self):
         for i in range(len(self.multiP)):
@@ -398,8 +409,7 @@ class MultiPatchNURBSSurface():
             else:
                 joinedP = np.vstack((joinedP,self.multiP[i]))
                 joinedw = np.vstack((joinedw,self.multiw[i]))
-            # End if
-        # End for loop
+        
         self.fullP,indices = np.unique(joinedP,axis=0,return_index=True)
         self.fullw = joinedw[indices]
 
@@ -411,8 +421,6 @@ class MultiPatchNURBSSurface():
                 idx_i = list(np.where(boolCoincidentRows[j].all(axis=1))[0])
                 patchIndices += idx_i
             self.globalPatchIndices.append(patchIndices)
-        #End for loop
-    # End function
 
     def createMultipatchSurface(self):
         """
@@ -458,14 +466,10 @@ class MultiPatchNURBSSurface():
                     S = R@Pi[idR,:]
 
                     cpts[:,i,j] = S
-                # End i loop
-            # End j loop
 
             self.fullcpts.append(cpts)
-        # End patch loop
 
         return self.fullcpts
-    # End function
 
     def createMultipatchTangentSurface(self):
         """
@@ -525,7 +529,6 @@ class MultiPatchNURBSSurface():
             self.fullcpv.append(cpv)
 
         return self.fullcpu,self.fullcpv
-    # End function
 
     def plotMultipatchSurface(self):
         """
@@ -548,7 +551,6 @@ class MultiPatchNURBSSurface():
         ax.set_ylabel('y')
         ax.set_zlabel('z')
         plt.show()
-    # End function
 
     def plotMultipatchTangentSurface(self,component):
         """
@@ -578,8 +580,6 @@ class MultiPatchNURBSSurface():
         ax.set_ylabel('y')
         ax.set_zlabel('z')
         plt.show()
-    # End function
-# End class
 
 #####################################################
 ################# CONTROL POINTS ####################
@@ -590,7 +590,6 @@ def weightedControlPoints(P,w):
     Pw = np.hstack((P,np.ones((P.shape[0],1))))
     Pw *= w
     return Pw
-# End function
 
 #Convert from homogeneous to real projection
 def geometricControlPoints(Pw):
@@ -598,7 +597,6 @@ def geometricControlPoints(Pw):
     w = np.reshape(w,(len(w),1))
     P = Pw[:,:-1]/w
     return P,w
-# End function
 
 #Convert list of control points to a spatial grid
 def listToGridControlPoints(Pl,U,V,p,q):
@@ -615,20 +613,16 @@ def listToGridControlPoints(Pl,U,V,p,q):
 
     for i in range(0,Pl.shape[1]):
         Pg[i,:,:] = np.reshape(Pl[:,i],(NU,NV),order='F')
-    # End for loop
 
     return Pg
-# End function
 
 def gridToListControlPoints(Pg):
     Pl = np.zeros((Pg.shape[1]*Pg.shape[2],Pg.shape[0]))
 
     for i in range(0,Pg.shape[0]):
         Pl[:,i] = np.reshape(Pg[i,:,:],(Pg.shape[1]*Pg.shape[2]),order='F')
-    # End for loop
 
     return Pl
-# End function
 
 #########################################################################
 ###################### RATIONAL BASIS FUNCTIONS #########################
@@ -641,11 +635,8 @@ def nonZeroIndicesElement(uspan,vspan,p,q,nu):
         for k in range(0,p+1):
             i = (vspan-q+l)*(nu+1) + (uspan-p+k)
             idr.append(i)
-        # End for loop
-    # End for loop
 
     return idr
-# End function
 
 def nonZeroIndiceBoundary(apt,bpt,uspan,vspan,p,q,nu):
     idr = []
@@ -657,24 +648,18 @@ def nonZeroIndiceBoundary(apt,bpt,uspan,vspan,p,q,nu):
                 i = (vspan - q + l)*(nu + 1) + (uspan - p)
             elif abs(apt[0] - 1.0) < 1e-5:
                 i = (vspan - q + l)*(nu + 1) + (uspan)
-            # End if
             idr.append(i)
-        # End l for loop
     elif abs(cpt[1]) < 1e-5:
         for k in range(0,p+1):
             if abs(apt[1]) < 1e-5:
                 i = (vspan - q)*(nu + 1) + (uspan - p + k)
             elif abs(apt[1] - 1.0) < 1e-5:
                 i = (vspan)*(nu + 1) + (uspan - p + k)
-            # End if
             idr.append(i)
-        # End k for loop
     else:
         print("Wrong dimensions")
-    # End if
 
     return idr
-# Enf function
 
 def rationalCurveDerivative(aders,wders,d):
     Ck = np.zeros((d+1,2))
@@ -683,13 +668,10 @@ def rationalCurveDerivative(aders,wders,d):
         v = aders[k,:]
         for i in range(1,k+1):
             v -= binomial(k,i)*wders[i]*Ck[k-i,:]
-        # End for loop
 
         Ck[k,:] = v/wders[0]
-    # End for loop
 
     return Ck
-# End function
 
 def univariateRationalDerivative(aders,wders,d):
     drat = np.zeros((d+1,aders.shape[1]))
@@ -698,13 +680,10 @@ def univariateRationalDerivative(aders,wders,d):
         v = aders[k,:]
         for i in range(1,k+1):
             v -= binomial(k,i)*wders[i]*drat[k-i,:]
-        # End for loop
 
         drat[k,:] = v/wders[0]
-    # End for loop
 
     return drat
-# End function
 
 def bivariateRationalFunction(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
     Nu = bfunc.basisFunction(uspan,u,mu,p,U)
@@ -717,13 +696,10 @@ def bivariateRationalFunction(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
         for k in range(0,p+1):
             R[0][i] = Nu[k]*Nv[l]*Pw[-1,uspan-p+k,vspan-q+l]
             i += 1
-        # End for loop
-    # End for loop
 
     R /= np.sum(R)
 
     return R
-# End function
 
 def bivariateRationalGradient(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
     # Derivative order
@@ -754,8 +730,6 @@ def bivariateRationalGradient(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
             dA[0][i] = dNu[d][k]*dNv[0][l]*Pw[-1,iu,jv]
             dA[1][i] = dNu[0][k]*dNv[d][l]*Pw[-1,iu,jv]
             i += 1
-        # End for loop
-    # End for loop
 
     W = np.sum(dR[0,:])
     dW = np.sum(dA,axis = 1)
@@ -766,4 +740,3 @@ def bivariateRationalGradient(mu,mv,p,q,uspan,vspan,u,v,U,V,Pw):
     dR[2,:] = (dA[1,:] - dW[1]*biN)/W
 
     return dR
-# End function
