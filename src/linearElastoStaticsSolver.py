@@ -238,7 +238,7 @@ def assemblyMultipatchWeakForm(multisurface,surfaceprep,numquad,matprop,boundary
         surface_i = rbs.NURBSSurface(Pinit,winit,pinit,qinit,U=Uinit,V=Vinit)
         surfaceprep_i = surfaceprep[ipatch]
 
-        print(Pinit)
+        # print(Pinit)
 
         if boundaryprep[ipatch] is not None:
             boundaryprep_i = boundaryprep[ipatch][1:]

@@ -102,13 +102,11 @@ class SolutionField:
         self.fullsigmapts = np.zeros((totalpoints, 3))
 
     def _create_D_matrix_from_d_vector(self, d_vec):
-        # print(d_vec)
         num_dofs = d_vec.shape[0]
         num_ctrl_pts = int(num_dofs/2)
         Dsol = np.zeros((num_ctrl_pts, 2))
         Dsol[:,None,0] = d_vec[0::2]
         Dsol[:,None,1] = d_vec[1::2]
-        # print(Dsol)
         return Dsol
 
     def displacement_field(self, surfaceprep):
@@ -116,9 +114,6 @@ class SolutionField:
         Computing the displacement field for each patch
         """
         numpatches = len(self.multiU)
-
-        # self.fullcpts = []
-        # self.fullupts = []
 
         id_point = 0
 
@@ -133,14 +128,9 @@ class SolutionField:
             wi = self.multiw[ipatch]
 
             ids_patch = find_match_rows(Pi, self.fullP)
-            # print(ids_patch)
-            # print(self.globalPatchIndices[ipatch])
 
             Di = self.Dsol[self.globalPatchIndices[ipatch],:]
             Pi2 = self.fullP[self.globalPatchIndices[ipatch],:]
-            # print('Individual patch info')
-            # print(Pi)
-            # print(Pi2)
 
             mu = len(Ui) - 1
             mv = len(Vi) - 1
@@ -162,11 +152,9 @@ class SolutionField:
             Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
 
             # Geometric coordinates
-            # cpts = np.zeros((Pi.shape[1],numelemsu*numpoints,numelemsv*numpoints))
             cpts = np.zeros((1,Pi.shape[1]))
 
             # Displacements
-            # upts = np.zeros((Pi.shape[1],numelemsu*numpoints,numelemsv*numpoints))
             upts = np.zeros((1,Pi.shape[1]))
 
             for ielem in range(0,numElems):
@@ -195,315 +183,14 @@ class SolutionField:
                         self.fullcpts[id_point,:] = cpts[0]
                         self.fullupts[id_point,:] = upts[0]
                         id_point += 1
-            # self.fullcpts.append(cpts)
-            # self.fullupts.append(upts)
-        # return self.fullupts,self.fullcpts
 
-    def displacementFieldGrid(self,surfaceprep):
-        """
-        Computing the displacement field in grid form
-        """
-        numpatches = len(self.multiU)
-
-        self.fullcpts = []
-        self.fullupts = []
-
-        for ipatch in range(0,numpatches):
-            Ui = self.multiU[ipatch]
-            Vi = self.multiV[ipatch]
-
-            pi = self.multip[ipatch]
-            qi = self.multiq[ipatch]
-
-            Pi = self.multiP[ipatch]
-            wi = self.multiw[ipatch]
-            Di = self.Dsol[self.globalPatchIndices[ipatch],:]
-
-            mu = len(Ui) - 1
-            mv = len(Vi) - 1
-            nu = mu - pi - 1
-            nv = mv - qi - 1
-
-            # Extraction of surface preprocessing
-            nonzeroctrlpts = surfaceprep[ipatch][0]
-            surfacespan = surfaceprep[ipatch][1]
-            elementcorners = surfaceprep[ipatch][2]
-
-            numElems = len(elementcorners)
-            numelemsu = len(np.unique(Ui)) - 1
-            numelemsv = len(np.unique(Vi)) - 1
-
-            numpoints = defineNumberOfEvaluationPoints(numElems)
-
-            Pwl = rbs.weightedControlPoints(Pi,wi)
-            Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
-
-            # Geometric coordinates
-            cpts = np.zeros((Pi.shape[1],numelemsu*numpoints,numelemsv*numpoints))
-
-            # Displacements
-            upts = np.zeros((Pi.shape[1],numelemsu*numpoints,numelemsv*numpoints))
-
-            for ielem in range(0,numElems):
-                # Extracting the indices of the non-zero control points
-                idR = nonzeroctrlpts[ielem]
-                # Extracting the indices for the location of the parametric element
-                uspan = surfacespan[ielem][0]
-                vspan = surfacespan[ielem][1]
-                # Extracting the corners of the parametric element
-                apt = elementcorners[ielem][0]
-                cpt = elementcorners[ielem][1]
-
-                urank = np.linspace(apt[0],cpt[0],numpoints)
-                vrank = np.linspace(apt[1],cpt[1],numpoints)
-
-                jv = ielem//numelemsu
-                iu = ielem%numelemsu
-
-                for j in range(0,numpoints):
-                    for i in range(0,numpoints):
-                        R = rbs.bivariateRationalFunction(mu,mv,pi,qi,uspan,vspan,urank[i],vrank[j],Ui,Vi,Pwi)
-
-                        upts[:,iu*numpoints + i,jv*numpoints + j] = R@Di[idR,:]
-                        cpts[:,iu*numpoints + i,jv*numpoints + j] = R@Pi[idR,:]
-            self.fullcpts.append(cpts)
-            self.fullupts.append(upts)
-
-        return self.fullupts,self.fullcpts
-
-    def displacementFieldList(self,surfaceprep):
-        """
-        Computing the displacement field in list form
-        """
-        numpatches = len(self.multiU)
-
-        cptslist = []
-        uptslist = []
-
-        for ipatch in range(0,numpatches):
-            Ui = self.multiU[ipatch]
-            Vi = self.multiV[ipatch]
-
-            pi = self.multip[ipatch]
-            qi = self.multiq[ipatch]
-
-            Pi = self.multiP[ipatch]
-            wi = self.multiw[ipatch]
-            Di = self.Dsol[self.globalPatchIndices[ipatch],:]
-
-            mu = len(Ui) - 1
-            mv = len(Vi) - 1
-            nu = mu - pi - 1
-            nv = mv - qi - 1
-
-            # Extraction of surface preprocessing
-            nonzeroctrlpts = surfaceprep[ipatch][0]
-            surfacespan = surfaceprep[ipatch][1]
-            elementcorners = surfaceprep[ipatch][2]
-
-            numElems = len(elementcorners)
-            numelemsu = len(np.unique(Ui)) - 1
-            numelemsv = len(np.unique(Vi)) - 1
-
-            numpoints = defineNumberOfEvaluationPoints(numElems)
-
-            Pwl = rbs.weightedControlPoints(Pi,wi)
-            Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
-
-            # Geometric coordinates
-            cpts = np.zeros((numElems*numpoints*numpoints,Pi.shape[1]))
-
-            # Displacements
-            upts = np.zeros((numElems*numpoints*numpoints,Pi.shape[1]))
-
-            for ielem in range(0,numElems):
-                # Extracting the indices of the non-zero control points
-                idR = nonzeroctrlpts[ielem]
-                # Extracting the indices for the location of the parametric element
-                uspan = surfacespan[ielem][0]
-                vspan = surfacespan[ielem][1]
-                # Extracting the corners of the parametric element
-                apt = elementcorners[ielem][0]
-                cpt = elementcorners[ielem][1]
-
-                urank = np.linspace(apt[0],cpt[0],numpoints)
-                vrank = np.linspace(apt[1],cpt[1],numpoints)
-
-                for j in range(0,numpoints):
-                    for i in range(0,numpoints):
-                        R = rbs.bivariateRationalFunction(mu,mv,pi,qi,uspan,vspan,urank[i],vrank[j],Ui,Vi,Pwi)
-
-                        upts[ielem*numpoints*numpoints + j*numpoints + i,:] = R@Di[idR,:]
-                        cpts[ielem*numpoints*numpoints + j*numpoints + i,:] = R@Pi[idR,:]
-                    # End i loop
-                # End j loop
-            # End element loop
-            cptslist.append(cpts)
-            uptslist.append(upts)
-        #End patch loop
-
-        # Rearranging the full matrix of points
-        for ipatch in range(0,numpatches):
-            if ipatch == 0:
-                self.fullcpts = cptslist[ipatch]
-                self.fullupts = uptslist[ipatch]
-            else:
-                self.fullcpts = np.vstack((self.fullcpts,cptslist[ipatch]))
-                self.fullupts = np.vstack((self.fullupts,uptslist[ipatch]))
-
-        return self.fullupts,self.fullcpts
-
-    def stressFieldGrid(self,matprop,surfaceprep):
-        """
-        Computing the stress field in grid form
-        """
-        numpatches = len(self.multiU)
-
-        self.fullsigma = []
-
-        # Definition of the material matrix
-        E = matprop[0]
-        nu = matprop[1]
-        rho = matprop[2]
-        dMat = elasticMatrix(E,nu)
-
-        paramgrad = np.zeros((2,2))
-
-        for ipatch in range(0,numpatches):
-            Ui = self.multiU[ipatch]
-            Vi = self.multiV[ipatch]
-
-            pi = self.multip[ipatch]
-            qi = self.multiq[ipatch]
-
-            Pi = self.multiP[ipatch]
-            wi = self.multiw[ipatch]
-            Di = self.Dsol[self.globalPatchIndices[ipatch],:]
-
-            mu = len(Ui) - 1
-            mv = len(Vi) - 1
-            nu = mu - pi - 1
-            nv = mv - qi - 1
-
-            # Extraction of surface preprocessing
-            nonzeroctrlpts = surfaceprep[ipatch][0]
-            surfacespan = surfaceprep[ipatch][1]
-            elementcorners = surfaceprep[ipatch][2]
-
-            numElems = len(elementcorners)
-            numelemsu = len(np.unique(Ui)) - 1
-            numelemsv = len(np.unique(Vi)) - 1
-
-            numpoints = defineNumberOfEvaluationPoints(numElems)
-
-            Pwl = rbs.weightedControlPoints(Pi,wi)
-            Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
-
-            sigma = np.zeros((3,numelemsu*numpoints,numelemsv*numpoints))
-            nanArray = []
-
-            # Global degrees of freedom
-            globalDOF = np.zeros(2*len(self.globalPatchIndices[ipatch]),dtype=int)
-            dof0 = 2*np.array(self.globalPatchIndices[ipatch])
-            dof1 = dof0 + 1
-            globalDOF[0::2] = dof0
-            globalDOF[1::2] = dof1
-
-            for ielem in range(0,numElems):
-                # Extracting the indices of the non-zero control points
-                idR = nonzeroctrlpts[ielem]
-                # Extracting the indices for the location of the parametric element
-                uspan = surfacespan[ielem][0]
-                vspan = surfacespan[ielem][1]
-                # Extracting the corners of the parametric element
-                apt = elementcorners[ielem][0]
-                cpt = elementcorners[ielem][1]
-
-                urank = np.linspace(apt[0],cpt[0],numpoints)
-                vrank = np.linspace(apt[1],cpt[1],numpoints)
-
-                # Patch degrees of freedom
-                patchDOF = np.zeros(2*len(idR),dtype=int)
-                dof0 = 2*np.array(idR)
-                dof1 = dof0 + 1
-                patchDOF[0::2] = dof0
-                patchDOF[1::2] = dof1
-
-                jv = ielem//numelemsu
-                iu = ielem%numelemsu
-
-                for j in range(0,numpoints):
-                    for i in range(0,numpoints):
-                        xpcoor = urank[i]
-                        ypcoor = vrank[j]
-
-                        biRatGrad = rbs.bivariateRationalGradient(mu,mv,pi,qi,uspan,vspan,xpcoor,ypcoor,Ui,Vi,Pwi)
-
-                        jac = (biRatGrad[1:3,:]@Pi[idR,:]).T
-                        detJac = np.linalg.det(jac)
-
-                        if abs(detJac) > 1e-5:
-                            invJac = np.linalg.inv(jac)
-                            dN2 = biRatGrad[1:3,:]
-                            dN2dxi = invJac.T@dN2
-
-                            numpts = dN2dxi.shape[1]
-                            bmat = np.zeros((3,2*numpts))
-                            #dNx
-                            bmat[0,0::2] = dN2dxi[0,:]
-                            bmat[2,0::2] = dN2dxi[1,:]
-                            #dNy
-                            bmat[1,1::2] = dN2dxi[1,:]
-                            bmat[2,1::2] = dN2dxi[0,:]
-
-                            svec = dMat@(bmat@self.dtot[globalDOF[patchDOF],:])
-                        else:
-                            print("Singularity")
-                            print([iu*numpoints + i,jv*numpoints + j])
-                            svec = np.empty((3,1))
-                            svec[:] = np.NaN
-                            print(svec.shape)
-                            nanArray.append([iu*numpoints + i,jv*numpoints + j])
-                        # End if
-                        sigma[:,iu*numpoints + i,jv*numpoints + j] = svec.T
-                    # End i loop
-                # End j loop
-            # End element loop
-            xsize,ysize = numelemsu*numpoints,numelemsv*numpoints
-            # print(nanArray)
-            # Recomputing NaN values
-            for nanA in nanArray:
-                print("Recomputing NaN values")
-                iu = nanA[0]
-                jv = nanA[1]
-
-                sumSigma = np.zeros((1,3))
-                numneigh = 0
-
-                neighbors = [[iu-1,jv-1],[iu-1,jv],
-                             [iu-1,jv+1],[iu,jv-1],
-                             [iu,jv+1],[iu+1,jv-1],
-                             [iu+1,jv],[iu+1,jv+1]]
-
-                for neigh in neighbors:
-                    if neigh[0] >= 0 and neigh[0] <= xsize - 1:
-                        if neigh[1] >= 0 and neigh[1] <= ysize - 1:
-                            if not np.any(np.isnan(sigma[:,neigh[0],neigh[1]])):
-                                sumSigma += sigma[:,neigh[0],neigh[1]]
-                                numneigh += 1
-
-                sigma[:,iu,jv] = sumSigma/numneigh
-            self.fullsigma.append(sigma)
-
-        return self.fullsigma
-
-    def stressFieldList(self,matprop,surfaceprep):
+    def stress_field(self,matprop,surfaceprep):
         """
         Computing the stress field in list form
         """
         numpatches = len(self.multiU)
 
-        sigmalist = []
+        id_point = 0
 
         # Definition of the material matrix
         E = matprop[0]
@@ -543,8 +230,7 @@ class SolutionField:
             Pwl = rbs.weightedControlPoints(Pi,wi)
             Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
 
-            sigma = np.zeros((numElems*numpoints*numpoints,3))
-            nanArray = []
+            sigma = np.zeros((1,3))
 
             # Global degrees of freedom
             globalDOF = np.zeros(2*len(self.globalPatchIndices[ipatch]),dtype=int)
@@ -597,50 +283,11 @@ class SolutionField:
                             bmat[1,1::2] = dN2dxi[1,:]
                             bmat[2,1::2] = dN2dxi[0,:]
 
-                            svec = dMat@(bmat@self.dtot[globalDOF[patchDOF],:])
+                            sigma = dMat@(bmat@self.dtot[globalDOF[patchDOF],:])
                         else:
                             print("Singularity")
-                            print([iu*numpoints + i,jv*numpoints + j])
-                            svec = np.empty((3,1))
-                            svec[:] = np.NaN
-                            print(svec.shape)
-                            nanArray.append([ielem*numpoints*numpoints + j*numpoints + i])
-                        sigma[ielem*numpoints*numpoints + j*numpoints + i,:] = svec.T
-            xsize,ysize = numelemsu*numpoints,numelemsv*numpoints
-            # print(nanArray)
-            nanArray = []
-            # Recomputing NaN values
-            for nanA in nanArray:
-                print("Recomputing NaN values")
-                iu = nanA[0]
-                jv = nanA[1]
-
-                sumSigma = np.zeros((1,3))
-                numneigh = 0
-
-                neighbors = [[iu-1,jv-1],[iu-1,jv],
-                             [iu-1,jv+1],[iu,jv-1],
-                             [iu,jv+1],[iu+1,jv-1],
-                             [iu+1,jv],[iu+1,jv+1]]
-
-                for neigh in neighbors:
-                    if neigh[0] >= 0 and neigh[0] <= xsize - 1:
-                        if neigh[1] >= 0 and neigh[1] <= ysize - 1:
-                            if not np.any(np.isnan(sigma[:,neigh[0],neigh[1]])):
-                                sumSigma += sigma[:,neigh[0],neigh[1]]
-                                numneigh += 1
-
-                sigma[:,iu,jv] = sumSigma/numneigh
-            sigmalist.append(sigma)
-
-        # Rearranging the full matrix of points
-        for ipatch in range(0,numpatches):
-            if ipatch == 0:
-                self.fullsigma = sigmalist[ipatch]
-            else:
-                self.fullsigma = np.vstack((self.fullsigma,sigmalist[ipatch]))
-
-        return self.fullsigma
+                        self.fullsigmapts[id_point,:] = sigma[0]
+                        id_point += 1
 
     def plotDisplacementFields(self):
         """
@@ -765,16 +412,11 @@ class SolutionField:
 
 def postProcessing(phenomenon,multisurface,surfaceprep,dtot,matprop):
     solfield = SolutionField(multisurface,dtot,surfaceprep)
-    # fullupts,fullcpts = solfield.displacementFieldList(surfaceprep)
-    # fullsigmapts = solfield.stressFieldList(matprop,surfaceprep)
 
-    # fullupts,fullcpts = solfield.displacementFieldGrid(surfaceprep)
-    # fullsigmapts = solfield.stressFieldGrid(matprop,surfaceprep)
-
-    # fullupts,fullcpts = solfield.displacement_field(surfaceprep)
     solfield.displacement_field(surfaceprep)
+    solfield.stress_field(matprop, surfaceprep)
 
     plts.plotMultipatchField(solfield.fullcpts,solfield.fullupts,0,["Ux Displacement Field","[m]"])
-    # plts.plotMultipatchField(fullcpts,fullsigmapts,0,["Sx Stress Field","[Pa]"])
+    plts.plotMultipatchField(solfield.fullcpts,solfield.fullsigmapts,0,["Sx Stress Field","[Pa]"])
     # solfield.plotDisplacementFields()
     # plotStressFields(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],sigmapts[1,:,:],sigmapts[2,:,:],svm)

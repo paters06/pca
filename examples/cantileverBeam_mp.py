@@ -63,9 +63,10 @@ def mainProgram():
 
     localRefinement = True
     patchesToRefine = [0,1]
-    numreflist = [1,1]
+    numreflist = [2,2]
     # reflist = [['h'],['h'],['p'],['p'],['h'],['h']]
     reflist = [['h'],['h']]
+    # dirlist = [['U','V'],['U','V'],['U','V'],['U','V'],['U','V'],['U','V']]
     dirlist = [['U','V'],['U','V']]
 
     if localRefinement:
@@ -90,9 +91,7 @@ def mainProgram():
     Mtotal,Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement(Mtotal,Ktotal,Ftotal,enforcedDOF,enforcedValues)
 
     dtotal = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
-    fullU = np.reshape(dtotal,(int(dtotal.shape[0]/2),2)) 
-    print(geomsurface.fullP)
-    print(fullU)
+    # fullU = np.reshape(dtotal,(int(dtotal.shape[0]/2),2)) 
 
     multipatchpost2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,dtotal,materialProperties)
 

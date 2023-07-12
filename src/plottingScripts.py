@@ -110,60 +110,28 @@ def plotting2DField(cx,cy,fz,*argv):
 def plotMultipatchField(fullc,fullf,comp,*argv):
     fig = plt.figure()
     ax = plt.axes()
-    # ax = plt.axes(projection = '3d')
     titlestring = ""
     colorbarstring = "value"
 
-    # for ifc in range(len(fullc)):
-        # field = ax.pcolormesh(fullc[ifc][0,:,:],fullc[ifc][1,:,:],fullf[ifc][comp,:,:])
-        # field = ax.scatter(fullc[:,0],fullc[:,1],fullf[:,comp],c=fullf[:,comp])
-    # End for loop
+    cmap = 'viridis'
+    # cmap = 'RdBu_r'
+    num_levels = 20
+    field = ax.tricontour(fullc[:,0], fullc[:,1], fullf[:,comp], levels=num_levels, linewidths=0.5, colors='k')
+    cntr2 = ax.tricontourf(fullc[:,0], fullc[:,1], fullf[:,comp], levels=num_levels, cmap=cmap)
+    # ax.plot(fullc[:,0], fullc[:,1], 'ko', ms=3)
     
-    print(fullc.shape)
-    print(fullf.shape)
-    field = ax.scatter(fullc[:,0],fullc[:,1],c=fullf[:,comp])
-    
-    vmax = np.max(fullf[:,comp])
-    vmin = np.min(fullf[:,comp])
-    field.set_clim(vmin,vmax)
-
     if argv != ():
         stringlegends = argv[0]
         titlestring = stringlegends[0]
         colorbarstring = stringlegends[1]
 
-    cb = fig.colorbar(field)
+    cb = fig.colorbar(cntr2)
     # cb = fig.colorbar(field,extend='both')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_title(titlestring)
     # cb.set_label(colorbarstring)
     plt.show()
-# End function
-
-def plotMultipatchFieldv2(fullc,fullf,comp,*argv):
-    fig = plt.figure()
-    ax = plt.axes()
-    # ax = plt.axes(projection = '3d')
-    titlestring = ""
-    colorbarstring = "value"
-
-    field = ax.scatter(fullc[:,0],fullc[:,1],c=fullf[:,comp])
-    # field = ax.scatter(fullc[:,0],fullc[:,1],fullf[:,comp],c=fullf[:,comp])
-
-    if argv != ():
-        stringlegends = argv[0]
-        titlestring = stringlegends[0]
-        colorbarstring = stringlegends[1]
-
-    cb = fig.colorbar(field)
-    # cb = fig.colorbar(field,extend='both')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_title(titlestring)
-    # cb.set_label(colorbarstring)
-    plt.show()
-# End function
 
 ##################### SURFACE REFINEMENT ########################
 

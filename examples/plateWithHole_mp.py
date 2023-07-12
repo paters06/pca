@@ -81,8 +81,7 @@ def mainProgram():
     geomsurface = rbs.MultiPatchNURBSSurface(multiU,multiV,multip,multiq,\
                                              multiP,multiw)
 
-
-    localRefinement = False
+    localRefinement = True
     patchesToRefine = [0,1]
     numreflist = [2,2]
     reflist = [['h'],['h']]
@@ -103,7 +102,7 @@ def mainProgram():
     multipatchpre2D.multiPatchProblemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
     numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
-    # multipatchpre2D.plotMultiPatchGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
+    multipatchpre2D.plotMultiPatchGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
     Ktotal,Ftotal,Mtotal = linElastStat.assemblyMultipatchWeakForm(geomsurface,surfacePreprocessing, \
           numericalquadrature,materialProperties,boundaryPreprocessing)
