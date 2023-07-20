@@ -1,5 +1,11 @@
-import numpy as np
 import matplotlib.pyplot as plt
+# import matplotlib.tri as tri
+from matplotlib.tri import Triangulation
+from matplotlib.tri import TriAnalyzer
+from matplotlib.tri import UniformTriRefiner
+import numpy as np
+from scipy.interpolate import griddata
+
 from mpl_toolkits.mplot3d import Axes3D
 
 ####################################################
@@ -107,6 +113,54 @@ def plotting2DField(cx,cy,fz,*argv):
     # cb.set_label(colorbarstring)
     plt.show()
 
+
+def plot_multipatch_grid(fullc):
+    min_circle_ratio = 0.2
+    triang = Triangulation(fullc[:,0], fullc[:,1])
+    mask = TriAnalyzer(triang).get_flat_tri_mask(min_circle_ratio)
+    triang.set_mask(mask)
+    fig, ax = plt.subplots()
+    ax.set_aspect('equal')
+    ax.triplot(triang, 'bo-', lw=1)
+    ax.set_title('Triangular postprocessing mesh')
+    plt.show()
+
+
+def plot_multipatch_field(fullc, fullf, comp, *argv):
+    """
+    Fix the refiner implementation
+    """
+    min_circle_ratio = 0.2
+    subdiv = 3
+    titlestring = ""
+    colorbarstring = ""
+
+    triang = Triangulation(fullc[:,0], fullc[:,1])
+    mask = TriAnalyzer(triang).get_flat_tri_mask(min_circle_ratio)
+    triang.set_mask(mask)
+
+    # refiner = UniformTriRefiner(triang)
+    # triang_ref, z_refined = refiner.refine_field(fullf[:,comp], subdiv=subdiv)
+    
+    if argv != ():
+        stringlegends = argv[0]
+        titlestring = stringlegends[0]
+        colorbarstring = stringlegends[1]
+
+    fig, ax = plt.subplots()
+    ax.set_aspect('equal')
+    # ax.triplot(triang, 'bo-', lw=1)
+    ax.tricontourf(triang,fullf[:,comp])
+    ax_cb = ax.tricontourf(triang,fullf[:,comp])
+    cb = fig.colorbar(ax_cb)
+    
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_title(titlestring)
+    cb.set_label(colorbarstring)
+    plt.show()
+
+
 def plotMultipatchField(fullc,fullf,comp,*argv):
     fig = plt.figure()
     ax = plt.axes()
@@ -119,6 +173,8 @@ def plotMultipatchField(fullc,fullf,comp,*argv):
     field = ax.tricontour(fullc[:,0], fullc[:,1], fullf[:,comp], levels=num_levels, linewidths=0.5, colors='k')
     cntr2 = ax.tricontourf(fullc[:,0], fullc[:,1], fullf[:,comp], levels=num_levels, cmap=cmap)
     # ax.plot(fullc[:,0], fullc[:,1], 'ko', ms=3)
+
+    # grid_z_val = griddata(points, values, (grid_x, grid_y), method='linear')
     
     if argv != ():
         stringlegends = argv[0]

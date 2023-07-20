@@ -289,125 +289,6 @@ class SolutionField:
                         self.fullsigmapts[id_point,:] = sigma[0]
                         id_point += 1
 
-    def plotDisplacementFields(self):
-        """
-        Plot the multipatch displacement field
-        FIX THE ROUTINE
-        """
-        from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-        cx = self.fullcpts[:,0]
-        cy = self.fullcpts[:,1]
-        ux = self.fullupts[:,0]
-        uy = self.fullupts[:,1]
-
-        xlength = np.amax(np.absolute(cx))
-        ylength = np.amax(np.absolute(cy))
-
-        aspectRatio = xlength/ylength
-
-        if aspectRatio > 1.5:
-            fig, (ax1,ax2) = plt.subplots(2,1,sharex='col',sharey='row')
-        else:
-            fig, (ax1,ax2) = plt.subplots(1,2,sharex='col',sharey='row')
-
-        fig.suptitle('Displacement field components')
-        fig.subplots_adjust(hspace=0.4, wspace=0.4)
-
-        field1 = ax1.pcolormesh(cx,cy,ux,vmin=ux.min(),vmax=ux.max())
-        ax1.set_title('Ux')
-        ax1.set_xlabel('x')
-        ax1.set_ylabel('y')
-        ax1.set_aspect('equal')
-        divider = make_axes_locatable(ax1)
-        cax = divider.append_axes("right",size="5%",pad=0.1)
-        cb1 = fig.colorbar(field1,cax=cax,label='[m]')
-
-        field2 = ax2.pcolormesh(cx,cy,uy,vmin=uy.min(),vmax=uy.max())
-        ax2.set_title('Uy')
-        ax2.set_xlabel('x')
-        ax2.set_ylabel('y')
-        ax2.set_aspect('equal')
-        divider = make_axes_locatable(ax2)
-        cax = divider.append_axes("right",size="5%",pad=0.1)
-        cb2 = fig.colorbar(field2,cax=cax,label='[m]')
-
-        plt.tight_layout()
-        plt.show()
-
-    def plotStressFields(self):
-        """
-        Plot the multipatch stress field
-        FIX THE ROUTINE
-        """
-        from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-        cx = self.fullcpts[0,:,:]
-        cy = self.fullcpts[1,:,:]
-        sx = self.fullsigma[0,:,:]
-        sy = self.fullsigma[1,:,:]
-        sxy = self.fullsigma[2,:,:]
-
-        svm = np.sqrt(sx**2 - 2*sx*sy + sy**2 + 3*sxy**2)
-
-        xlength = np.amax(np.absolute(cx))
-        ylength = np.amax(np.absolute(cy))
-
-        aspectRatio = xlength/ylength
-
-        if aspectRatio > 1.5:
-            fig, (ax1,ax2,ax3,ax4) = plt.subplots(4,1,sharex='col',sharey='row')
-        else:
-            fig, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,sharex='col',sharey='row')
-
-        # Uncomment for cantileverBeam.py
-        # fig, axs = plt.subplots(4,1,sharex='col',sharey='row')
-
-        # Uncomment for pressureCylinder.py and plateWithHole.py
-        # fig, axs = plt.subplots(2,2,sharex='col',sharey='row')
-
-        fig.suptitle('Stress field components')
-        fig.subplots_adjust(hspace=0.4, wspace=0.4)
-
-        field1 = ax1.pcolormesh(cx,cy,sx,vmin=sx.min(),vmax=sx.max())
-        ax1.set_title('Sx')
-        ax1.set_xlabel('x')
-        ax1.set_ylabel('y')
-        ax1.set_aspect('equal')
-        divider = make_axes_locatable(ax1)
-        cax1 = divider.append_axes("right",size="5%",pad=0.1)
-        cb1 = fig.colorbar(field1,cax=cax1,label='[Pa]')
-
-        field2 = ax2.pcolormesh(cx,cy,sy,vmin=sy.min(),vmax=sy.max())
-        ax2.set_title('Sy')
-        ax2.set_xlabel('x')
-        ax2.set_ylabel('y')
-        ax2.set_aspect('equal')
-        divider = make_axes_locatable(ax2)
-        cax2 = divider.append_axes("right",size="5%",pad=0.1)
-        cb2 = fig.colorbar(field2,cax=cax2,label='[Pa]')
-
-        field3 = ax3.pcolormesh(cx,cy,sxy,vmin=sxy.min(),vmax=sxy.max())
-        ax3.set_title('Sxy')
-        ax3.set_xlabel('x')
-        ax3.set_ylabel('y')
-        ax3.set_aspect('equal')
-        divider = make_axes_locatable(ax3)
-        cax3 = divider.append_axes("right",size="5%",pad=0.1)
-        cb3 = fig.colorbar(field3,cax=cax3,label='[Pa]')
-
-        field4 = ax4.pcolormesh(cx,cy,svm,vmin=svm.min(),vmax=svm.max())
-        ax4.set_title('Von Mises stress')
-        ax4.set_xlabel('x')
-        ax4.set_ylabel('y')
-        ax4.set_aspect('equal')
-        divider = make_axes_locatable(ax4)
-        cax4 = divider.append_axes("right",size="5%",pad=0.1)
-        cb4 = fig.colorbar(field4,cax=cax4,label='[Pa]')
-
-        plt.tight_layout()
-        plt.show()
-
 ################ MAIN POSTPROCESSING FUNCTION ####################
 
 def postProcessing(phenomenon,multisurface,surfaceprep,dtot,matprop):
@@ -416,7 +297,6 @@ def postProcessing(phenomenon,multisurface,surfaceprep,dtot,matprop):
     solfield.displacement_field(surfaceprep)
     solfield.stress_field(matprop, surfaceprep)
 
-    plts.plotMultipatchField(solfield.fullcpts,solfield.fullupts,0,["Ux Displacement Field","[m]"])
-    plts.plotMultipatchField(solfield.fullcpts,solfield.fullsigmapts,0,["Sx Stress Field","[Pa]"])
-    # solfield.plotDisplacementFields()
-    # plotStressFields(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],sigmapts[1,:,:],sigmapts[2,:,:],svm)
+    # plts.plot_multipatch_grid(solfield.fullcpts)
+    # plts.plot_multipatch_field(solfield.fullcpts,solfield.fullupts,0,["Ux Displacement Field","[m]"])
+    plts.plot_multipatch_field(solfield.fullcpts,solfield.fullsigmapts,0,["Sx Stress Field","[Pa]"])

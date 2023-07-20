@@ -19,19 +19,11 @@ sys.path.append(dir2)
 # Local project
 from src.profiling_script import profiling_script
 import src.nurbs as rbs
-import src.preprocessor2D as pre2D
-import src.multipatchPreprocessor2D as multipatchpre2D
-import src.linearElastoStaticsSolver as linElastStat
-import src.matrixEquationSolver as matEqnSol
-import src.multipatchPostprocessor2D as multipatchpost2D
 import src.surfaceRefinements as srfn
-import src.debugScripts as dbg_scrpt
+from src.numerical_model import NumericalModel
 
-####################################################
-################## MAIN PROBLEM ####################
-####################################################
 
-def mainProgram():
+def main_program():
     #Data
     phenomenon = "Elasticity"
     E = 2e5 #Pa
@@ -79,22 +71,11 @@ def mainProgram():
     neumannData_1 = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
     neumannConditionsData = [None,neumannData_1]
 
-    surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues = \
-    multipatchpre2D.multiPatchProblemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
-    numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
-
-    # multipatchpre2D.plotMultiPatchGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
-
-    Ktotal,Ftotal,Mtotal = linElastStat.assemblyMultipatchWeakForm(geomsurface,surfacePreprocessing,\
-            numericalquadrature,materialProperties,boundaryPreprocessing)
-
-    Mtotal,Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement(Mtotal,Ktotal,Ftotal,enforcedDOF,enforcedValues)
-
-    dtotal = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
-    # fullU = np.reshape(dtotal,(int(dtotal.shape[0]/2),2)) 
-
-    multipatchpost2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,dtotal,materialProperties)
+    plate_with_hole_mp = NumericalModel(phenomenon,geomsurface,
+                                        dirichletConditionsData,neumannConditionsData,
+                                        numGaussPoints,materialProperties)
+    plate_with_hole_mp.select_stage('Preprocessing')
 
 if __name__ == '__main__':
-    mainProgram()
+    main_program()
     # profiling_script(mainProgram)
