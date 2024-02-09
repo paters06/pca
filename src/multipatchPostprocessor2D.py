@@ -286,8 +286,17 @@ class SolutionField:
                             sigma = dMat@(bmat@self.dtot[globalDOF[patchDOF],:])
                         else:
                             print("Singularity")
-                        self.fullsigmapts[id_point,:] = sigma[0]
+                        self.fullsigmapts[id_point,:] = sigma.flatten()
                         id_point += 1
+    
+    def showExtremaValues(self):
+        print("Displacements")
+        print("UX ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.fullupts[:,0]),np.min(self.fullupts[:,0])))
+        print("UY ==> Max: {:.5f} m. Min: {:.5f} m".format(np.max(self.fullupts[:,1]),np.min(self.fullupts[:,1])))
+        print("Stresses")
+        print("SXX ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.fullsigmapts[:,0]),np.min(self.fullsigmapts[:,0])))
+        print("SYY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.fullsigmapts[:,1]),np.min(self.fullsigmapts[:,1])))
+        print("SXY ==> Max: {:.3f} Pa. Min: {:.3f} Pa".format(np.max(self.fullsigmapts[:,2]),np.min(self.fullsigmapts[:,2])))
 
 ################ MAIN POSTPROCESSING FUNCTION ####################
 
@@ -295,7 +304,9 @@ def postProcessing(phenomenon,multisurface,surfaceprep,dtot,matprop):
     solfield = SolutionField(multisurface,dtot,surfaceprep)
 
     solfield.displacement_field(surfaceprep)
-    solfield.stress_field(matprop, surfaceprep)
+    solfield.stress_field(matprop,surfaceprep)
+
+    solfield.showExtremaValues()
 
     # plts.plot_multipatch_grid(solfield.fullcpts)
     # plts.plot_multipatch_field(solfield.fullcpts,solfield.fullupts,0,["Ux Displacement Field","[m]"])

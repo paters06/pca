@@ -628,11 +628,11 @@ def postProcessing(phenomenon,surface,surfaceprep,dsol,matprop=None):
         elastfield = ElasticitySolution(surface,D,dsol)
         upts,cpts = elastfield.displacementField(numpoints,surfaceprep)
         sigmapts = elastfield.stressField(numpoints,matprop,surfaceprep)
-        # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],upts[0,:,:],["Ux Displacement Field","[m]"])
-        # plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],["Sx Stress Field","[Pa]"])
+        plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],upts[0,:,:],["Ux Displacement Field","[m]"])
+        plts.plotting2DField(cpts[0,:,:],cpts[1,:,:],sigmapts[0,:,:],["Sx Stress Field","[Pa]"])
 
         # elastfield.plotDisplacementFields()
-        elastfield.plotStressFields()
+        # elastfield.plotStressFields()
         elastfield.showExtremaValues()
     elif phenomenon == "Heat":
         heatfield = HeatSolution(surface,dsol,dsol)

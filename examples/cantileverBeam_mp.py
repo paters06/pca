@@ -20,7 +20,7 @@ sys.path.append(dir2)
 from src.profiling_script import profiling_script
 import src.nurbs as rbs
 import src.surfaceRefinements as srfn
-from src.numerical_model import NumericalModel
+from src.numerical_model import MultiPatchNumericalModel
 
 
 def main_program():
@@ -71,10 +71,10 @@ def main_program():
     neumannData_1 = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
     neumannConditionsData = [None,neumannData_1]
 
-    plate_with_hole_mp = NumericalModel(phenomenon,geomsurface,
+    plate_with_hole_mp = MultiPatchNumericalModel(phenomenon,geomsurface,
                                         dirichletConditionsData,neumannConditionsData,
                                         numGaussPoints,materialProperties)
-    plate_with_hole_mp.select_stage('Preprocessing')
+    plate_with_hole_mp.select_stage('Postprocessing')
 
 if __name__ == '__main__':
     main_program()

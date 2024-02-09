@@ -24,12 +24,13 @@ import src.matrixEquationSolver as matEqnSol
 import src.postprocessor2D as post2D
 import src.surfaceRefinements as srfn
 import src.debugScripts as dbg_scrpt
+from src.numerical_model import NumericalModel
 
 ####################################################
 ################## MAIN PROBLEM ####################
 ####################################################
 
-def mainProgram():
+def main_program():
     #Data
     phenomenon = "Elasticity"
     L = 1.0
@@ -72,7 +73,7 @@ def mainProgram():
     geomsurface = rbs.NURBSSurface(Pinit,winit,pinit,qinit,U=Uinit,V=Vinit)
     # geomsurface = rbs.NURBSSurface(Pinit,winit,pinit,qinit,gridsize=[9,3])
 
-    doRefinement = 'N'
+    doRefinement = 'Y'
 
     if doRefinement == 'Y':
         # srfn.surfaceRefinement(geomsurface,1,'p','U')
@@ -83,23 +84,12 @@ def mainProgram():
     dirichletConditionsData = [[[0.0,0.0],[0.0,1.0],0.0,"C"]]
     neumannConditionsData = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
 
-    surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues = \
-    pre2D.problemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
-    numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
-
-    # dbg_scrpt.calculateArea(geomsurface,surfacePreprocessing,numericalquadrature)
-
-    # pre2D.plotGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
-
-    K,F,M = linElastStat.assemblyWeakForm(geomsurface,surfacePreprocessing,numericalquadrature,\
-                                        materialProperties,boundaryPreprocessing)
-
-    Mred,Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement(M,K,F,enforcedDOF,enforcedValues)
-
-    dSolution = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
-
-    # post2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,dSolution,materialProperties)
+    cantilever_beam = NumericalModel(phenomenon,geomsurface,
+                                     dirichletConditionsData,neumannConditionsData,
+                                     numGaussPoints,materialProperties)
+    
+    cantilever_beam.select_stage('Postprocessing')
 
 if __name__ == '__main__':
-    # mainProgram()
-    profiling_script(mainProgram)
+    main_program()
+    # profiling_script(mainProgram)
