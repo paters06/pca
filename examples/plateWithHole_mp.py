@@ -16,21 +16,15 @@ sys.path.append(dir2)
 #######################################################################
 
 # Local project
+from src.profiling_script import profiling_script
 import src.nurbs as rbs
-import src.preprocessor2D as pre2D
-import src.multipatchPreprocessor2D as multipatchpre2D
-import src.linearElastoStaticsSolver as linElastStat
-import src.matrixEquationSolver as matEqnSol
-import src.multipatchPostprocessor2D as multipatchpost2D
 import src.surfaceRefinements as srfn
-import src.debugScripts as dbg_scrpt
+# import src.debugScripts as dbg_scrpt
+from src.numerical_model import MultiPatchNumericalModel
 
-####################################################
-################## MAIN PROBLEM ####################
-####################################################
 
-def mainProgram():
-    #Data
+def main_program():
+    # Data
     phenomenon = "Elasticity"
     E = 2e5 #Pa
     nu = 0.31
@@ -49,14 +43,6 @@ def mainProgram():
     # kw = cos(pi/8)
     kw = 0.5*np.sqrt(2 + np.sqrt(2))
 
-    # Complete list of control points
-    # fullP = np.array([[0,Ra],[Ra*ka,Ra],[Ra*kb,Ra*kb],
-    #                   [0,Rb],[Rb*ka,Rb],[Rb,Rb],
-    #                   [Ra,Ra*ka],[Ra,0],[Rb,Rb*ka],
-    #                   [Rb,0]])
-
-    # fullw = np.array([[1],[kw],[1],[1],[kw],[1],[kw],[1],[kw],[1]])
-
     controlPointsPatch1 = np.array([[0,Ra],[Ra*ka,Ra],[Ra*kb,Ra*kb],
                                     [0,Rb],[Rb*ka,Rb],[Rb,Rb]])
     weightsPatch1 = np.array([[1],[kw],[1],[1],[kw],[1]])
@@ -68,9 +54,6 @@ def mainProgram():
     multiP = [controlPointsPatch1,controlPointsPatch2]
     multiw = [weightsPatch1,weightsPatch2]
 
-    # idcontrolpoints = [[0,1,2,3,4,5],[2,6,7,5,8,9]]
-    # localcontrolpoints = [fullP[idcontrolpoints[0],:],fullP[idcontrolpoints[1],:]]
-
     multip = [2,2]
     multiq = [1,1]
 
@@ -80,18 +63,16 @@ def mainProgram():
     geomsurface = rbs.MultiPatchNURBSSurface(multiU,multiV,multip,multiq,\
                                              multiP,multiw)
 
-
-    localRefinement = 'N'
+    localRefinement = False
     patchesToRefine = [0,1]
     numreflist = [2,2]
     reflist = [['h'],['h']]
     dirlist = [['U','V'],['U','V']]
 
-    if localRefinement == 'Y':
+    if localRefinement:
         srfn.localPatchRefinement(geomsurface,patchesToRefine,numreflist,reflist,dirlist)
-    # End if
 
-    #disp_i = [startpt,endpt,value,restriction]
+    # disp_i = [startpt,endpt,value,restriction]
     dirichletData_0 = [[0.0,0.0],[0.0,1.0],0.0,"S"]
     dirichletData_1 = [[1.0,0.0],[1.0,1.0],0.0,"S"]
     dirichletConditionsData = [dirichletData_0,dirichletData_1]
@@ -99,30 +80,12 @@ def mainProgram():
     neumannData_1 = [[[0.0,1.0],[1.0,1.0],"normal",tv]]
     neumannConditionsData = [None,neumannData_1]
 
-    surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues = \
-    multipatchpre2D.multiPatchProblemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
-    numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
+    plate_with_hole_mp = MultiPatchNumericalModel(phenomenon,geomsurface,
+                                                  dirichletConditionsData,neumannConditionsData,
+                                                  numGaussPoints,materialProperties)
+    plate_with_hole_mp.select_stage('Preprocessing')
 
-    # multipatchpre2D.plotMultiPatchGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
 
-    Ktotal,Ftotal,Mtotal = linElastStat.assemblyMultipatchWeakForm(geomsurface,surfacePreprocessing,\
-            numericalquadrature,materialProperties,boundaryPreprocessing)
-
-    Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(Ktotal,Ftotal,enforcedDOF,enforcedValues)
-
-    dtotal,D = matEqnSol.solveReducedMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
-    # print(np.hstack((geomsurface.fullP,D)))
-
-    multipatchpost2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
-
-mainProgram()
-
-#import cProfile
-#import pstats
-#profiler = cProfile.Profile()
-#profiler.enable()
-#mainProgram()
-#profiler.disable()
-## stats = pstats.Stats(profiler).sort_stats('ncalls')
-#stats = pstats.Stats(profiler).sort_stats('tottime')
-#stats.print_stats()
+if __name__ == '__main__':
+    main_program()
+    # profiling_script(mainProgram)

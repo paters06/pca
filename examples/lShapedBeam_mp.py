@@ -16,8 +16,10 @@ sys.path.append(dir2)
 #######################################################################
 
 # Local project
+from src.profiling_script import profiling_script
 import src.plottingScripts as plts
 import src.nurbs as rbs
+import src.preprocessor2D as pre2D
 import src.multipatchPreprocessor2D as multipatchpre2D
 import src.linearElastoStaticsSolver as linElastStat
 import src.matrixEquationSolver as matEqnSol
@@ -31,7 +33,7 @@ import src.debugScripts as dbg_scrpt
 
 def mainProgram():
     #Data
-
+    phenomenon = "Elasticity"
     fullP = np.array([[0,0],[0.2,0],[0,0.6],[0.2,0.4],
                   [0.6,0.4],[0.6,0.6]])
 
@@ -48,7 +50,7 @@ def mainProgram():
     multiV = [np.array([0,0,1,1]),np.array([0,0,1,1])]
 
     geomsurface = rbs.MultiPatchNURBSSurface(multiU,multiV,multip,multiq,\
-                                             fullP,fullw,idcontrolpoints)
+                                             fullP,fullw)
 
     E = 2e5 #Pa
     nu = 0.31
@@ -58,7 +60,7 @@ def mainProgram():
     tv = 1 #Pa
 
     numGaussPoints = 4
-    numericalquadrature = multipatchpre2D.numericalIntegrationPreprocessing(numGaussPoints)
+    numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
 
     localRefinement = 'Y'
     patchesToRefine = [0,1]
@@ -78,29 +80,20 @@ def mainProgram():
     #neumann_i = [id patch,[startpt,endpt],type_load,value]
     neumannConditions = [[1,[1.0,0.0],[1.0,1.0],"normal",tv]]
 
-    fullSurfacePreprocessing,boundaryPreprocessing,dirichletBCList = \
-    multipatchpre2D.problemPreprocessing(geomsurface,displacementConditions,neumannConditions)
+    surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues = \
+    multipatchpre2D.multiPatchProblemPreprocessing(phenomenon,geomsurface,displacementConditions,neumannConditions)
 
     # multipatchpre2D.plotMultipatchGeometry(geomsurface,dirichletBCList,boundaryPreprocessing)
 
-    K,F = linElastStat.assemblyMultipatchWeakForm(geomsurface,fullSurfacePreprocessing, \
+    Ktotal,Ftotal,Mtotal = linElastStat.assemblyMultipatchWeakForm(geomsurface,surfacePreprocessing, \
           numericalquadrature,materialProperties,boundaryPreprocessing)
 
-    Kred,Fred,removedDofs,totalDofs = matEqnSol.boundaryConditionsEnforcement(K,F,dirichletBCList)
+    Mtotal,Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement(Mtotal,Ktotal,Ftotal,enforcedDOF,enforcedValues)
 
-    dtotal,D = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,removedDofs)
+    dtotal = matEqnSol.solveMatrixEquations(Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
 
-    # multipatchpost2D.postProcessing(geomsurface,D,dtotal, \
-    #                                 fullSurfacePreprocessing,materialProperties)
+    multipatchpost2D.postProcessing(phenomenon,geomsurface,surfacePreprocessing,dtotal,materialProperties)
 
-mainProgram()
-
-#import cProfile
-#import pstats
-#profiler = cProfile.Profile()
-#profiler.enable()
-#mainProgram()
-#profiler.disable()
-## stats = pstats.Stats(profiler).sort_stats('ncalls')
-#stats = pstats.Stats(profiler).sort_stats('tottime')
-#stats.print_stats()
+if __name__ == '__main__':
+    mainProgram()
+    # profiling_script(mainProgram)

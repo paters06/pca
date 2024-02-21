@@ -49,13 +49,14 @@ def knotGeneratorChord(n,p,tv):
             umid[j-1] = ui
         return np.concatenate([ustart,umid,uend])
 
-#U: knot vector
-#u: parameter between 0 and 1
 def findKnotInterval(n,p,u,U):
+    """
+    U: knot vector
+    u: parameter between 0 and 1
+    """
     # Special case
     if abs(u - U[n+1]) < 1e-5:
         return n
-    # End if
 
     # Starting binary search
     low = p
@@ -67,23 +68,28 @@ def findKnotInterval(n,p,u,U):
             high = mid
         else:
             low = mid
-        # End if
 
         mid = (low + high)//2
-    # End while loop
 
     return mid
-# End function
 
 ####################################################
 #################BASIS FUNCTIONS####################
 ####################################################
 
-def basisFunction(i,u,m,p,U):
+def basisFunction(i: int, u: float, m: int, p: int, U: np.ndarray) -> np.ndarray:
     """
     Computing the basis functions Nip (modified version)
+    
+    ----------
     Input: i,u,m,p,U
     Output: nbasis
+
+    Variables
+    ----------
+
+    U: knot vector
+    u: parameter between 0 and 1
     """
     N = np.zeros(p+1)
     left = np.zeros(p+1)
@@ -184,5 +190,62 @@ def derBasisFunction(i,u,m,p,U,nd):
 
         r *= (p-k)
 
-#    derk = ders[k,:]
+    # derk = ders[k,:]
     return ders
+
+
+def oneBasisFunction(p: int, U: np.ndarray, i: int, u: float) -> float:
+    """
+    Compute the basis function Nip
+    Input: p, U, i, u
+    Output: Nip
+    """
+    Nip = 0.0
+    m = len(U) - 1
+    N = np.zeros(m-p-1+1)
+
+    if ((i == 0 and u == U[0]) or (i == m - p - 1 and u == U[m])):
+        Nip = 1.0
+        return Nip
+    
+    if (u < U[i] or u >= U[i+p+1]):
+        Nip = 0.0
+        return Nip
+    
+    for j in range(0,p+1):
+        if (u >= U[i+j] and u < U[i+j+1]):
+            N[j] = 1.0
+        else:
+            N[j] = 0.0
+        
+    for k in range(1,p+1):
+        if N[0] == 0.0:
+            saved = 0.0
+        else:
+            saved = ((u - U[i])*N[0]/(U[i+k] - U[i]))
+        
+        for j in range(0, p-k+1):
+            Uleft = U[i+j+1]
+            Uright = U[i+j+k+1]
+            if N[j+1] == 0.0:
+                N[j] = saved
+                saved = 0.0
+            else:
+                temp = N[j+1]/(Uright - Uleft)
+                N[j] = saved + (Uright - u)*temp
+                saved = (u - Uleft)*temp
+    
+    Nip = N[0]
+
+    return Nip
+
+def test_basis_functions():
+    U = np.array([0,0,0,1,2,3,4,4,5,5,5])
+    p = 2
+    u = 5./2
+    i = 4
+    Nip = oneBasisFunction(p,U,i,u)
+    print(Nip)
+
+if __name__ == '__main__':
+    test_basis_functions()

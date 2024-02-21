@@ -1,6 +1,5 @@
 # Python libraries
 import numpy as np
-import numpy.linalg
 import matplotlib.pyplot as plt
 
 #######################################################################
@@ -18,20 +17,13 @@ sys.path.append(dir2)
 #######################################################################
 
 # Local project
+from src.profiling_script import profiling_script
 import src.nurbs as rbs
-import src.preprocessor2D as pre2D
-import src.multipatchPreprocessor2D as multipatchpre2D
-import src.linearElastoStaticsSolver as linElastStat
-import src.matrixEquationSolver as matEqnSol
-import src.multipatchPostprocessor2D as multipatchpost2D
 import src.surfaceRefinements as srfn
-import src.debugScripts as dbg_scrpt
+from src.numerical_model import MultiPatchNumericalModel
 
-####################################################
-################## MAIN PROBLEM ####################
-####################################################
 
-def mainProgram():
+def main_program():
     #Data
     phenomenon = "Elasticity"
     E = 2e5 #Pa
@@ -61,15 +53,16 @@ def mainProgram():
     geomsurface = rbs.MultiPatchNURBSSurface(multiU,multiV,multip,multiq,\
                                              multiP,multiw)
 
-    localRefinement = 'N'
+    localRefinement = True
     patchesToRefine = [0,1]
-    numreflist = [2,1]
+    numreflist = [4,4]
+    # reflist = [['h'],['h'],['p'],['p'],['h'],['h']]
+    # dirlist = [['U','V'],['U','V'],['U','V'],['U','V'],['U','V'],['U','V']]
     reflist = [['h'],['h']]
     dirlist = [['U','V'],['U','V']]
 
-    if localRefinement == 'Y':
+    if localRefinement:
         srfn.localPatchRefinement(geomsurface,patchesToRefine,numreflist,reflist,dirlist)
-    # End if
 
     #disp_i = [startpt,endpt,value,restriction]
     dirichletData_0 = [[0.0,0.0],[0.0,1.0],0.0,"C"]
@@ -78,30 +71,11 @@ def mainProgram():
     neumannData_1 = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
     neumannConditionsData = [None,neumannData_1]
 
-    surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues = \
-    multipatchpre2D.multiPatchProblemPreprocessing(phenomenon,geomsurface,dirichletConditionsData,neumannConditionsData)
-    numericalquadrature = pre2D.numericalIntegrationPreprocessing(numGaussPoints)
+    cantilever_beam_mp = MultiPatchNumericalModel(phenomenon,geomsurface,
+                                        dirichletConditionsData,neumannConditionsData,
+                                        numGaussPoints,materialProperties)
+    cantilever_beam_mp.select_stage('Path_postprocessing')
 
-    # multipatchpre2D.plotMultiPatchGeometry(phenomenon,geomsurface,dirichletBCList,boundaryPreprocessing)
-
-    Ktotal,Ftotal,Mtotal = linElastStat.assemblyMultipatchWeakForm(geomsurface,surfacePreprocessing,\
-            numericalquadrature,materialProperties,boundaryPreprocessing)
-
-    Kred,Fred,totalDofs = matEqnSol.dirichletBCEnforcement_Reduced(Ktotal,Ftotal,enforcedDOF,enforcedValues)
-
-    dtotal,D = matEqnSol.solveReducedMatrixEquations(phenomenon,Kred,Fred,totalDofs,enforcedDOF,enforcedValues)
-    print(np.hstack((geomsurface.fullP,D)))
-
-    multipatchpost2D.postProcessing(geomsurface,D,dtotal,surfacePreprocessing,materialProperties)
-
-mainProgram()
-
-#import cProfile
-#import pstats
-#profiler = cProfile.Profile()
-#profiler.enable()
-#mainProgram()
-#profiler.disable()
-## stats = pstats.Stats(profiler).sort_stats('ncalls')
-#stats = pstats.Stats(profiler).sort_stats('tottime')
-#stats.print_stats()
+if __name__ == '__main__':
+    main_program()
+    # profiling_script(mainProgram)

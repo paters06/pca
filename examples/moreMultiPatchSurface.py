@@ -16,15 +16,12 @@ import os
 import sys
 
 # Get current working directory
-dir1 = os.getcwd()
+# Command found in https://note.nkmk.me/en/python-script-file-path/
+dir1 = os.path.dirname(os.path.abspath(__file__))
 # Insert .. command to go to the upper directory
 dir2 = dir1 + '/..'
-# Change directory
-os.chdir(dir2)
-# Get the new current working directory
-dir3 = os.getcwd()
 # Setting the package directory path for the modules execution
-sys.path.append(dir3)
+sys.path.append(dir2)
 #######################################################################
 
 # Local project
@@ -97,8 +94,9 @@ if localRefinement == 'Y':
 
 
 #Computing the surface
-fullcpts = rbs.multipatchNurbsSurface(multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints)
-fullcpu,fullcpv = rbs.multipatchNurbsSurfaceTangent(multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints)
-plts.plotmultipatchSurface(fullcpts,localcontrolpoints)
+fullcpts = rbs.MultiPatchNURBSSurface(multiU,multiV,multip,multiq,fullP,fullw)
+# fullcpu,fullcpv = rbs.MultipatchNurbsSurfaceTangent(multiU,multiV,multip,multiq,fullP,fullw,idcontrolpoints)
+fullcpts.plotMultipatchSurface()
+# plts.plotMultipatchSurface(fullcpts,localcontrolpoints)
 #plts.plotmultipatchTangentSurface(fullcpts,fullcpu)
 #plts.plotmultipatchTangentSurface(fullcpts,fullcpv)
