@@ -55,10 +55,10 @@ def main_program():
 
     localRefinement = True
     patchesToRefine = [0,1]
-    numreflist = [2,2]
+    numreflist = [4,4]
     # reflist = [['h'],['h'],['p'],['p'],['h'],['h']]
-    reflist = [['h'],['h']]
     # dirlist = [['U','V'],['U','V'],['U','V'],['U','V'],['U','V'],['U','V']]
+    reflist = [['h'],['h']]
     dirlist = [['U','V'],['U','V']]
 
     if localRefinement:
@@ -71,10 +71,10 @@ def main_program():
     neumannData_1 = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
     neumannConditionsData = [None,neumannData_1]
 
-    plate_with_hole_mp = MultiPatchNumericalModel(phenomenon,geomsurface,
+    cantilever_beam_mp = MultiPatchNumericalModel(phenomenon,geomsurface,
                                         dirichletConditionsData,neumannConditionsData,
                                         numGaussPoints,materialProperties)
-    plate_with_hole_mp.select_stage('Postprocessing')
+    cantilever_beam_mp.select_stage('Path_postprocessing')
 
 if __name__ == '__main__':
     main_program()

@@ -9,6 +9,16 @@ from src.nurbs import MultiPatchNURBSSurface
 from src.nurbs import NURBSSurface
 
 
+import numpy as np
+
+
+def create_UV_evaluation_points(x_value:float, y_range:list[float], num_points:int):
+    # UV_eval_pts = np.zeros((num_points, 2))
+    start_pt = np.array((y_range[0], x_value))
+    end_pt = np.array((y_range[1], x_value))
+    points = np.linspace(start_pt, end_pt, num_points)
+    return points
+
 class NumericalModel:
     def __init__(self, phenomenon: str, geomsurface: NURBSSurface,
                  dirichletConditionsData, neumannConditionsData,
@@ -107,6 +117,15 @@ class MultiPatchNumericalModel:
         multipatchpost2D.postProcessing(self.phenomenon,self.geomsurface,
                                         self.surface_preprocessing,self.d_solution,
                                         self.material_properties)
+    
+    def path_postprocessing(self):
+        num_points = 20
+        x_value = 1.0
+        y_range = [0.0, 1.0]
+        param_pts = create_UV_evaluation_points(x_value, y_range, num_points)
+        multipatchpost2D.pathPostProcessing(self.phenomenon,self.geomsurface,
+                                            self.surface_preprocessing,self.d_solution,
+                                            self.material_properties, param_pts)
 
     def select_stage(self, stage: str):
         if stage == 'Preprocessing':
@@ -118,5 +137,9 @@ class MultiPatchNumericalModel:
             self.preprocessing()
             self.analysis()
             self.postprocessing()
+        elif stage == 'Path_postprocessing':
+            self.preprocessing()
+            self.analysis()
+            self.path_postprocessing()
         else:
             print('Error')

@@ -246,4 +246,4 @@ def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
     # Uncomment for example3
     plt.legend((dirichletplot,neumannplot),('Restrictions','Loads'),loc='right',bbox_to_anchor=(1.2,0.5))
     plt.tight_layout()
-    plt.show()
+    # plt.show()

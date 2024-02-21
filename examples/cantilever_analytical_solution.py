@@ -2,6 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def create_UV_evaluation_points(x_value:float, y_range:list[float], num_points:int):
+    # UV_eval_pts = np.zeros((num_points, 2))
+    start_pt = np.array((x_value, y_range[0]))
+    end_pt = np.array((x_value, y_range[1]))
+    points = np.linspace(start_pt, end_pt, num_points)
+    print(points)
+
+
 def create_evaluation_points(x_value, y_range, num_points: int):
     eval_pts = np.zeros((num_points, 2))
     y_list = np.linspace(y_range[0], y_range[1], num_points)
@@ -70,12 +78,13 @@ def test2():
     E = 2e5
     nu = 0.31
     eval_pts = create_evaluation_points(x_value, y_range, num_points)
+    UV_eval_pts = create_UV_evaluation_points(x_value, y_range, num_points)
     eval_field = evaluate_fields(eval_pts, D, L, P)
 
     # print(eval_field)
     plt.plot(y_list, eval_field[:, 1], '.', label='Analytical solution. Sx')
     plt.legend()
-    plt.show()
+    # plt.show()
 
 if __name__ == "__main__":
     # test1()
