@@ -49,7 +49,7 @@ def knotGeneratorChord(n,p,tv):
             umid[j-1] = ui
         return np.concatenate([ustart,umid,uend])
 
-def findKnotInterval(n,p,u,U):
+def findKnotInterval(n: int, p: int, u: float, U: np.ndarray) -> int:
     """
     U: knot vector
     u: parameter between 0 and 1
@@ -247,5 +247,13 @@ def test_basis_functions():
     Nip = oneBasisFunction(p,U,i,u)
     print(Nip)
 
+def test_basis_functions_2():
+    U = np.array([0,0,0,0,1,1,1,1])
+    p = 3
+    u = 1.0
+    n = 1
+    mid = findKnotInterval(n,p,u,U)
+    print(mid)
+
 if __name__ == '__main__':
-    test_basis_functions()
+    test_basis_functions_2()

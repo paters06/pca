@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 # Local project
 import src.basisFunctions as bfunc
 
-def binomial(a,b):
+def binomial(a, b):
     bc = 1.0
-    for j in range(1,b+1):
+    for j in range(1, b+1):
         bc *= ((a+1-j)//j)
     return bc
 
@@ -529,6 +529,52 @@ class MultiPatchNURBSSurface:
             self.fullcpv.append(cpv)
 
         return self.fullcpu,self.fullcpv
+    
+    def create_path_over_multipatch(self, param_pts, id_patches: list[int]):
+        numpatches = len(id_patches)
+        numpoints = param_pts.shape[0]
+
+        eval_pts = np.zeros((numpatches*numpoints,2))
+
+        id_point = 0
+
+        for ipatch in id_patches:
+            Ui = self.multiU[ipatch]
+            Vi = self.multiV[ipatch]
+
+            pi = self.multip[ipatch]
+            qi = self.multiq[ipatch]
+
+            Pi = self.multiP[ipatch]
+            wi = self.multiw[ipatch]
+
+            mu = len(Ui) - 1
+            mv = len(Vi) - 1
+            nu_sp = mu - pi - 1
+            nv_sp = mv - qi - 1
+
+            Pwl = weightedControlPoints(Pi,wi)
+            Pwi = listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
+
+            # Geometric coordinates
+            cpts = np.zeros((1,Pi.shape[1]))
+
+            for i in range(0,numpoints):
+                uspan = bfunc.findKnotInterval(nu_sp,pi,param_pts[i,0],Ui)
+                vspan = bfunc.findKnotInterval(nv_sp,qi,param_pts[i,1],Vi)
+
+                idR = nonZeroIndicesElement(uspan,vspan,pi,qi,nu_sp)
+                R = bivariateRationalFunction(mu,mv,pi,qi,uspan,vspan,param_pts[i,0],param_pts[i,1],Ui,Vi,Pwi)
+
+                cpts = R@Pi[idR,:]
+
+                eval_pts[id_point,:] = cpts[0]
+                id_point += 1
+        
+        self.param_pts = param_pts
+        self.patches_on_path = id_patches
+
+        return eval_pts
 
     def plotMultipatchSurface(self):
         """

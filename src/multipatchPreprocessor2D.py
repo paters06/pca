@@ -9,6 +9,12 @@ import src.nurbs as rbs
 import src.plottingScripts as plts
 import src.preprocessor2D as pre2D
 
+def create_UV_evaluation_points(x_range:list[float], y_range:list[float], num_points:int):
+    start_pt = np.array((x_range[0], x_range[1]))
+    end_pt = np.array((y_range[0], y_range[1]))
+    points = np.linspace(start_pt, end_pt, num_points)
+    return points
+
 ################ PREPROCESSING ####################
 
 def multiPatchProblemPreprocessing(phenomenon,multisurface,dirichletconditionsdata,neumannconditionsdata):
@@ -83,7 +89,7 @@ def multiPatchProblemPreprocessing(phenomenon,multisurface,dirichletconditionsda
     # print(enforcedValues)
     return surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues
 
-def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
+def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep, x_pt, y_pt, id_patches):
     if phenomenon == "Elasticity":
         first_string = "Displacement BC"
         second_string = "Load BC"
@@ -102,6 +108,11 @@ def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
     ax.axis("off")
 
     multiU,multiV,multip,multiq,multiP,multiw,globalPatchIndices = multisurface.retrieveSurfaceInformation()
+    
+    num_points = 20
+    param_pts = create_UV_evaluation_points(x_pt, y_pt, num_points)
+    eval_pts = multisurface.create_path_over_multipatch(param_pts, id_patches)
+    path_post = ax.scatter(eval_pts[:,0],eval_pts[:,1],c = "m",marker = "s")
 
     # Boundary Geometry
     numpatches = len(multiU)
@@ -244,6 +255,6 @@ def plotMultiPatchGeometry(phenomenon,multisurface,dirichletconds,boundaryprep):
     # Uncomment for example2
     # plt.legend((dirichletplot,neumannplot),('Displacement restrictions','Load conditions'),loc='upper right',bbox_to_anchor=(1.2,1.0))
     # Uncomment for example3
-    plt.legend((dirichletplot,neumannplot),('Restrictions','Loads'),loc='right',bbox_to_anchor=(1.2,0.5))
+    plt.legend((dirichletplot,neumannplot,path_post),('Restrictions','Loads','Path'),loc='right',bbox_to_anchor=(1.2,0.5))
     plt.tight_layout()
-    # plt.show()
+    plt.show()

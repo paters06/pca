@@ -47,7 +47,7 @@ class SolutionField:
     """
     A class for the multipatch solution field
     """
-    def __init__(self,multisurface,dtot, surfaceprep):
+    def __init__(self, multisurface, dtot, surfaceprep):
         """
         Constructor of the class
         """
@@ -64,6 +64,8 @@ class SolutionField:
         self.dtot = dtot
         self.Dsol = self._create_D_matrix_from_d_vector(dtot)
         self._calculate_field_matrix_size(surfaceprep)
+        self.param_pts_path = multisurface.param_pts
+        self.patches_on_path = multisurface.patches_on_path
 
     def _calculate_field_matrix_size(self, surfaceprep):
         numpatches = len(self.multiU)
@@ -323,11 +325,12 @@ class SolutionField:
                         self.fullsigmapts[id_point,:] = sigma.flatten()
                         id_point += 1
     
-    def disp_field_over_path(self, surfaceprep, param_pts):
+    def disp_field_over_path(self, surfaceprep):
         """
         Computing the displacement field over path
         """
-        numpatches = len(self.multiU)
+        numpatches = len(self.patches_on_path)
+        param_pts = self.param_pts_path
         numpoints = param_pts.shape[0]
 
         eval_pts = np.zeros((numpatches*numpoints,2))
@@ -335,7 +338,7 @@ class SolutionField:
 
         id_point = 0
 
-        for ipatch in range(0,numpatches):
+        for ipatch in self.patches_on_path:
             Ui = self.multiU[ipatch]
             Vi = self.multiV[ipatch]
 
@@ -345,26 +348,12 @@ class SolutionField:
             Pi = self.multiP[ipatch]
             wi = self.multiw[ipatch]
 
-            ids_patch = find_match_rows(Pi, self.fullP)
-
             Di = self.Dsol[self.globalPatchIndices[ipatch],:]
-            Pi2 = self.fullP[self.globalPatchIndices[ipatch],:]
 
             mu = len(Ui) - 1
             mv = len(Vi) - 1
-            nu = mu - pi - 1
-            nv = mv - qi - 1
-
-            # Extraction of surface preprocessing
-            nonzeroctrlpts = surfaceprep[ipatch][0]
-            surfacespan = surfaceprep[ipatch][1]
-            elementcorners = surfaceprep[ipatch][2]
-
-            numElems = len(elementcorners)
-            numelemsu = len(np.unique(Ui)) - 1
-            numelemsv = len(np.unique(Vi)) - 1
-
-            # numpoints = defineNumberOfEvaluationPoints(numElems)
+            nu_sp = mu - pi - 1
+            nv_sp = mv - qi - 1
 
             Pwl = rbs.weightedControlPoints(Pi,wi)
             Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
@@ -376,10 +365,10 @@ class SolutionField:
             upts = np.zeros((1,Pi.shape[1]))
 
             for i in range(0,numpoints):
-                uspan = bfunc.findKnotInterval(numelemsu,pi,param_pts[i,0],Ui)
-                vspan = bfunc.findKnotInterval(numelemsv,qi,param_pts[i,1],Vi)
+                uspan = bfunc.findKnotInterval(nu_sp,pi,param_pts[i,0],Ui)
+                vspan = bfunc.findKnotInterval(nv_sp,qi,param_pts[i,1],Vi)
 
-                idR = rbs.nonZeroIndicesElement(uspan,vspan,pi,qi,numelemsu)
+                idR = rbs.nonZeroIndicesElement(uspan,vspan,pi,qi,nu_sp)
                 R = rbs.bivariateRationalFunction(mu,mv,pi,qi,uspan,vspan,param_pts[i,0],param_pts[i,1],Ui,Vi,Pwi)
 
                 upts = R@Di[idR,:]
@@ -391,11 +380,12 @@ class SolutionField:
         
         return eval_pts, field_pts
 
-    def stress_field_over_path(self,matprop,surfaceprep, param_pts):
+    def stress_field_over_path(self,matprop,surfaceprep):
         """
         Computing the stress field over a path
         """
-        numpatches = len(self.multiU)
+        numpatches = len(self.patches_on_path)
+        param_pts = self.param_pts_path
         numpoints = param_pts.shape[0]
 
         eval_pts = np.zeros((numpatches*numpoints,2))
@@ -411,7 +401,7 @@ class SolutionField:
 
         paramgrad = np.zeros((2,2))
 
-        for ipatch in range(0,numpatches):
+        for ipatch in self.patches_on_path:
             Ui = self.multiU[ipatch]
             Vi = self.multiV[ipatch]
 
@@ -424,19 +414,8 @@ class SolutionField:
 
             mu = len(Ui) - 1
             mv = len(Vi) - 1
-            nu = mu - pi - 1
-            nv = mv - qi - 1
-
-            # Extraction of surface preprocessing
-            nonzeroctrlpts = surfaceprep[ipatch][0]
-            surfacespan = surfaceprep[ipatch][1]
-            elementcorners = surfaceprep[ipatch][2]
-
-            numElems = len(elementcorners)
-            numelemsu = len(np.unique(Ui)) - 1
-            numelemsv = len(np.unique(Vi)) - 1
-
-            # numpoints = defineNumberOfEvaluationPoints(numElems)
+            nu_sp = mu - pi - 1
+            nv_sp = mv - qi - 1
 
             Pwl = rbs.weightedControlPoints(Pi,wi)
             Pwi = rbs.listToGridControlPoints(Pwl,Ui,Vi,pi,qi)
@@ -451,10 +430,10 @@ class SolutionField:
             globalDOF[1::2] = dof1
 
             for i in range(0,numpoints):
-                uspan = bfunc.findKnotInterval(numelemsu,pi,param_pts[i,0],Ui)
-                vspan = bfunc.findKnotInterval(numelemsv,qi,param_pts[i,1],Vi)
+                uspan = bfunc.findKnotInterval(nu_sp,pi,param_pts[i,0],Ui)
+                vspan = bfunc.findKnotInterval(nv_sp,qi,param_pts[i,1],Vi)
 
-                idR = rbs.nonZeroIndicesElement(uspan,vspan,pi,qi,numelemsu)
+                idR = rbs.nonZeroIndicesElement(uspan,vspan,pi,qi,nu_sp)
                 biRatGrad = rbs.bivariateRationalGradient(mu,mv,pi,qi,uspan,vspan,param_pts[i,0],param_pts[i,1],Ui,Vi,Pwi)
 
                 # Patch degrees of freedom
@@ -509,25 +488,25 @@ def postProcessing(phenomenon,multisurface,surfaceprep,dtot,matprop):
     solfield.showExtremaValues()
 
     # plts.plot_multipatch_grid(solfield.fullcpts)
-    # plts.plot_multipatch_field(solfield.fullcpts,solfield.fullupts,0,["Ux Displacement Field","[m]"])
+    plts.plot_multipatch_field(solfield.fullcpts,solfield.fullupts,0,["Ux Displacement Field","[m]"])
     plts.plot_multipatch_field(solfield.fullcpts,solfield.fullsigmapts,0,["Sx Stress Field","[Pa]"])
 
 
-def pathPostProcessing(phenomenon,multisurface, surfaceprep, dtot, matprop, param_pts):
+def pathPostProcessing(phenomenon,multisurface, surfaceprep, dtot, matprop):
     solfield = SolutionField(multisurface, dtot, surfaceprep)
 
-    eval_pts, disp_line = solfield.disp_field_over_path(surfaceprep, param_pts)
-    eval_pts_1, sigma_line = solfield.stress_field_over_path(matprop, surfaceprep, param_pts)
+    eval_pts, disp_line = solfield.disp_field_over_path(surfaceprep)
+    eval_pts_1, sigma_line = solfield.stress_field_over_path(matprop, surfaceprep)
 
     theor_line = solfield.evaluate_fields(eval_pts)
 
-    plot_disp = True
+    plot_disp = False
     plot_stress = True
 
     if plot_disp:
         fig = plt.figure()
         ax = plt.axes()
-        ax.plot(eval_pts[:,0], theor_line[:, 0], color='blue', label='Analytical solution')
+        # ax.plot(eval_pts[:,0], theor_line[:, 0], color='blue', label='Analytical solution')
         ax.plot(eval_pts[:,0], disp_line[:, 1], 'o', label='Numerical solution')
         ax.set_title("Vertical displacement")
         ax.set_xlabel('x')
@@ -538,8 +517,8 @@ def pathPostProcessing(phenomenon,multisurface, surfaceprep, dtot, matprop, para
     if plot_stress:
         fig = plt.figure()
         ax = plt.axes()
-        ax.plot(eval_pts[:,0], theor_line[:, 1], color='blue', label='Analytical solution')
-        ax.plot(eval_pts[:,0], sigma_line[:, 0], 'o', label='Numerical solution')
+        # ax.plot(eval_pts[:,0], theor_line[:, 1], color='blue', label='Analytical solution')
+        ax.plot(eval_pts[:,1], sigma_line[:, 0], 'o', label='Numerical solution')
         ax.set_title("Normal stress")
         ax.set_xlabel('x')
         ax.set_ylabel('Sx')

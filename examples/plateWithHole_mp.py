@@ -63,7 +63,7 @@ def main_program():
     geomsurface = rbs.MultiPatchNURBSSurface(multiU,multiV,multip,multiq,\
                                              multiP,multiw)
 
-    localRefinement = False
+    localRefinement = True
     patchesToRefine = [0,1]
     numreflist = [2,2]
     reflist = [['h'],['h']]
@@ -80,10 +80,15 @@ def main_program():
     neumannData_1 = [[[0.0,1.0],[1.0,1.0],"normal",tv]]
     neumannConditionsData = [None,neumannData_1]
 
+    x_range = [0.0, 0.0]
+    y_range = [0.0, 1.0]
+    id_patches = [0]
+
     plate_with_hole_mp = MultiPatchNumericalModel(phenomenon,geomsurface,
                                                   dirichletConditionsData,neumannConditionsData,
-                                                  numGaussPoints,materialProperties)
-    plate_with_hole_mp.select_stage('Preprocessing')
+                                                  numGaussPoints,materialProperties,
+                                                  x_range, y_range, id_patches)
+    plate_with_hole_mp.select_stage('Path_postprocessing')
 
 
 if __name__ == '__main__':

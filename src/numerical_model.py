@@ -11,14 +11,6 @@ from src.nurbs import NURBSSurface
 
 import numpy as np
 
-
-def create_UV_evaluation_points(x_value:float, y_range:list[float], num_points:int):
-    # UV_eval_pts = np.zeros((num_points, 2))
-    start_pt = np.array((y_range[0], x_value))
-    end_pt = np.array((y_range[1], x_value))
-    points = np.linspace(start_pt, end_pt, num_points)
-    return points
-
 class NumericalModel:
     def __init__(self, phenomenon: str, geomsurface: NURBSSurface,
                  dirichletConditionsData, neumannConditionsData,
@@ -77,13 +69,17 @@ class NumericalModel:
 class MultiPatchNumericalModel:
     def __init__(self, phenomenon: str, geomsurface: MultiPatchNURBSSurface,
                  dirichletConditionsData, neumannConditionsData,
-                 numGaussPoints: int, materialProperties: list):
+                 numGaussPoints: int, materialProperties: list,
+                 x_pt, y_pt, id_patches):
         self.phenomenon = phenomenon
         self.geomsurface = geomsurface
         self.dirichlet_conditions = dirichletConditionsData
         self.neumann_conditions = neumannConditionsData
         self.gauss_points_number = numGaussPoints
         self.material_properties = materialProperties
+        self.path_start = x_pt
+        self.path_end = y_pt
+        self.patches_on_path = id_patches
 
     def preprocessing(self):
         surfacePreprocessing,boundaryPreprocessing,dirichletBCList,enforcedDOF,enforcedValues = \
@@ -99,7 +95,8 @@ class MultiPatchNumericalModel:
         self.numericalquadrature = pre2D.numericalIntegrationPreprocessing(self.gauss_points_number)
 
         multipatchpre2D.plotMultiPatchGeometry(self.phenomenon,self.geomsurface,
-                                               dirichletBCList,boundaryPreprocessing)
+                                               dirichletBCList,boundaryPreprocessing,
+                                               self.path_start, self.path_end, self.patches_on_path)
 
     def analysis(self):
         Ktotal,Ftotal,Mtotal = linElastStat.assemblyMultipatchWeakForm(self.geomsurface,
@@ -119,13 +116,10 @@ class MultiPatchNumericalModel:
                                         self.material_properties)
     
     def path_postprocessing(self):
-        num_points = 20
-        x_value = 1.0
-        y_range = [0.0, 1.0]
-        param_pts = create_UV_evaluation_points(x_value, y_range, num_points)
+        
         multipatchpost2D.pathPostProcessing(self.phenomenon,self.geomsurface,
                                             self.surface_preprocessing,self.d_solution,
-                                            self.material_properties, param_pts)
+                                            self.material_properties)
 
     def select_stage(self, stage: str):
         if stage == 'Preprocessing':
