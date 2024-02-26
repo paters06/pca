@@ -125,6 +125,30 @@ class SolutionField:
         sigma_33 = -((P*y)/(2*I))*(y-D)
 
         return sigma_11, sigma_22, sigma_33
+    
+    def _plate_with_hole_stresses(self, pt: np.ndarray, a: float, sigma_o: float) -> np.ndarray:
+        """
+        Params
+        ------
+        a is the radius of the hole
+        sigma_o is the applied tensions
+
+        Notes
+        ------
+
+        sigma[0,0] -> s_xx
+        sigma[0,1] -> s_yy
+        sigma[0,2] -> t_xy
+        """
+        sigma = np.zeros((pt.shape[0],3))
+
+        radius = np.sqrt(pt[:,0]**2 + pt[:,1]**2)
+        theta = np.arctan2(pt[:,1],pt[:,0])
+
+        sigma[:,0] = sigma_o*(1.0 - ((a/radius)**2)*(1.5*np.cos(2*theta) + np.cos(4*theta)) + (1.5*(a/radius)**4)*np.cos(4*theta))
+        sigma[:,1] = sigma_o*(-((a/radius)**2)*(0.5*np.cos(2*theta) - np.cos(4*theta)) - (1.5*(a/radius)**4)*np.cos(4*theta))
+        sigma[:,2] = sigma_o*(-((a/radius)**2)*(0.5*np.sin(2*theta) + np.sin(4*theta)) + (1.5*(a/radius)**4)*np.sin(4*theta))
+        return sigma
 
     def evaluate_fields(self, eval_pts):
         D = 0.2
@@ -134,14 +158,20 @@ class SolutionField:
         nu = 0.31
         num_points = eval_pts.shape[0]
         eval_fields = np.zeros((num_points, 2))
+
+        R = 1.0
+        sigma_o = 1.0
+        sigma_path = self._plate_with_hole_stresses(eval_pts, R, sigma_o)
+
         for i in range(num_points):
             x = eval_pts[i, 0]
             y = eval_pts[i, 1]
             # print("x: {} m, y: {} m".format(x, y))
             ux, uy = self._cantilever_displacements(x, y, D, L, P, E, nu)
-            sx, sy, txy = self._cantilever_stresses(x, y, D, L, P)
+            # sx, sy, txy = self._cantilever_stresses(x, y, D, L, P)
             eval_fields[i, 0] = uy
-            eval_fields[i, 1] = sx
+            # eval_fields[i, 1] = sx
+            eval_fields[i, 1] = sigma_path[i, 0]
 
         return eval_fields
 
@@ -517,7 +547,7 @@ def pathPostProcessing(phenomenon,multisurface, surfaceprep, dtot, matprop):
     if plot_stress:
         fig = plt.figure()
         ax = plt.axes()
-        # ax.plot(eval_pts[:,0], theor_line[:, 1], color='blue', label='Analytical solution')
+        ax.plot(eval_pts[:,1], theor_line[:, 1], color='blue', label='Analytical solution')
         ax.plot(eval_pts[:,1], sigma_line[:, 0], 'o', label='Numerical solution')
         ax.set_title("Normal stress")
         ax.set_xlabel('x')

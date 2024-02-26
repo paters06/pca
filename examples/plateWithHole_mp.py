@@ -34,7 +34,7 @@ def main_program():
     tv = -1 #Pa
     numGaussPoints = 4
 
-    Ra = 2.0
+    Ra = 1.0
     Rb = 4.0
     # ka = cos(pi/2 - pi/8)
     ka = 0.5*np.sqrt(2 - np.sqrt(2))
@@ -65,8 +65,8 @@ def main_program():
 
     localRefinement = True
     patchesToRefine = [0,1]
-    numreflist = [2,2]
-    reflist = [['h'],['h']]
+    numreflist = [3,3]
+    reflist = [['k'],['k']]
     dirlist = [['U','V'],['U','V']]
 
     if localRefinement:
@@ -88,7 +88,7 @@ def main_program():
                                                   dirichletConditionsData,neumannConditionsData,
                                                   numGaussPoints,materialProperties,
                                                   x_range, y_range, id_patches)
-    plate_with_hole_mp.select_stage('Path_postprocessing')
+    plate_with_hole_mp.select_stage('Postprocessing')
 
 
 if __name__ == '__main__':
