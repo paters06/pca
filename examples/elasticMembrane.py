@@ -18,12 +18,12 @@ sys.path.append(dir2)
 # Local project
 import src.nurbs as rbs
 import src.preprocessor2D as pre2D
-import src.waveEquationSolver as waveEq
-import src.timeIntegration as timeIntg
+import src.phenomenon.waveEquationSolver as waveEq
+import src.phenomenon.timeIntegration as timeIntg
 import src.matrixEquationSolver as matEqnSol
 import src.postprocessor2D as post2D
-import src.surfaceRefinements as srfn
-import src.debugScripts as dbg_scrpt
+import src.spline_functions.surfaceRefinements as srfn
+import src.debug.debugScripts as dbg_scrpt
 
 def defineInitialConditions(P):
     icu = np.zeros((P.shape[0],1))

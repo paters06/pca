@@ -26,7 +26,7 @@ sys.path.append(dir2)
 #######################################################################
 
 import src.nurbs as rbs
-import src.plottingScripts as plts
+import src.plotting.plottingScripts as plts
 
 # Rectangle with central circular hole
 L = 1.0

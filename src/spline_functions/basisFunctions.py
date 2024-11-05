@@ -123,6 +123,7 @@ def derBasisFunction(i,u,m,p,U,nd):
     ders = np.zeros((nd+1,p+1))
 
     ndu[0][0] = 1.0
+    
     for j in range(1,p+1):
         left[j] = u - U[i+1-j]
         right[j] = U[i+j] - u
@@ -217,7 +218,9 @@ def oneBasisFunction(p: int, U: np.ndarray, i: int, u: float) -> float:
             N[j] = 1.0
         else:
             N[j] = 0.0
-        
+
+    print(N)
+
     for k in range(1,p+1):
         if N[0] == 0.0:
             saved = 0.0
@@ -248,12 +251,24 @@ def test_basis_functions():
     print(Nip)
 
 def test_basis_functions_2():
-    U = np.array([0,0,0,0,1,1,1,1])
-    p = 3
-    u = 1.0
-    n = 1
+    U = np.array([0,0,0,1,2,3,4,4,5,5,5])
+    p = 2
+    u = 5./2
+    m = len(U)-1
+    n = m - p - 1
     mid = findKnotInterval(n,p,u,U)
     print(mid)
 
+def test_basis_functions_3():
+    U = np.array([0,0,0,1,2,3,4,4,5,5,5])
+    p = 2
+    u = 5./2
+    m = len(U)-1
+    n = m - p - 1
+    i = 4
+    nd = 1
+    ders = derBasisFunction(i,u,m,p,U,nd)
+    print(ders)
+
 if __name__ == '__main__':
-    test_basis_functions_2()
+    test_basis_functions_3()

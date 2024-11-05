@@ -16,16 +16,16 @@ sys.path.append(dir2)
 #######################################################################
 
 # Local project
-from src.profiling_script import profiling_script
-import src.plottingScripts as plts
+from src.profiling.profiling_script import profiling_script
+import src.plotting.plottingScripts as plts
 import src.nurbs as rbs
 import src.preprocessor2D as pre2D
 import src.multipatchPreprocessor2D as multipatchpre2D
-import src.linearElastoStaticsSolver as linElastStat
+import src.phenomenon.linearElastoStaticsSolver as linElastStat
 import src.matrixEquationSolver as matEqnSol
 import src.multipatchPostprocessor2D as multipatchpost2D
-import src.surfaceRefinements as srfn
-import src.debugScripts as dbg_scrpt
+import src.spline_functions.surfaceRefinements as srfn
+import src.debug.debugScripts as dbg_scrpt
 
 ####################################################
 ################## MAIN PROBLEM ####################

@@ -1,10 +1,10 @@
 # Python libraries
 import numpy as np
-import numpy.linalg
+# import numpy.linalg
 import matplotlib.pyplot as plt
 
 # Local project
-import src.basisFunctions as bfunc
+import src.spline_functions.basisFunctions as bfunc
 
 def binomial(a, b):
     bc = 1.0

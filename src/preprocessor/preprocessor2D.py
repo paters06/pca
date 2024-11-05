@@ -1,12 +1,12 @@
 # Python libraries
 import numpy as np
-import numpy.linalg
+# import numpy.linalg
 import matplotlib.pyplot as plt
 
 # Local project
-import src.basisFunctions as bfunc
-import src.nurbs as rbs
-import src.plottingScripts as plts
+import src.spline_functions.basisFunctions as bfunc
+import src.spline_functions.nurbs as rbs
+# import src.plottingScripts as plts
 
 ################ PREPROCESSING ####################
 

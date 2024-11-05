@@ -16,9 +16,9 @@ sys.path.append(dir2)
 #######################################################################
 
 # Local project
-from src.profiling_script import profiling_script
+from src.profiling.profiling_script import profiling_script
 import src.nurbs as rbs
-import src.surfaceRefinements as srfn
+import src.spline_functions.surfaceRefinements as srfn
 # import src.debugScripts as dbg_scrpt
 from src.numerical_model import MultiPatchNumericalModel
 

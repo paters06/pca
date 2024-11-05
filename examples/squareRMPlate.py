@@ -18,11 +18,11 @@ sys.path.append(dir2)
 # Local project
 import src.nurbs as rbs
 import src.preprocessorPlate as preP
-import src.reissnerMidlinPlateSolver as reisMidSol
+import src.phenomenon.reissnerMidlinPlateSolver as reisMidSol
 import src.matrixEquationSolver as matEqnSol
 import src.postprocessorPlate as postP
-import src.surfaceRefinements as srfn
-import src.debugScripts as dbg_scrpt
+import src.spline_functions.surfaceRefinements as srfn
+import src.debug.debugScripts as dbg_scrpt
 
 ####################################################
 ################## MAIN PROBLEM ####################

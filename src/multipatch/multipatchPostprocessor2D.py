@@ -1,14 +1,14 @@
 # Python libraries
-import math
+# import math
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy.linalg
+# import numpy.linalg
 
 # Local project
-import src.basisFunctions as bfunc
-import src.nurbs as rbs
-from src.linearElastoStaticsSolver import elasticMatrix
-import src.plottingScripts as plts
+import src.spline_functions.basisFunctions as bfunc
+import src.spline_functions.nurbs as rbs
+from src.phenomenon.linearElastoStaticsSolver import elasticMatrix
+import src.plotting.plottingScripts as plts
 
 ################ POSTPROCESSING ####################
 
@@ -112,17 +112,17 @@ class SolutionField:
         return Dsol
 
     def _cantilever_displacements(self, x: float, y: float, D: float, L: float, P: float, E:float = 210e9, nu:float = 0.3):
-        I = (D**3)/12
-        u1 = -(P/(6*E*I))*(y - (D/2))*((3*x*(2*L - x)) + (2 + nu)*y*(y-D))
-        u2 = (P/(6*E*I))*((x**2)*(3*L - x) + 3*nu*(L-x)*(y-(D/2))**2 + ((4+5*nu)/4)*(D**2)*x)
+        Ix = (D**3)/12
+        u1 = -(P/(6*E*Ix))*(y - (D/2))*((3*x*(2*L - x)) + (2 + nu)*y*(y-D))
+        u2 = (P/(6*E*Ix))*((x**2)*(3*L - x) + 3*nu*(L-x)*(y-(D/2))**2 + ((4+5*nu)/4)*(D**2)*x)
 
         return u1, u2
 
     def _cantilever_stresses(self, x: float, y: float, D: float, L: float, P: float):
-        I = (D**3)/12
-        sigma_11 = -(P/I)*(L-x)*(y-(D/2))
+        Ix = (D**3)/12
+        sigma_11 = -(P/Ix)*(L-x)*(y-(D/2))
         sigma_22 = 0.0
-        sigma_33 = -((P*y)/(2*I))*(y-D)
+        sigma_33 = -((P*y)/(2*Ix))*(y-D)
 
         return sigma_11, sigma_22, sigma_33
     
@@ -168,10 +168,10 @@ class SolutionField:
             y = eval_pts[i, 1]
             # print("x: {} m, y: {} m".format(x, y))
             ux, uy = self._cantilever_displacements(x, y, D, L, P, E, nu)
-            # sx, sy, txy = self._cantilever_stresses(x, y, D, L, P)
+            sx, sy, txy = self._cantilever_stresses(x, y, D, L, P)
             eval_fields[i, 0] = uy
-            # eval_fields[i, 1] = sx
-            eval_fields[i, 1] = sigma_path[i, 0]
+            eval_fields[i, 1] = sx
+            # eval_fields[i, 1] = sigma_path[i, 0]
 
         return eval_fields
 
@@ -536,7 +536,7 @@ def pathPostProcessing(phenomenon,multisurface, surfaceprep, dtot, matprop):
     if plot_disp:
         fig = plt.figure()
         ax = plt.axes()
-        # ax.plot(eval_pts[:,0], theor_line[:, 0], color='blue', label='Analytical solution')
+        ax.plot(eval_pts[:,0], theor_line[:, 0], color='blue', label='Analytical solution')
         ax.plot(eval_pts[:,0], disp_line[:, 1], 'o', label='Numerical solution')
         ax.set_title("Vertical displacement")
         ax.set_xlabel('x')
@@ -547,8 +547,8 @@ def pathPostProcessing(phenomenon,multisurface, surfaceprep, dtot, matprop):
     if plot_stress:
         fig = plt.figure()
         ax = plt.axes()
-        ax.plot(eval_pts[:,1], theor_line[:, 1], color='blue', label='Analytical solution')
-        ax.plot(eval_pts[:,1], sigma_line[:, 0], 'o', label='Numerical solution')
+        ax.plot(eval_pts[:,0], theor_line[:, 1], color='blue', label='Analytical solution')
+        ax.plot(eval_pts[:,0], sigma_line[:, 0], 'o', label='Numerical solution')
         ax.set_title("Normal stress")
         ax.set_xlabel('x')
         ax.set_ylabel('Sx')

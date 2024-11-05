@@ -6,7 +6,7 @@ sys.path.append('/home/paters/pca/')
 
 # Local project
 import src.preprocessor2D as pre2D
-import src.debugScripts as dbg_scrpt
+import src.debug.debugScripts as dbg_scrpt
 
 Rmax = 1.0
 Rmin = 0.5

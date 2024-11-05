@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # Local project
 import src.basisFunctions as bfunc
 import src.nurbs as rbs
-import src.plottingScripts as plts
+import src.plotting.plottingScripts as plts
 
 ################ PREPROCESSING ####################
 
