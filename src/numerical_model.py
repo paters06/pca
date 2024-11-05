@@ -1,15 +1,15 @@
-import src.preprocessor2D as pre2D
-import src.postprocessor2D as post2D
-import src.multipatchPreprocessor2D as multipatchpre2D
-import src.linearElastoStaticsSolver as linElastStat
+import src.preprocessor.preprocessor2D as pre2D
+import src.postprocessor.postprocessor2D as post2D
+import src.multipatch.multipatchPreprocessor2D as multipatchpre2D
+import src.phenomenon.linearElastoStaticsSolver as linElastStat
 import src.matrixEquationSolver as matEqnSol
-import src.multipatchPostprocessor2D as multipatchpost2D
+import src.multipatch.multipatchPostprocessor2D as multipatchpost2D
 # import src.nurbs as rbs
-from src.nurbs import MultiPatchNURBSSurface
-from src.nurbs import NURBSSurface
+from src.spline_functions.nurbs import MultiPatchNURBSSurface
+from src.spline_functions.nurbs import NURBSSurface
 
 
-import numpy as np
+# import numpy as np
 
 class NumericalModel:
     def __init__(self, phenomenon: str, geomsurface: NURBSSurface,

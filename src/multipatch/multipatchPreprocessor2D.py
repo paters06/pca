@@ -1,13 +1,13 @@
 # Python libraries
 import numpy as np
-import numpy.linalg
+# import numpy.linalg
 import matplotlib.pyplot as plt
 
 # Local project
-import src.basisFunctions as bfunc
-import src.nurbs as rbs
-import src.plottingScripts as plts
-import src.preprocessor2D as pre2D
+# import src.basisFunctions as bfunc
+import src.spline_functions.nurbs as rbs
+# import src.plottingScripts as plts
+import src.preprocessor.preprocessor2D as pre2D
 
 def create_UV_evaluation_points(x_range:list[float], y_range:list[float], num_points:int):
     start_pt = np.array((x_range[0], x_range[1]))

@@ -2,8 +2,8 @@
 import numpy as np
 
 # Local project
-import src.basisFunctions as bfunc
-import src.nurbs as rbs
+import src.spline_functions.basisFunctions as bfunc
+import src.spline_functions.nurbs as rbs
 
 tol = 1e-5
 

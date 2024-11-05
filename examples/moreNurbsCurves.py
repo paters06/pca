@@ -27,7 +27,7 @@ sys.path.append(dir2)
 #######################################################################
 
 import src.nurbs as rbs
-import src.plottingScripts as plts
+import src.plotting.plottingScripts as plts
 
 
 #P = np.array([[0,0],[1,1],[3,2],[4,1],[5,-1]])

@@ -28,7 +28,7 @@ sys.path.append(dir2)
 # Local project
 import src.basisFunctions as bfunc
 import src.nurbs as rbs
-import src.plottingScripts as plts
+import src.plotting.plottingScripts as plts
 
 Rmax = 1.0
 

@@ -4,7 +4,7 @@ import numpy as np
 
 # Local project
 # import src.basisFunctions as bfunc
-import src.nurbs as rbs
+import src.spline_functions.nurbs as rbs
 
 def parametricCoordinate(ua,ub,va,vb,gausspta,gaussptb):
     localpts = np.zeros((1,2))

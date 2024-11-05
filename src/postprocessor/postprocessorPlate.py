@@ -6,8 +6,8 @@ from matplotlib import animation
 
 # Local project
 import src.nurbs as rbs
-from src.reissnerMidlinPlateSolver import elasticMatrix_RM
-import src.plottingScripts as plts
+from src.phenomenon.reissnerMidlinPlateSolver import elasticMatrix_RM
+import src.plotting.plottingScripts as plts
 
 ################ POSTPROCESSING ####################
 

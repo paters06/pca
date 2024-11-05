@@ -26,8 +26,8 @@ sys.path.append(dir2)
 
 # Local project
 import src.nurbs as rbs
-import src.plottingScripts as plts
-import src.surfaceRefinements as srfn
+import src.plotting.plottingScripts as plts
+import src.spline_functions.surfaceRefinements as srfn
 
 
 # Complete list of control points

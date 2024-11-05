@@ -1,13 +1,13 @@
 # Python libraries
-import math
+# import math
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
 
 # Local project
-import src.nurbs as rbs
-from src.linearElastoStaticsSolver import elasticMatrix
-import src.plottingScripts as plts
+import src.spline_functions.nurbs as rbs
+from src.phenomenon.linearElastoStaticsSolver import elasticMatrix
+import src.plotting.plottingScripts as plts
 
 ################ POSTPROCESSING ####################
 

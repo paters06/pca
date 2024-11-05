@@ -1,24 +1,18 @@
 # Python libraries
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 #######################################################################
 # DO NOT REMOVE THIS SEGMENT
-import os
+from os.path import dirname
 import sys
 
-# Get current working directory
-# Command found in https://note.nkmk.me/en/python-script-file-path/
-dir1 = os.path.dirname(os.path.abspath(__file__))
-# Insert .. command to go to the upper directory
-dir2 = dir1 + '/..'
-# Setting the package directory path for the modules execution
-sys.path.append(dir2)
+sys.path.append(dirname(dirname(__file__)))
+
 #######################################################################
 
 # Local project
-from src.profiling.profiling_script import profiling_script
-import src.nurbs as rbs
+import src.spline_functions.nurbs as rbs
 import src.spline_functions.surfaceRefinements as srfn
 from src.numerical_model import MultiPatchNumericalModel
 
@@ -40,36 +34,44 @@ def main_program():
     controlPointsPatch2 = np.array([[0.4,0.0],[1.0,0.0],[0.4,0.2],[1.0,0.2]])
     weightsPatch2 = np.ones((controlPointsPatch2.shape[0],1))
 
-    multiP = [controlPointsPatch1,controlPointsPatch2]
-    multiw = [weightsPatch1,weightsPatch2]
+    controlPointsPatch3 = np.array([[-0.2,-0.2],[0.0,-0.2],[-0.2,0.4],[0.0,0.4]])
+    weightsPatch3 = np.ones((controlPointsPatch2.shape[0],1))
 
-    multip = [1,1]
-    multiq = [1,1]
+    # controlPointsPatch4 = np.array([[-0.2,0.1],[0.0,0.1],[-0.2,-0.2],[0.0,-0.2]])
+    # weightsPatch4 = np.ones((controlPointsPatch2.shape[0],1))
+
+    multiP = [controlPointsPatch1,controlPointsPatch2,controlPointsPatch3]
+    multiw = [weightsPatch1,weightsPatch2,weightsPatch3]
+
+    multip = [1,1,1]
+    multiq = [1,1,1]
 
     # multiU = [np.array([0,0,0.5,0.5]),np.array([0.5,0.5,1,1])]
-    multiU = [np.array([0,0,1,1]),np.array([0,0,1,1])]
-    multiV = [np.array([0,0,1,1]),np.array([0,0,1,1])]
+    multiU = [np.array([0,0,1,1]),np.array([0,0,1,1]),np.array([0,0,1,1])]
+    multiV = [np.array([0,0,1,1]),np.array([0,0,1,1]),np.array([0,0,1,1])]
 
     geomsurface = rbs.MultiPatchNURBSSurface(multiU,multiV,multip,multiq,\
                                              multiP,multiw)
 
     localRefinement = True
-    patchesToRefine = [0,1]
-    numreflist = [2,2]
+    patchesToRefine = [0,1,2]
+    numreflist = [2,2,2]
     # reflist = [['h'],['h'],['p'],['p'],['h'],['h']]
     # dirlist = [['U','V'],['U','V'],['U','V'],['U','V'],['U','V'],['U','V']]
-    reflist = [['k'],['k']]
-    dirlist = [['U','V'],['U','V']]
+    reflist = [['k'],['k'],['k']]
+    dirlist = [['U','V'],['U','V'],['U','V']]
 
     if localRefinement:
         srfn.localPatchRefinement(geomsurface,patchesToRefine,numreflist,reflist,dirlist)
 
     #disp_i = [startpt,endpt,value,restriction]
     dirichletData_0 = [[0.0,0.0],[0.0,1.0],0.0,"C"]
-    dirichletConditionsData = [dirichletData_0,None]
+    dirichletData_3 = [[0.0,0.0],[0.0,1.0],0.0,"C"]
+    dirichletData_4 = [[0.0,0.0],[0.0,1.0],0.0,"C"]
+    dirichletConditionsData = [None,None,dirichletData_3]
     #neumann_i = [startpt,endpt,type_load,value]
     neumannData_1 = [[[1.0,0.0],[1.0,1.0],"tangent",tv]]
-    neumannConditionsData = [None,neumannData_1]
+    neumannConditionsData = [None,neumannData_1,None]
 
     x_range = [0.0, 1.0]
     y_range = [1.0, 1.0]

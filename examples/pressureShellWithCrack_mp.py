@@ -21,13 +21,13 @@ sys.path.append(dir3)
 #######################################################################
 
 # Local project
-import src.plottingScripts as plts
+import src.plotting.plottingScripts as plts
 import src.multipatchPreprocessor2D as multipatchpre2D
-import src.linearElastoStaticsSolver as linElastStat
+import src.phenomenon.linearElastoStaticsSolver as linElastStat
 import src.matrixEquationSolver as matEqnSol
 import src.multipatchPostprocessor2D as multipatchpost2D
-import src.surfaceRefinements as srfn
-import src.debugScripts as dbg_scrpt
+import src.spline_functions.surfaceRefinements as srfn
+import src.debug.debugScripts as dbg_scrpt
 
 ####################################################
 ################## MAIN PROBLEM ####################

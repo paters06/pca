@@ -6,7 +6,7 @@ import matplotlib.cm as cm
 
 # Local project
 import src.nurbs as rbs
-import src.linearElastoStaticsSolver as linElastStat
+import src.phenomenon.linearElastoStaticsSolver as linElastStat
 
 def checkingSymmetricMatrix(A):
     check = np.allclose(A, A.T, rtol=1e-2, atol=1e-3)
