@@ -15,6 +15,10 @@ contains
         real, dimension(n) :: U_arr
     
         integer, intent(out) :: mid
+
+        !f2py intent(in) n, p, u, U_arr
+        !f2py integer intent(hide), depend(U_arr) :: n = len(U_arr)
+        !f2py intent(out) mid
     
         integer :: low, high
     
@@ -63,6 +67,10 @@ contains
         real, dimension(p+1), intent(out) :: N_arr
         real, dimension(p+1) :: left_arr
         real, dimension(p+1) :: right_arr
+
+        !f2py intent(in) i, u, p, U_arr
+        !f2py intent(out) N_arr
+        !f2py integer intent(hide), depend(U_arr) :: m = len(U_arr)
     
         integer :: j, r, ii
         real :: saved, temp
@@ -104,6 +112,11 @@ contains
         real, dimension(U_arr_size), intent(in) :: U_arr
         real, intent(out) :: Nip
     
+        !f2py intent(in) p, i, u, U_arr_size
+        !f2py intent(in) U_arr
+        !f2py integer intent(hide), depend(U_arr) :: U_arr_size = len(U_arr)
+        !f2py intent(out) Nip
+
         integer :: k, j, m
         integer :: ii
         real saved, Uleft, Uright, temp
@@ -174,12 +187,16 @@ contains
         real, intent(in) :: u
         real, intent(in), dimension(m) :: U_arr
         real, intent(out), dimension(n+1,p+1) :: ders
+
+        !f2py intent(in) i, u, p, n, m, U_arr
+        !f2py intent(out) ders
+        !f2py integer intent(hide), depend(U_arr) :: m = len(U_arr)
     
         real, dimension(p+1, p+1) :: ndu
         real, dimension(2, p+1) :: a
         real, dimension(p+1) :: left, right
     
-        integer :: j, k, r, jj, pi
+        integer :: j, k, r
         integer :: j1, j2, rk, pk, s1, s2
         real :: d, saved, temp
     
@@ -277,10 +294,10 @@ contains
             r = (p-k)*r
         end do
     
-        do j = 1, n+1
-            print *, ders(j, 1:p+1)
-            ! print "(a, I3, a, F5.3)", "dN(i=", j+p, ")= ", ders(j,1:p+1)
-        end do
+        ! do j = 1, n+1
+        !     print *, ders(j, 1:p+1)
+        !     ! print "(a, I3, a, F5.3)", "dN(i=", j+p, ")= ", ders(j,1:p+1)
+        ! end do
     
     end subroutine der_basis_functions
 

@@ -1,13 +1,15 @@
 program test_fortran_scripts
+    use bspline_basis_functions
     implicit none
 
     character(len=6) :: real_out_format
     character(len=6) :: integer_out_format
 
-    integer :: p, i, U_arr1_size, n, mid, ii
+    integer :: p, i, U_arr1_size, n, mid, nd
     real :: u, Nip
     real, dimension(11) :: U_arr1
     real, dimension(3) :: N_arr
+    real, dimension(2,3) :: ders
 
     real_out_format = "(F5.3)"
     integer_out_format = "(I3)"
@@ -39,5 +41,8 @@ program test_fortran_scripts
     u = 5./2
 
     call basis_function(i, u, U_arr1_size, p, U_arr1, N_arr)
+
+    nd = 1
+    call der_basis_functions(i, u, p, nd, U_arr1_size, U_arr1, ders)
 
 end program test_fortran_scripts

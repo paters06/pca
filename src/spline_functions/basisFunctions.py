@@ -11,10 +11,17 @@ Modified on Sun Aug 02 15:29:17 2020
 import numpy as np
 import sys
 
+# Import warning solved in the following source:
+# https://github.com/microsoft/pylance-release/blob/main/TROUBLESHOOTING.md#unresolved-import-warnings
+# import one_basis_function
+# import find_span
+# import der_basis_functions
+from bspline_basis_functions_pmod import bspline_basis_functions
+
 #tolerance for knot vector
 tol = 1e-5
 
-def generateUniformKnotVector(N,p):
+def generateUniformKnotVector(N:int, p:int):
     if N < p:
         print ("Fatal error")
         return np.zeros(p+1)
@@ -77,7 +84,7 @@ def findKnotInterval(n: int, p: int, u: float, U: np.ndarray) -> int:
 #################BASIS FUNCTIONS####################
 ####################################################
 
-def basisFunction(i: int, u: float, m: int, p: int, U: np.ndarray) -> np.ndarray:
+def basisFunction(i: int, u: float, p: int, U: np.ndarray) -> np.ndarray:
     """
     Computing the basis functions Nip (modified version)
     
@@ -219,8 +226,6 @@ def oneBasisFunction(p: int, U: np.ndarray, i: int, u: float) -> float:
         else:
             N[j] = 0.0
 
-    print(N)
-
     for k in range(1,p+1):
         if N[0] == 0.0:
             saved = 0.0
@@ -242,7 +247,7 @@ def oneBasisFunction(p: int, U: np.ndarray, i: int, u: float) -> float:
 
     return Nip
 
-def test_basis_functions():
+def test_basis_functions_1():
     U = np.array([0,0,0,1,2,3,4,4,5,5,5])
     p = 2
     u = 5./2
@@ -264,11 +269,41 @@ def test_basis_functions_3():
     p = 2
     u = 5./2
     m = len(U)-1
-    n = m - p - 1
     i = 4
     nd = 1
     ders = derBasisFunction(i,u,m,p,U,nd)
     print(ders)
 
+def test_basis_functions_1_fortran():
+    U = np.array([0,0,0,1,2,3,4,4,5,5,5])
+    p = 2
+    u = 5./2
+    i = 4
+    # print(one_basis_function.one_basis_function.__doc__)
+    # Nip = one_basis_function.one_basis_function(p, U, i, u)
+    Nip = bspline_basis_functions.one_basis_function(p, U, i, u)
+    print(Nip)
+
+def test_basis_functions_2_fortran():
+    U = np.array([0,0,0,1,2,3,4,4,5,5,5])
+    p = 2
+    u = 5./2
+    # print(find_span.find_span.__doc__)
+    # mid = find_span.find_span(p, u, U)
+    mid = bspline_basis_functions.find_span(p, u, U)
+    print(mid)
+
+def test_basis_functions_3_fortran():
+    U = np.array([0,0,0,1,2,3,4,4,5,5,5])
+    p = 2
+    u = 5./2
+    i = 4
+    nd = 1
+    # print(der_basis_functions.der_basis_functions.__doc__)
+    # ders = der_basis_functions.der_basis_functions(i, u, p, nd, U)
+    ders = bspline_basis_functions.der_basis_functions(i, u, p, nd, U)
+    print(ders)
+
 if __name__ == '__main__':
     test_basis_functions_3()
+    test_basis_functions_3_fortran()

@@ -1,0 +1,1 @@
+python3 -m numpy.f2py -c -m bspline_basis_functions_pmod bspline_basis_functions.f90

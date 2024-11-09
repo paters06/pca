@@ -13,6 +13,10 @@ subroutine find_span(n, p, u, U_arr, mid)
 
     integer, intent(out) :: mid
 
+    !f2py intent(in) n, p, u, U_arr
+    !f2py integer intent(hide), depend(U_arr) :: n = len(U_arr)
+    !f2py intent(out) mid
+
     integer :: low, high
 
     integer :: ni, mid_i

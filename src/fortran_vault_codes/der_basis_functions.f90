@@ -16,11 +16,15 @@ subroutine der_basis_functions(i, u, p, n, m, U_arr, ders)
     real, intent(in), dimension(m) :: U_arr
     real, intent(out), dimension(n+1,p+1) :: ders
 
+    !f2py intent(in) i, u, p, n, m, U_arr
+    !f2py intent(out) ders
+    !f2py integer intent(hide), depend(U_arr) :: m = len(U_arr)
+
     real, dimension(p+1, p+1) :: ndu
     real, dimension(2, p+1) :: a
     real, dimension(p+1) :: left, right
 
-    integer :: j, k, r, jj, pi
+    integer :: j, k, r
     integer :: j1, j2, rk, pk, s1, s2
     real :: d, saved, temp
 
@@ -118,9 +122,9 @@ subroutine der_basis_functions(i, u, p, n, m, U_arr, ders)
         r = (p-k)*r
     end do
 
-    do j = 1, n+1
-        print *, ders(j, 1:p+1)
-        ! print "(a, I3, a, F5.3)", "dN(i=", j+p, ")= ", ders(j,1:p+1)
-    end do
+    ! do j = 1, n+1
+    !     print *, ders(j, 1:p+1)
+    !     ! print "(a, I3, a, F5.3)", "dN(i=", j+p, ")= ", ders(j,1:p+1)
+    ! end do
 
 end subroutine der_basis_functions

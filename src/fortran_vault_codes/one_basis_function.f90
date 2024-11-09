@@ -10,11 +10,16 @@ subroutine one_basis_function(p, U_arr, U_arr_size, i, u, Nip)
     integer, intent(in) :: U_arr_size
     real, intent(in) :: u
 
+!f2py intent(in) p, i, u, U_arr_size
+!f2py intent(in) U_arr
+!f2py integer intent(hide), depend(U_arr) :: U_arr_size = len(U_arr)
+!f2py intent(out) Nip
+
     real, dimension(U_arr_size), intent(in) :: U_arr
     real, intent(out) :: Nip
 
     integer :: k, j, m
-    integer :: m_i, ii, jj
+    integer :: ii
     real saved, Uleft, Uright, temp
     real, dimension(U_arr_size - 1 - p) :: N_arr
 
