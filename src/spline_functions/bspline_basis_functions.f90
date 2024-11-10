@@ -1,7 +1,7 @@
 module bspline_basis_functions
     implicit none
 contains
-    subroutine find_span(n, p, u, U_arr, mid)
+    subroutine find_span(mi, p, u, U_arr, mid)
         ! Algorithm A2.1 from The NURBS Book
         ! Determine knot span index
         ! Input: n, p, u, U
@@ -9,44 +9,47 @@ contains
         !
         implicit none
     
-        integer, intent(in) :: n
+        integer, intent(in) :: mi
         integer, intent(in) :: p
         real, intent(in) :: u
-        real, dimension(n) :: U_arr
+        real, dimension(mi) :: U_arr
     
         integer, intent(out) :: mid
 
-        !f2py intent(in) n, p, u, U_arr
-        !f2py integer intent(hide), depend(U_arr) :: n = len(U_arr)
+        !f2py intent(in) mi, p, u, U_arr
+        !f2py integer intent(hide), depend(U_arr) :: mi = len(U_arr)
         !f2py intent(out) mid
     
         integer :: low, high
     
-        integer :: ni, mid_i
+        integer :: n, m, ni, mid_i
     
+        m = mi - 1
+        n = m - p - 1
         ni = n + 1
     
         ! Special case
         if (abs(u - U_arr(ni+1)) < 1e-5) then
+            ! print *, "Special case"
             mid = n
-        end if
-    
-        ! Starting binary search
-        low = p
-        high = ni + 1
-        mid_i = (low + high)/2
-    
-        do while (u < U_arr(mid_i) .or. (u > U_arr(mid_i+1) .or. abs(u - U_arr(mid_i+1)) < 1e-5))
-            if (u < U_arr(mid_i)) then
-                high = mid_i
-            else
-                low = mid_i
-            end if
-    
+        else
+            ! Starting binary search
+            low = p + 1
+            high = n + 1 + 1
             mid_i = (low + high)/2
-        end do
-    
-        mid = mid_i - 1
+        
+            do while (u < U_arr(mid_i) .or. (u > U_arr(mid_i+1) .or. abs(u - U_arr(mid_i+1)) < 1e-5))
+                if (u < U_arr(mid_i)) then
+                    high = mid_i
+                else
+                    low = mid_i
+                end if
+        
+                mid_i = (low + high)/2
+            end do
+        
+            mid = mid_i - 1
+        end if
     
     end subroutine find_span
 

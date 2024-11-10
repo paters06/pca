@@ -1,8 +1,10 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
-import src.spline_functions.basisFunctions as bfunc
+# from src.spline_functions.basisFunctions import find_knot_interval
 from src.spline_functions.nurbs import NURBSObject
+
+# F2py imported modules
+from bspline_basis_functions_pmod import bspline_basis_functions  # noqa: E402
 
 class NURBSSurface(NURBSObject):
     """
@@ -39,17 +41,19 @@ class NURBSSurface(NURBSObject):
         self.P = P
         self.w = w
 
-    def pointInSurface(self,upt,vpt):
+    def point_in_surface(self,upt,vpt):
         mu = len(self.U) - 1
-        mv = len(self.V) - 1
+        # mv = len(self.V) - 1
         nu = mu - self.p - 1
-        nv = mv - self.q - 1
+        # nv = mv - self.q - 1
 
         Pwl = self.weightedControlPoints(self.P,self.w)
         Pw = self.listToGridControlPoints(Pwl,self.U,self.V,self.p,self.q)
 
-        uspan = bfunc.findKnotInterval(nu,self.p,upt,self.U)
-        vspan = bfunc.findKnotInterval(nv,self.q,vpt,self.V)
+        # uspan = find_knot_interval(nu,self.p,upt,self.U)
+        # vspan = find_knot_interval(nv,self.q,vpt,self.V)
+        uspan = bspline_basis_functions.find_span(self.p, upt, self.U)
+        vspan = bspline_basis_functions.find_span(self.q, vpt, self.V)
 
         idR = self.nonZeroIndicesElement(uspan,vspan,self.p,self.q,nu)
 
@@ -57,7 +61,7 @@ class NURBSSurface(NURBSObject):
         spt = R@self.P[idR,:]
         return spt
 
-    def createSurface(self,numpoints=41):
+    def create_surface(self, numpoints:int=41) -> np.ndarray:
         """
         Create a nurbs surface for further plotting
         """
@@ -69,9 +73,9 @@ class NURBSSurface(NURBSObject):
         Pw = self.listToGridControlPoints(Pwl,self.U,self.V,self.p,self.q)
 
         mu = len(self.U) - 1
-        mv = len(self.V) - 1
+        # mv = len(self.V) - 1
         nu = mu - self.p - 1
-        nv = mv - self.q - 1
+        # nv = mv - self.q - 1
 
         # idxu = np.arange(0,self.p+1)
         # idxv = np.arange(0,self.q+1)
@@ -80,8 +84,10 @@ class NURBSSurface(NURBSObject):
 
         for j in range(len(vrank)):
             for i in range(len(urank)):
-                uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
-                vspan = bfunc.findKnotInterval(nv,self.q,vrank[j],self.V)
+                # uspan = find_knot_interval(nu,self.p,urank[i],self.U)
+                # vspan = find_knot_interval(nv,self.q,vrank[j],self.V)
+                uspan = bspline_basis_functions.find_span(self.p, urank[i], self.U)
+                vspan = bspline_basis_functions.find_span(self.q, vrank[i], self.V)
 
                 idR = self.nonZeroIndicesElement(uspan,vspan,self.p,self.q,nu)
 
@@ -91,7 +97,7 @@ class NURBSSurface(NURBSObject):
                 self.cpts[:,i,j] = S
         return self.cpts
 
-    def createTangentSurface(self):
+    def create_tangent_surface(self) -> tuple[np.ndarray, np.ndarray]:
         """
         Create a nurbs tangent surface for further plotting
         """
@@ -105,7 +111,7 @@ class NURBSSurface(NURBSObject):
         mu = len(self.U) - 1
         mv = len(self.V) - 1
         nu = mu - self.p - 1
-        nv = mv - self.q - 1
+        # nv = mv - self.q - 1
 
         # idxu = np.arange(0,self.p+1)
         # idxv = np.arange(0,self.q+1)
@@ -115,8 +121,10 @@ class NURBSSurface(NURBSObject):
 
         for j in range(len(vrank)):
             for i in range(len(urank)):
-                uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
-                vspan = bfunc.findKnotInterval(nv,self.q,vrank[j],self.V)
+                # uspan = find_knot_interval(nu,self.p,urank[i],self.U)
+                # vspan = find_knot_interval(nv,self.q,vrank[j],self.V)
+                uspan = bspline_basis_functions.find_span(self.p, urank[i], self.U)
+                vspan = bspline_basis_functions.find_span(self.q, vrank[i], self.V)
 
                 idR = self.nonZeroIndicesElement(uspan,vspan,self.p,self.q,nu)
 
@@ -128,9 +136,9 @@ class NURBSSurface(NURBSObject):
             # End i loop
         # End j loop
 
-        return self.cpu,self.cpv
+        return self.cpu, self.cpv
 
-    def createBoundary(self):
+    def create_boundary(self):
         """
         Create a boundary of the nurbs surface for further plotting
         """
@@ -138,9 +146,9 @@ class NURBSSurface(NURBSObject):
         Pw = self.listToGridControlPoints(Pwl,self.U,self.V,self.p,self.q)
 
         mu = len(self.U) - 1
-        mv = len(self.V) - 1
+        # mv = len(self.V) - 1
         nu = mu - self.p - 1
-        nv = mv - self.q - 1
+        # nv = mv - self.q - 1
 
         # idxu = np.arange(0,self.p+1)
         # idxv = np.arange(0,self.q+1)
@@ -158,8 +166,10 @@ class NURBSSurface(NURBSObject):
             coor = np.zeros((parampath.shape[0],2))
             ipath = 0
             for ppath in parampath:
-                uspan = bfunc.findKnotInterval(nu,self.p,ppath[0],self.U)
-                vspan = bfunc.findKnotInterval(nv,self.q,ppath[1],self.V)
+                # uspan = find_knot_interval(nu,self.p,ppath[0],self.U)
+                # vspan = find_knot_interval(nv,self.q,ppath[1],self.V)
+                uspan = bspline_basis_functions.find_span(self.p, ppath[0], self.U)
+                vspan = bspline_basis_functions.find_span(self.q, ppath[1], self.V)
                 idR = self.nonZeroIndicesElement(uspan,vspan,self.p,self.q,nu)
 
                 R = self.bivariateRationalFunction(self.p,self.q,uspan,vspan,ppath[0],ppath[1],self.U,self.V,Pw)
@@ -176,49 +186,3 @@ class NURBSSurface(NURBSObject):
                 self.boundarycoor1 = np.vstack((self.boundarycoor1,boundarycoor[bc]))
 
         return self.boundarycoor1
-
-    def plotSurface(self):
-        """
-        Plot the surface
-        """
-        cx = self.cpts[0,:,:]
-        cy = self.cpts[1,:,:]
-        cz = self.cpts[2,:,:]
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        # ax = plt.axes(projection = '3d')
-        # ax.contour3D(cx,cy,cz,cmap='viridis')
-        ax.plot_surface(cx,cy,cz,cmap='viridis')
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
-        plt.show()
-
-    def plotTangentSurface(self,component):
-        """
-        Plot the tangent surface
-        """
-        cx = self.cpts[0,:,:]
-        cy = self.cpts[1,:,:]
-        cz = self.cpts[2,:,:]
-
-        if component == "u":
-            cpx = self.cpu[0,:,:]
-            cpy = self.cpu[1,:,:]
-            cpz = self.cpu[2,:,:]
-        else:
-            cpx = self.cpv[0,:,:]
-            cpy = self.cpv[1,:,:]
-            cpz = self.cpv[2,:,:]
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        # ax = plt.axes(projection = '3d')
-        # ax.contour3D(cx,cy,cz,cmap='viridis')
-        ax.plot_surface(cx,cy,cz,cmap='viridis')
-        plt.quiver(cx,cy,cz,cpx,cpy,cpz,color=['k'],length = 0.01,normalize = True)
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
-        plt.show()

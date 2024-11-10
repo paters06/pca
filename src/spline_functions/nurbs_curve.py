@@ -1,14 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import src.spline_functions.basisFunctions as bfunc
+# import src.spline_functions.basisFunctions as bfunc
+# from src.spline_functions.basisFunctions import find_knot_interval
+# from src.spline_functions.basisFunctions import basis_function
+# from src.spline_functions.basisFunctions import der_basis_function
+from src.spline_functions.basisFunctions import one_basis_function
 from src.spline_functions.nurbs import NURBSObject
+
+# F2py imported modules
+from bspline_basis_functions_pmod import bspline_basis_functions  # noqa: E402
 
 class NURBSCurve(NURBSObject):
     """
     A class that represent a nurbs curve
     """
-    def __init__(self, P: np.ndarray, w: np.ndarray, p: int, U: np.ndarray|None) -> None:
+    def __init__(self, P: np.ndarray, w: np.ndarray, p: int, U: np.ndarray) -> None:
         """
         Initialize the nurbs object with the control points
         and their respective weights,the degree of the spline,
@@ -18,13 +25,13 @@ class NURBSCurve(NURBSObject):
         self.P = P
         self.w = w
         self.p = p
+        self.U = U
 
-        if U is None:
-            self.U = bfunc.generateUniformKnotVector(P.shape[0],p)
-        else:
-            self.U = U
+    @property
+    def control_points(self) -> np.ndarray:
+        return self.P
 
-    def createCurve(self):
+    def create_curve(self) -> np.ndarray:
         """
         Create a nurbs curve for further plotting
         """
@@ -33,14 +40,16 @@ class NURBSCurve(NURBSObject):
 
         self.cpts = np.zeros((numpoints,2))
 
-        mu = len(self.U) - 1
-        nu = mu - self.p - 1
+        # mu = len(self.U) - 1
+        # nu = mu - self.p - 1
         idx = np.arange(0,self.p+1)
 
         for i in range(len(urank)):
-            uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
+            # uspan = find_knot_interval(nu,self.p,urank[i],self.U)
+            uspan = bspline_basis_functions.find_span(self.p, urank[i], self.U)
             idxU = uspan + idx - self.p
-            nbas = bfunc.basisFunction(uspan,urank[i],self.p,self.U)
+            # nbas = basis_function(uspan,urank[i],self.p,self.U)
+            nbas = bspline_basis_functions.basis_function(uspan, urank[i], self.p, self.U)
 
             nbas = np.reshape(nbas,(1,len(nbas)))
 
@@ -49,7 +58,7 @@ class NURBSCurve(NURBSObject):
             self.cpts[i,:] = ratFunc@self.P[idxU,:]
         return self.cpts
 
-    def createTangentCurve(self):
+    def create_tangent_curve(self) -> np.ndarray:
         """
         Create a nurbs tangent curve for further plotting
 
@@ -61,18 +70,20 @@ class NURBSCurve(NURBSObject):
 
         Pw = self.weightedControlPoints(self.P,self.w)
 
-        mu = len(self.U) - 1
-        nu = mu - self.p - 1
+        # mu = len(self.U) - 1
+        # nu = mu - self.p - 1
         idx = np.arange(0,self.p+1)
 
         # Derivative order
         d = 1
 
         for i in range(len(urank)):
-            uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
+            # uspan = find_knot_interval(nu,self.p,urank[i],self.U)
+            uspan = bspline_basis_functions.find_span(self.p, urank[i], self.U)
             idxU = uspan + idx - self.p
-            # nbas = bfunc.basisFunction(uspan,urank[i],self.p,self.U)
-            dnbasU = bfunc.derBasisFunction(uspan,urank[i],mu,self.p,self.U,d)
+            # nbas = basis_function(uspan,urank[i],self.p,self.U)
+            # dnbasU = der_basis_function(uspan,urank[i],mu,self.p,self.U,d)
+            dnbasU = bspline_basis_functions.der_basis_functions(uspan, urank[i], self.p, d, self.U)
 
             # Hughes' way
             Aders = dnbasU*Pw[idxU,-1].T
@@ -83,7 +94,7 @@ class NURBSCurve(NURBSObject):
             self.cppts[i,:] = Ck[d,:]
         return self.cppts
 
-    def plotBasisFunctions(self) -> None:
+    def plot_basis_functions(self) -> None:
         """
         Put legend outside the plot
         https://stackoverflow.com/questions/4700614/how-to-put-the-legend-outside-the-plot/4700762#4700762
@@ -96,9 +107,9 @@ class NURBSCurve(NURBSObject):
         N_bas = np.zeros((nu+1,numpoints))
 
         for i in range(len(urank)):
-            # uspan = bfunc.findKnotInterval(nu,self.p,urank[i],self.U)
+            # uspan = find_knot_interval(nu,self.p,urank[i],self.U)
             for j in range(0, nu+1):
-                Npi = bfunc.oneBasisFunction(self.p, self.U, j, urank[i])
+                Npi = one_basis_function(self.p, self.U, j, urank[i])
                 N_bas[j,i] = Npi
         
         fig, ax = plt.subplots()
@@ -108,26 +119,4 @@ class NURBSCurve(NURBSObject):
         fig.legend(loc=5)
         # plt.subplots_adjust(right=0.8)
         fig.tight_layout(rect=(0., 0., 0.85, 1.))
-        plt.show()
-
-    def plotCurve(self):
-        """
-        Plot the curve
-        """
-        fig,ax = plt.subplots()
-        plt.plot(self.cpts[:,0],self.cpts[:,1])
-        ax.set_aspect('equal','box')
-        plt.plot(self.P[:,0],self.P[:,1],'ro')
-        plt.plot(self.P[:,0],self.P[:,1])
-        plt.show()
-
-    def plotTangentCurve(self):
-        """
-        Plot the tangent curve
-        """
-        # fig = plt.figure()
-        plt.plot(self.P[:,0],self.P[:,1],'ro')
-        plt.plot(self.P[:,0],self.P[:,1])
-        plt.plot(self.cpts[:,0],self.cpts[:,1])
-        plt.quiver(self.cpts[:,0],self.cpts[:,1],self.cppts[:,0],self.cppts[:,1],color=['k'])
         plt.show()

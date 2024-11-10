@@ -10,13 +10,17 @@ Modified on Sun Aug 02 15:29:17 2020
 #"NURBS"
 import numpy as np
 import sys
+import os
+
+# print(os.path.dirname(__file__))
+sys.path.append(os.path.dirname(__file__))
 
 # Import warning solved in the following source:
 # https://github.com/microsoft/pylance-release/blob/main/TROUBLESHOOTING.md#unresolved-import-warnings
 # import one_basis_function
 # import find_span
 # import der_basis_functions
-from bspline_basis_functions_pmod import bspline_basis_functions
+from bspline_basis_functions_pmod import bspline_basis_functions  # noqa: E402
 
 #tolerance for knot vector
 tol = 1e-5
@@ -56,7 +60,7 @@ def knotGeneratorChord(n,p,tv):
             umid[j-1] = ui
         return np.concatenate([ustart,umid,uend])
 
-def findKnotInterval(n: int, p: int, u: float, U: np.ndarray) -> int:
+def find_knot_interval(n: int, p: int, u: float, U: np.ndarray) -> int:
     """
     U: knot vector
     u: parameter between 0 and 1
@@ -84,7 +88,7 @@ def findKnotInterval(n: int, p: int, u: float, U: np.ndarray) -> int:
 #################BASIS FUNCTIONS####################
 ####################################################
 
-def basisFunction(i: int, u: float, p: int, U: np.ndarray) -> np.ndarray:
+def basis_function(i: int, u: float, p: int, U: np.ndarray) -> np.ndarray:
     """
     Computing the basis functions Nip (modified version)
     
@@ -116,7 +120,7 @@ def basisFunction(i: int, u: float, p: int, U: np.ndarray) -> np.ndarray:
 
     return N
 
-def derBasisFunction(i,u,m,p,U,nd):
+def der_basis_function(i,u,m,p,U,nd):
     """
     Computing the derivatives of basis functions Nip (modified version)
     Input: i,u,m,p,U
@@ -202,7 +206,7 @@ def derBasisFunction(i,u,m,p,U,nd):
     return ders
 
 
-def oneBasisFunction(p: int, U: np.ndarray, i: int, u: float) -> float:
+def one_basis_function(p: int, U: np.ndarray, i: int, u: float) -> float:
     """
     Compute the basis function Nip
     Input: p, U, i, u
@@ -252,7 +256,7 @@ def test_basis_functions_1():
     p = 2
     u = 5./2
     i = 4
-    Nip = oneBasisFunction(p,U,i,u)
+    Nip = one_basis_function(p,U,i,u)
     print(Nip)
 
 def test_basis_functions_2():
@@ -261,7 +265,7 @@ def test_basis_functions_2():
     u = 5./2
     m = len(U)-1
     n = m - p - 1
-    mid = findKnotInterval(n,p,u,U)
+    mid = find_knot_interval(n,p,u,U)
     print(mid)
 
 def test_basis_functions_3():
@@ -271,7 +275,7 @@ def test_basis_functions_3():
     m = len(U)-1
     i = 4
     nd = 1
-    ders = derBasisFunction(i,u,m,p,U,nd)
+    ders = der_basis_function(i,u,m,p,U,nd)
     print(ders)
 
 def test_basis_functions_1_fortran():
@@ -304,6 +308,20 @@ def test_basis_functions_3_fortran():
     ders = bspline_basis_functions.der_basis_functions(i, u, p, nd, U)
     print(ders)
 
+def test_basis_functions_4():
+    U = np.array([0,0,0,0.5,0.5,1,1,1])
+    p = 2
+    u = 1.0
+    m = len(U) - 1
+    n = m - p - 1
+    mid = find_knot_interval(n,p,u,U)
+    print(mid)
+    # print(find_span.find_span.__doc__)
+    # mid = find_span.find_span(p, u, U)
+    mid_fortran = bspline_basis_functions.find_span(p, u, U)
+    print(mid_fortran)
+
 if __name__ == '__main__':
-    test_basis_functions_3()
-    test_basis_functions_3_fortran()
+    # from bspline_basis_functions_pmod import bspline_basis_functions
+    test_basis_functions_4()
+    # test_basis_functions_4_fortran()

@@ -2,7 +2,8 @@
 import numpy as np
 
 # Local project
-import src.spline_functions.basisFunctions as bfunc
+from src.spline_functions.basisFunctions import basis_function
+from src.spline_functions.basisFunctions import der_basis_function
 
 def binomial(a: int, b: int) -> float:
     bc = 1.0
@@ -127,8 +128,8 @@ class NURBSObject:
     def bivariateRationalFunction(self, p: int, q: int, uspan: int, vspan: int,
                                   u: float, v: float, U: np.ndarray,
                                   V: np.ndarray, Pw: np.ndarray) -> np.ndarray:
-        Nu = bfunc.basisFunction(uspan,u,p,U)
-        Nv = bfunc.basisFunction(vspan,v,q,V)
+        Nu = basis_function(uspan,u,p,U)
+        Nv = basis_function(vspan,v,q,V)
 
         R = np.zeros((1,(p+1)*(q+1)))
         i = 0
@@ -152,8 +153,8 @@ class NURBSObject:
         # The first row for dNu and dNv has the shape functions
         # Nu and Nv respectively
 
-        dNu = bfunc.derBasisFunction(uspan,u,mu,p,U,d)
-        dNv = bfunc.derBasisFunction(vspan,v,mv,q,V,d)
+        dNu = der_basis_function(uspan,u,mu,p,U,d)
+        dNv = der_basis_function(vspan,v,mv,q,V,d)
 
         # The first row for dR has the shape function
         # The second row for dR has the derivative w.r.t u
