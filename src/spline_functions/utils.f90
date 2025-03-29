@@ -1,0 +1,43 @@
+module utils
+    implicit none
+contains
+    subroutine print_matrix(mat)
+        real, intent(in) :: mat(:,:)
+        integer :: num_rows, num_cols, i
+
+        num_rows = size(mat,1)
+        num_cols = size(mat,2)
+
+        do i = 1, num_rows
+            print *, mat(i, 1:num_cols)
+        end do
+    end subroutine print_matrix
+
+    subroutine export_matrix(mat, file_name)
+        ! This function is to be generalized for more than two columns
+        real, intent(in) :: mat(:,:)
+        integer :: num_rows, num_cols, i, io, num_characters
+        logical :: exists
+        character(:), intent(in), allocatable :: file_name
+
+        num_rows = size(mat,1)
+        num_cols = size(mat,2)
+        num_characters = len(file_name)
+
+        inquire(file=file_name, exist=exists)
+        if (exists) then
+            open(newunit=io, file=file_name, status="old", action="write")
+            do i = 1, num_rows
+                write(io,"(F6.3, A, F8.3)") mat(i,1), ", ", mat(i,2)
+            end do
+            close(io)
+        else
+            open(newunit=io, file=file_name, status="new", action="write")
+            do i = 1, num_rows
+                write(io,"(F6.3, A, F8.3)") mat(i,1), ", ", mat(i,2)
+            end do
+            close(io)
+        end if
+
+    end subroutine export_matrix
+end module utils
