@@ -8,9 +8,11 @@ contains
         num_rows = size(mat,1)
         num_cols = size(mat,2)
 
+        print *, "===================="
         do i = 1, num_rows
             print *, mat(i, 1:num_cols)
         end do
+        print *, "===================="
     end subroutine print_matrix
 
     subroutine export_matrix(mat, file_name)

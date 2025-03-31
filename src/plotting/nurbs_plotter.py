@@ -28,7 +28,8 @@ class NURBSPlotter:
         Plot the curve
         """
         P = self.nurbs_curve.control_points
-        cpts = self.nurbs_curve.create_curve()
+        # cpts = self.nurbs_curve.create_curve()
+        cpts = self.nurbs_curve.create_curve_fortran()
         fig,ax = plt.subplots()
         plt.plot(cpts[:,0],cpts[:,1])
         ax.set_aspect('equal','box')

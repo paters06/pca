@@ -20,7 +20,7 @@ sys.path.append(os.path.dirname(__file__))
 # import one_basis_function
 # import find_span
 # import der_basis_functions
-from bspline_basis_functions_pmod import bspline_basis_functions  # noqa: E402
+# from bspline_basis_functions_pmod import bspline_basis_functions  # noqa: E402
 
 #tolerance for knot vector
 tol = 1e-5

@@ -32,5 +32,5 @@ p = 2
 curve1 = NURBSCurve(P,w,p,U)
 plotter = NURBSPlotter()
 plotter.nurbs_curve = curve1
-plotter.plot_curve()
+# plotter.plot_curve()
 plotter.plot_tangent_curve()

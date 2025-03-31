@@ -9,7 +9,8 @@ from src.spline_functions.basisFunctions import one_basis_function
 from src.spline_functions.nurbs import NURBSObject
 
 # F2py imported modules
-from bspline_basis_functions_pmod import bspline_basis_functions  # noqa: E402
+# from bspline_basis_functions_pmod import bspline_basis_functions  # noqa: E402
+# from nurbs_curve_pymod import nurbs_curve
 
 class NURBSCurve(NURBSObject):
     """
@@ -57,6 +58,26 @@ class NURBSCurve(NURBSObject):
 
             self.cpts[i,:] = ratFunc@self.P[idxU,:]
         return self.cpts
+    
+    def create_curve_fortran(self) -> np.ndarray:
+        """
+        Create a nurbs curve for further plotting through fortran code
+        """
+        numpoints = 41
+        urank = np.linspace(self.U.min(),self.U.max(),numpoints)
+
+        self.cpts = np.zeros((numpoints,2))
+
+        Pw = self.weightedControlPoints(self.P,self.w)
+
+        # print(nurbs_curve.curve_point.__doc__)
+
+        for i in range(len(urank)):
+            Ci = np.zeros((1,2))
+            Ci = nurbs_curve.curve_point(self.p, self.U, Pw, urank[i])
+            self.cpts[i,:] = Ci
+
+        return self.cpts
 
     def create_tangent_curve(self) -> np.ndarray:
         """
@@ -92,6 +113,18 @@ class NURBSCurve(NURBSObject):
             Ck = dRatdU@self.P[idxU,:]
 
             self.cppts[i,:] = Ck[d,:]
+        return self.cppts
+    
+    def create_tangent_curve_fortran(self) -> np.ndarray:
+        numpoints = 41
+        urank = np.linspace(self.U.min(),self.U.max(),numpoints)
+        
+        for i in range(len(urank)):
+            Cpi = np.zeros((1,2))
+            self.cppts[i,:] = Cpi
+        
+        self.cppts = np.zeros((numpoints,2))
+
         return self.cppts
 
     def plot_basis_functions(self) -> None:
