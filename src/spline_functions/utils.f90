@@ -1,6 +1,21 @@
 module utils
     implicit none
 contains
+    subroutine linspace(min_val, max_val, num_points, ndim, vec)
+        real, intent(in) :: min_val, max_val
+        integer, intent(in) :: num_points, ndim
+        real, dimension(:,:), intent(out), allocatable :: vec
+        integer :: i
+
+        allocate(vec(num_points, ndim))
+
+        vec = 0
+
+        do i = 1, num_points
+            vec(i,1) = ((max_val - min_val)/(num_points-1))*(i-1) + min_val
+        end do
+    end subroutine linspace
+
     subroutine print_matrix(mat)
         real, intent(in) :: mat(:,:)
         integer :: num_rows, num_cols, i
@@ -14,6 +29,27 @@ contains
         end do
         print *, "===================="
     end subroutine print_matrix
+
+    subroutine print_row_vector(row_vec)
+        real, intent(in) :: row_vec(:)
+
+        print *, "===================="
+        print *, row_vec
+        print *, "===================="
+    end subroutine print_row_vector
+
+    subroutine print_column_vector(col_vec)
+        real, intent(in) :: col_vec(:,:)
+        integer :: num_rows, i
+
+        num_rows = size(col_vec,1)
+
+        print *, "===================="
+        do i = 1, num_rows
+            print *, col_vec(i, 1)
+        end do
+        print *, "===================="
+    end subroutine print_column_vector
 
     subroutine export_matrix(mat, file_name)
         ! This function is to be generalized for more than two columns
