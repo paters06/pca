@@ -77,14 +77,14 @@ contains
     subroutine create_curve(P_array, w_array, U_array, p, cpts)
         use utils
         integer, intent(in) :: p
-        real, intent(in), dimension(5,2) :: P_array
-        real, intent(in), dimension(5,1) :: w_array
-        real, intent(in), dimension(8) :: U_array
+        real, intent(in), dimension(:,:) :: P_array
+        real, intent(in), dimension(:,:) :: w_array
+        real, intent(in), dimension(:) :: U_array
         real, intent(out), dimension(:,:), allocatable :: cpts
         real :: U_min, U_max, u
         integer :: num_points, i, n, m
         real, dimension(:,:), allocatable :: Pw
-        real, dimension(2) :: Ci
+        real, dimension(:), allocatable :: Ci
 
         num_points = 41
         n = size(P_array, 1)
@@ -95,6 +95,7 @@ contains
         call weighted_control_points(P_array, w_array, Pw)
 
         allocate(cpts(num_points+1, 2))
+        allocate(Ci(size(P_array,2)))
 
         do i = 1, num_points+1
             u = ((U_max - U_min)/num_points)*(i-1) + U_min
@@ -125,7 +126,7 @@ contains
         integer :: du, span, k, j, m
         real, dimension(:,:), allocatable :: nders
 
-        allocate(Cki(d+1,3))
+        allocate(Cki(d+1,p+1))
 
         du = min(d, p)
         do k = p+1, d
@@ -204,9 +205,9 @@ contains
     subroutine create_tangent_curve(P_array, w_array, U_array, p, dcpts)
         use utils
         integer, intent(in) :: p
-        real, intent(in), dimension(5,2) :: P_array
-        real, intent(in), dimension(5,1) :: w_array
-        real, intent(in), dimension(8) :: U_array
+        real, intent(in), dimension(:,:) :: P_array
+        real, intent(in), dimension(:,:) :: w_array
+        real, intent(in), dimension(:) :: U_array
         real, intent(out), dimension(:,:), allocatable :: dcpts
         real, dimension(:,:), allocatable :: CKi
         real, dimension(:,:), allocatable :: Pw

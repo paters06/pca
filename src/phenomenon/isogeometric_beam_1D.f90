@@ -27,35 +27,73 @@ contains
     end subroutine gauss_legendre_nodes_weights
     
     subroutine calculate_integration_points(gauss_pts, ua, ub, intg_pts)
+        use utils, only: print_row_vector
         real, intent(in) :: ua, ub
         real, dimension(:), intent(in) :: gauss_pts
-        real, dimension(:), intent(out) :: intg_pts
+        real, dimension(:), intent(out), allocatable :: intg_pts
 
         integer :: i, num_gauss_pts
 
         num_gauss_pts = size(gauss_pts)
 
+        allocate(intg_pts(num_gauss_pts))
+
         do i = 1, num_gauss_pts
             intg_pts(i) = 0.5*(ub - ua)*gauss_pts(i) + 0.5*(ub + ua)
         end do
-
     end subroutine calculate_integration_points
     
-    subroutine element_matrix_stiffness(U_array, p, num_gauss_pts, intg_pts, young, inertia, Kmat_i, global_dofs_k, global_dofs_l)
+    subroutine calculate_1D_jacobian(P_array, w_array, U_array, p, u, jacob)
+        use nurbs_curve
+        use utils
+        integer, intent(in) :: p
+        real, intent(in) :: u
+        real, dimension(:), intent(in) :: U_array
+        real, dimension(:,:), intent(in) :: P_array, w_array
+        real, intent(out) :: jacob
+
+        real, dimension(:,:), allocatable :: Pw_array, CK, Cki
+        real, dimension(:), allocatable :: C
+        integer :: d, m, n
+
+        d = 1
+
+        allocate(CK(d+1,p+1))
+        allocate(CKi(d+1,p+1))
+        allocate(Pw_array(size(P_array,1),size(P_array)+1))
+        allocate(C(2))
+
+        m = size(U_array)
+        n = m - p - 1
+
+        call weighted_control_points(P_array, w_array, Pw_array)
+        call rat_curve_derivs(Pw_array, U_array, p, d, u, CK)
+        call create_tangent_curve()
+
+        ! The definition of the jacobian for 1D does not have a current demostration yet
+        jacob = CK(2,1)
+    end subroutine calculate_1D_jacobian
+    
+    subroutine element_matrix_stiffness(P_array, w_array, U_array, p, intg_pts, gauss_weights, &
+                                        Kmat_i, global_dofs_k, global_dofs_l, length_i)
         ! id_K_elem_i is the ith integration point
         ! element_nonzero_K_values is the number of nonzero values in an element stiffness matrix
         use bspline_basis_functions
 
-        real, dimension(:), intent(in) :: U_array, intg_pts
-        integer, intent(in) :: p, num_gauss_pts
-        real, intent(in) :: young, inertia
+        real, dimension(:), intent(in) :: U_array, intg_pts, gauss_weights
+        real, dimension(:,:), intent(in) :: P_array, w_array
+        integer, intent(in) :: p
         real, dimension(:), intent(out), allocatable :: Kmat_i
         integer, dimension(:), intent(out), allocatable :: global_dofs_k, global_dofs_l
+        real, intent(out) :: length_i
 
-        integer :: span, m, j, l, k, id_K_elem_i, element_nonzero_K_values, d
-        real :: u
+        integer :: span, m, j, l, k
+        integer :: id_K_elem_i, element_nonzero_K_values, d, num_gauss_pts
+        real :: u, jacob
         real, dimension(:,:), allocatable :: nders
 
+        num_gauss_pts = size(intg_pts)
+        
         element_nonzero_K_values = num_gauss_pts*(p+1)*(p+1)
 
         allocate(Kmat_i(element_nonzero_K_values))
@@ -69,17 +107,21 @@ contains
 
         m = size(U_array)
 
+        length_i = 0.
+
         integration_loop: do j = 1, num_gauss_pts
             u = intg_pts(j)
             call find_span(m, p, u, U_array, span)
             call der_basis_functions(span, u, p, d, m, U_array, nders)
+            call calculate_1D_jacobian(P_array, w_array, U_array, p, u, jacob)
             row_loop: do l = 0, p
                 column_loop: do k = 0, p
                     ! print "(a, I3, a, I3, a, I3, a, I3, a, I3)", "ele = ", i, " gauss_id", j," l = ", l, " k = ", k
                     global_dofs_k(id_K_elem_i) = span-p+k+1
                     global_dofs_l(id_K_elem_i) = span-p+l+1
-                    Kmat_i(id_K_elem_i) = young*inertia*nders(p+1, k+1)*nders(p+1, l+1)
-                    ! Kmat(span-p+k+1, span-p+l+1) = Kmat(span-p+k+1, span-p+l+1) + young*inertia*nders(p+1, k+1)*nders(p+1, l+1)
+                    Kmat_i(id_K_elem_i) = (1./(jacob**2))*nders(d+1,k+1)*nders(d+1,l+1)*jacob*gauss_weights(j)
+                    ! length_i = length_i + gauss_weights(j)
+                    length_i =  jacob
                     id_K_elem_i = id_K_elem_i + 1
                 end do column_loop
             end do row_loop
@@ -88,6 +130,69 @@ contains
 
     subroutine element_force_vector()
     end subroutine element_force_vector
+
+    subroutine assemble_weak_form(P_array, w_array, U_array, U_reduced, p, num_gauss_pts, young, inertia, load, id_load, Kmat, Fvec)
+        ! U_array is the original knot vector. dimension(n)
+        ! U_reduced is the knot vector with the repeated 0s and 1s. dimension(:)
+        ! p is the degree of the spline. Integer
+        ! num_gauss_pts is the number of integration points. Integer
+        ! young is the young modulus. Real
+        ! inertia is the second moment of area. Real
+        ! load is the point load at the cantilever end. Real
+        ! id_load is the dof for the load condition. Integer
+        ! d is the 1st derivative of the splines. Integer
+        use bspline_basis_functions
+        use utils
+
+        external :: sgesv
+        real, dimension(:), intent(in) :: U_reduced, U_array
+        real, dimension(:,:), intent(in) :: P_array, w_array
+        integer, intent(in) :: num_gauss_pts, p, id_load
+        real, intent(in) :: young, inertia, load
+        real, dimension(:,:), intent(out), allocatable :: Kmat, Fvec
+
+        integer :: num_unique_knots, i, j, num_control_points, num_dofs_red
+        integer :: rc
+        
+        real, dimension(:), allocatable :: intg_pts, gauss_nodes, gauss_weights, Kmat_i
+        real, dimension(:,:), allocatable :: Kred, Fred, Ured
+        integer, dimension(:), allocatable :: global_dofs_k, global_dofs_l
+        real :: deltaU, u, total_length, length_i
+
+        num_unique_knots = size(U_reduced)
+
+        call gauss_legendre_nodes_weights(num_gauss_pts, gauss_nodes, gauss_weights)
+
+        allocate(intg_pts(num_gauss_pts))
+
+        num_control_points = size(U_array) - p - 1
+
+        allocate(Kmat(num_control_points, num_control_points))
+        allocate(Kmat_i(num_gauss_pts*(p+1)*(p+1)))
+        allocate(Fvec(num_control_points,1))
+
+        total_length = 0.
+
+        element_loop: do i = 1, num_unique_knots - 1
+            call calculate_integration_points(gauss_nodes, U_reduced(i), U_reduced(i+1), intg_pts)
+            call element_matrix_stiffness(P_array, w_array, U_array, p, intg_pts, gauss_weights, &
+                                          Kmat_i, global_dofs_k, global_dofs_l, length_i)
+            deltaU = U_reduced(i+1) - U_reduced(i)
+            print "(a, f7.3)", "length_i = ", length_i
+            do j = 1, size(Kmat_i,1)
+                Kmat(global_dofs_k(j), global_dofs_l(j)) = Kmat(global_dofs_k(j), global_dofs_l(j)) + &
+                                                           0.5*deltaU*young*inertia*Kmat_i(j)
+                total_length = total_length + 0.5*deltaU*length_i
+            end do
+        end do element_loop
+        ! call print_matrix(Kmat)
+
+        Fvec(id_load,1) = -load
+        ! call print_column_vector(Fvec)
+
+        ! call element_force_vector(Fe)
+        print "(a, f9.3)", "Total length = ", total_length
+    end subroutine assemble_weak_form
 
     subroutine reduce_matrices(num_control_points, id_disp, Kmat, Fvec, Kred, Fred)
         use utils
@@ -113,66 +218,30 @@ contains
             end if
         end do reduction_loop_row
 
-        call print_matrix(Kred)
-        call print_column_vector(Fred)
+        ! call print_matrix(Kred)
+        ! call print_column_vector(Fred)
     end subroutine reduce_matrices
-    
-    subroutine assemble_weak_form(U_array, U_reduced, p, num_gauss_pts, young, inertia, load, id_load, id_disp)
-        ! U_array is the original knot vector. dimension(n)
-        ! U_reduced is the knot vector with the repeated 0s and 1s. dimension(:)
-        ! p is the degree of the spline. Integer
-        ! num_gauss_pts is the number of integration points. Integer
-        ! young is the young modulus. Real
-        ! inertia is the second moment of area. Real
-        ! load is the point load at the cantilever end. Real
-        ! id_load is the dof for the load condition. Integer
-        ! id_disp is the dof for the displacement condition. Integer
-        ! d is the 1st derivative of the splines. Integer
-        use bspline_basis_functions
+
+    subroutine solve_matrix_equations(Kmat, Fvec, id_disp, Usol)
         use utils
+        ! id_disp is the dof for the displacement condition. Integer
 
-        external :: sgesv
-        real, dimension(:), intent(in) :: U_reduced, U_array
-        integer, intent(in) :: num_gauss_pts, p, id_load, id_disp
-        real, intent(in) :: young, inertia, load
+        real, dimension(:,:), intent(in) :: Kmat, Fvec
+        real, dimension(:,:), intent(out), allocatable :: Usol
+        integer, intent(in) :: id_disp
 
-        integer :: num_unique_knots, i, j, num_control_points, num_dofs_red
-        integer :: rc
+        real, dimension(:,:), allocatable :: Kred, Fred, Ured
         integer, dimension(:), allocatable :: pivot
-        real, dimension(:), allocatable :: intg_pts, gauss_nodes, gauss_weights, Kmat_i
-        real, dimension(:,:), allocatable :: Kmat, Fvec, Kred, Fred, Ured
-        integer, dimension(:), allocatable :: global_dofs_k, global_dofs_l
 
-        num_unique_knots = size(U_reduced)
-
-        call gauss_legendre_nodes_weights(num_gauss_pts, gauss_nodes, gauss_weights)
-
-        allocate(intg_pts(num_gauss_pts))
-
-        num_control_points = size(U_array) - p - 1
-
-        allocate(Kmat(num_control_points, num_control_points))
-        allocate(Kmat_i(num_gauss_pts*(p+1)*(p+1)))
-        allocate(Fvec(num_control_points,1))
-
-        element_loop: do i = 1, num_unique_knots - 1
-            call calculate_integration_points(gauss_nodes, U_reduced(i), U_reduced(i+1), intg_pts)
-            call element_matrix_stiffness(U_array, p, num_gauss_pts, intg_pts, young, inertia, Kmat_i, global_dofs_k, global_dofs_l)
-            do j = 1, size(Kmat_i,1)
-                Kmat(global_dofs_k(j), global_dofs_l(j)) = Kmat(global_dofs_k(j), global_dofs_l(j)) + Kmat_i(j)
-            end do
-        end do element_loop
-        ! call print_matrix(Kmat)
-
-        Fvec(id_load,1) = load
-
-        ! call print_column_vector(Fvec)
-
+        integer :: j, j_asm, num_control_points, num_dofs_red, rc
+        
+        num_control_points = size(Kmat,1)
         num_dofs_red = num_control_points-1
 
         allocate(Kred(num_dofs_red, num_dofs_red))
         allocate(Fred(num_dofs_red,1))
         allocate(pivot(num_dofs_red))
+        allocate(Usol(num_control_points,1))
 
         call reduce_matrices(num_control_points, id_disp, Kmat, Fvec, Kred, Fred)
         
@@ -180,9 +249,27 @@ contains
 
         call sgesv(num_dofs_red, 1, Kred, num_dofs_red, pivot, Ured, num_dofs_red, rc)
 
-        ! call print_column_vector(Ured)
+        j_asm = 1
+        assembly_loop_column: do j = 1, num_control_points
+            if (j .ne. id_disp) then
+                Usol(j, 1) =  Ured(j_asm,1)
+                j_asm = j_asm + 1
+            else
+                Usol(j,1) = 0.
+            end if
+        end do assembly_loop_column
 
-        ! call element_matrix_stiffness(Ke)
-        ! call element_force_vector(Fe)
-    end subroutine assemble_weak_form
+        call print_column_vector(Usol)
+    end subroutine solve_matrix_equations
+
+    subroutine compute_field_solution(U_array, p, P_array, w_array, cpts)
+        use nurbs_curve
+        use utils
+        real, dimension(:), intent(in) :: U_array
+        real, dimension(:,:), intent(in) :: P_array, w_array
+        integer, intent(in) :: p
+        real, dimension(:,:), intent(out), allocatable :: cpts
+
+        call create_curve(P_array, w_array, U_array, p, cpts)
+    end subroutine compute_field_solution
 end module isogeometric_beam_1D

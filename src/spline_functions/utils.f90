@@ -18,23 +18,26 @@ contains
 
     subroutine print_matrix(mat)
         real, intent(in) :: mat(:,:)
-        integer :: num_rows, num_cols, i
+        integer :: num_rows, num_cols, i, j
 
         num_rows = size(mat,1)
         num_cols = size(mat,2)
 
         print *, "===================="
         do i = 1, num_rows
-            print *, mat(i, 1:num_cols)
+            print '(*(3X, f8.5))', (mat(i,j), j=1,num_cols)
         end do
         print *, "===================="
     end subroutine print_matrix
 
     subroutine print_row_vector(row_vec)
         real, intent(in) :: row_vec(:)
+        integer :: i, num_cols
+
+        num_cols = size(row_vec,1)
 
         print *, "===================="
-        print *, row_vec
+        print '(*(3X, f8.5))', (row_vec(i), i=1,num_cols)
         print *, "===================="
     end subroutine print_row_vector
 
@@ -46,7 +49,7 @@ contains
 
         print *, "===================="
         do i = 1, num_rows
-            print *, col_vec(i, 1)
+            print '((3X, f9.5))', col_vec(i, 1)
         end do
         print *, "===================="
     end subroutine print_column_vector
