@@ -2,7 +2,7 @@ import numpy as np
 from scipy import linalg as la
 import matplotlib.pyplot as plt
 
-import pca_01 as pca
+import pca as pca
 import bSplines as bs
 import curveFitting as cfit
 import plottingScripts as plts

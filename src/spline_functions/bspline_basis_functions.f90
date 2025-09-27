@@ -6,22 +6,15 @@ contains
         ! Determine knot span index
         ! Input: n, p, u, U
         ! Return: the knot span index
-        !
         implicit none
     
         integer, intent(in) :: mi
         integer, intent(in) :: p
         real, intent(in) :: u
         real, dimension(mi) :: U_arr
-    
         integer, intent(out) :: mid
 
-        !f2py intent(in) mi, p, u, U_arr
-        !f2py integer intent(hide), depend(U_arr) :: mi = len(U_arr)
-        !f2py intent(out) mid
-    
         integer :: low, high
-    
         integer :: n, m, ni, mid_i
     
         m = mi - 1
@@ -50,7 +43,6 @@ contains
         
             mid = mid_i - 1
         end if
-    
     end subroutine find_span
 
     subroutine basis_function(i, u, m, p, U_arr, N_arr)
@@ -58,7 +50,6 @@ contains
         ! Compute the nonvanishing basis functions
         ! Input: i,u,p,U
         ! Output: N
-    
         implicit none
     
         integer, intent(in) :: i
@@ -71,10 +62,6 @@ contains
         real, dimension(p+1) :: left_arr
         real, dimension(p+1) :: right_arr
 
-        !f2py intent(in) i, u, p, U_arr
-        !f2py intent(out) N_arr
-        !f2py integer intent(hide), depend(U_arr) :: m = len(U_arr)
-    
         integer :: j, r, ii
         real :: saved, temp
     
@@ -97,7 +84,6 @@ contains
         ! do j = 1, p+1
         !     print "(a, I3, a, F5.3)", "N(i=", j+p, ")= ", N_arr(j)
         ! end do
-    
     end subroutine basis_function
 
     subroutine one_basis_function(p, U_arr, U_arr_size, i, u, Nip)
@@ -191,10 +177,6 @@ contains
         real, intent(in), dimension(m) :: U_arr
         real, intent(out), dimension(n+1,p+1) :: ders
 
-        !f2py intent(in) i, u, p, n, m, U_arr
-        !f2py intent(out) ders
-        !f2py integer intent(hide), depend(U_arr) :: m = len(U_arr)
-    
         real, dimension(p+1, p+1) :: ndu
         real, dimension(2, p+1) :: a
         real, dimension(p+1) :: left, right
@@ -211,9 +193,9 @@ contains
         right = 0.0
         ders = 0.0
         a = 0.0
-    
+
         ndu(1,1) = 1.0
-    
+
         do j = 1, p
             left(j+1) = u - U_arr(ii+1-j)
             right(j+1) = U_arr(ii+j) - u
@@ -228,12 +210,12 @@ contains
             end do
             ndu(j+1,j+1) = saved
         end do
-    
+
         ! Load the basis functions
         do j = 1, p+1
             ders(1,j) = ndu(j,p+1)
         end do
-    
+
         ! This section computes the derivatives
         ! according to Eq (2.9) from The NURBS Book
         do r = 0, p
@@ -271,7 +253,7 @@ contains
     
                 do j = j1, j2
                     a(s2,j) = (a(s1,j) - a(s1,j-1))/ndu(pk+1,rk+j)
-                    d = d + a(s2,j)*ndu(rk+j,pk)
+                    d = d + a(s2,j)*ndu(rk+j,pk+1)
                 end do
     
                 if (r <= pk) then
@@ -286,7 +268,7 @@ contains
                 s2 = j
             end do
         end do
-        
+
         ! Multiply through by the correct factors (Eq (2.9))
         r = p
         do k = 1, n
@@ -296,12 +278,10 @@ contains
     
             r = (p-k)*r
         end do
-    
+
         ! do j = 1, n+1
         !     print *, ders(j, 1:p+1)
         !     ! print "(a, I3, a, F5.3)", "dN(i=", j+p, ")= ", ders(j,1:p+1)
         ! end do
-    
     end subroutine der_basis_functions
-
 end module bspline_basis_functions

@@ -9,14 +9,14 @@ contains
         integer :: j
 
         bc = 1.0
-        do j = 1, b+1
-            bc = bc *((a+1-j)/j)
+        do j = 1, b
+            bc = bc*((a+1-j)/j)
         end do
     end subroutine binomial
     
     subroutine weighted_control_points(P, w, Pw)
         ! Convert from real control points to homogeneous ones
-        real, intent(in) :: P(:,:),w(:,:)
+        real, intent(in) :: P(:,:), w(:,:)
         real, dimension(:,:), intent(out), allocatable :: Pw(:,:)
         integer :: num_control_points, num_cols, j
 
@@ -25,13 +25,30 @@ contains
 
         allocate(Pw(num_control_points,num_cols))
         Pw(:,1:num_cols-1) = P
-        Pw(:,num_cols) = 1
 
         do j = 1,num_control_points
-            Pw(j, 1:num_cols) = Pw(j, 1:num_cols)*w(j,1)
-            ! print *, Pw(j, 1:num_cols)
+            Pw(j, 1:num_cols-1) = Pw(j, 1:num_cols-1)*w(j,1)
+            Pw(j, num_cols) = w(j,1)
         end do
     end subroutine weighted_control_points
+
+    subroutine geometric_control_points(Pw, P, w)
+        ! Convert homogeneous control points to geometric ones
+        real, intent(in) :: Pw(:,:)
+        real, dimension(:,:), intent(out), allocatable :: P, w
+        integer :: num_control_points, num_cols, j
+
+        num_control_points = size(Pw,1)
+        num_cols = size(Pw,2) - 1
+
+        allocate(P(num_control_points,num_cols))
+        allocate(w(num_control_points,1))
+
+        do j = 1,num_control_points
+            P(j,:) = Pw(j,1:num_cols)/Pw(j,num_cols+1)
+            w(j,1) = Pw(j,num_cols+1)
+        end do
+    end subroutine geometric_control_points
 
     subroutine curve_point(n, p, m, U_arr, Pw, u, C)
         ! Compute point on rational B-spline curve
@@ -52,11 +69,6 @@ contains
         real, dimension(2) :: Cw
         real :: w
         real, dimension(2), intent(out) :: C
-
-        !f2py intent(in) n, p, m, U_arr, Pw, u
-        !f2py intent(out) C
-        !f2py integer, intent(hide), depend(Pw) :: n = shape(Pw, 0)
-        !f2py integer, intent(hide), depend(U_arr) :: m = len(U_arr)
 
         integer :: span, j
 
@@ -106,6 +118,7 @@ contains
     end subroutine create_curve
 
     subroutine compute_curve_derivatives(Pw_array, U_array, p, d, u, Cki)
+        ! Algorithm 3.2 from The NURBS Book
         ! Compute curve derivatives
         ! Input: n, p, U_array, Pw_array, u, d
         ! Input:
@@ -126,32 +139,78 @@ contains
         integer :: du, span, k, j, m
         real, dimension(:,:), allocatable :: nders
 
-        allocate(Cki(d+1,p+1))
+        allocate(Cki(d+1,3))
 
         du = min(d, p)
         do k = p+1, d
             Cki(k+1,:) = 0.0
         end do
-            
+
         m = size(U_array,1)
 
         allocate(nders(d+1,p+1))
 
         call find_span(m, p, u, U_array, span)
         call der_basis_functions(span, u, p, d, m, U_array, nders)
+        ! call print_matrix(nders)
         do k = 0, du
             CKi(k+1,:) = 0.0
-            do j = 0, du
+            do j = 0, p
                 Cki(k+1,:) = Cki(k+1,:) + nders(k+1,j+1)*Pw_array(span-p+j+1,:)
             end do
         end do
 
         ! call print_matrix(Cki)
-
-        ! deallocate(Cki)
     end subroutine compute_curve_derivatives
 
+    subroutine compute_curve_derivatives_2(P_array, U_array, p, d, u, Cki)
+        ! Algorithm 3.2 from The NURBS Book
+        ! Compute curve derivatives
+        ! Input: n, p, U_array, Pw_array, u, d
+        ! Input:
+        ! n -> number of control points is n+1
+        ! U_array -> knot vector
+        ! Pw_array -> weighted control points
+        ! p -> degree of the curve
+        ! d -> dth derivative
+        ! Output: CKi (d+1, p+1)
+        use bspline_basis_functions
+        use utils
+
+        real, dimension(:,:), intent(in) :: P_array(:,:), U_array(:)
+        real, intent(in) :: u
+        integer, intent(in) :: p, d
+        real, dimension(:,:), intent(out), allocatable :: CKi
+        
+        integer :: du, span, k, j, m
+        real, dimension(:,:), allocatable :: nders
+
+        allocate(Cki(d+1,3))
+
+        du = min(d, p)
+        do k = p+1, d
+            Cki(k+1,:) = 0.0
+        end do
+
+        m = size(U_array,1)
+
+        allocate(nders(d+1,p+1))
+
+        call find_span(m, p, u, U_array, span)
+        call der_basis_functions(span, u, p, d, m, U_array, nders)
+        ! call print_matrix(nders)
+        do k = 0, du
+            CKi(k+1,:) = 0.0
+            do j = 0, p
+                Cki(k+1,:) = Cki(k+1,:) + nders(k+1,j+1)*P_array(span-p+j+1,:)
+            end do
+        end do
+
+        ! call print_matrix(Cki)
+    end subroutine compute_curve_derivatives_2
+
     subroutine rat_curve_derivs(Pw_array, U_array, p, d, u, CK)
+        ! Algorithm A4.2 from The NURBS Book
         ! Compute C(u) derivatives from Cw(u) derivatives
         ! Input: p, d
         ! Output: CK
@@ -163,44 +222,98 @@ contains
         real, intent(in) :: u
         real, dimension(:,:), intent(in) :: Pw_array
         real, dimension(:), intent(in) :: U_array
-        real, dimension(d+1, p+1), intent(out) :: CK
+        real, dimension(d+1, 2), intent(out) :: CK
         ! real, dimension(:,:), allocatable :: Pw
-        real, dimension(:,:), allocatable :: Pwders
+        real, dimension(:,:), allocatable :: Cwders, Cders, w_ders
         
         integer :: ndims, n, k, i
         real :: bc
 
         real, dimension(d+1,2) :: Aders
         real, dimension(d+1,1) :: wders
-        real, dimension(p+1) :: v
+        real, dimension(2) :: v
 
         n = size(Pw_array,1)
         ndims = size(Pw_array,2)
 
-        allocate(Pwders(d+1, 3))
-        
-        call compute_curve_derivatives(Pw_array, U_array, p, d, u, Pwders)
+        allocate(Cwders(d+1,3))
+        allocate(Cders(d+1,2))
+        allocate(w_ders(d+1,1))
 
-        Aders = Pwders(:,1:2)
-        wders = reshape(Pwders(:,3), shape(wders))
+        call compute_curve_derivatives(Pw_array, U_array, p, d, u, Cwders)
 
+        call geometric_control_points(Cwders, Cders, w_ders)
+
+        CK(1,:) = Cders(1,:)
+
+        Aders = Cwders(:,1:2)
+        wders = reshape(Cwders(:,3), shape(wders))
+
+        ! call print_matrix(Cwders)
+        ! call print_matrix(Aders)
         ! call print_matrix(wders)
 
         do k = 0, d
             v = Aders(k+1,:)
             do i = 1, k
-                call binomial(k, i, bc)
                 if (k >= i) then
-                    v = v - bc*wders(i+1,:)*CK(k+1-i,:)
+                    call binomial(k, i, bc)
+                    v = v - bc*wders(i+1,1)*CK(k+1-i,:)
                 end if
             end do
-            CK(k+1,:) = v/wders(1,:)
+            CK(k+1,:) = v/wders(1,1)
         end do
-
-        ! deallocate(Pwders)
 
         ! call print_matrix(CK)
     end subroutine rat_curve_derivs
+
+    subroutine compute_tangent_vector(Pw_array, U_array, p, u, tang_vec)
+        use utils
+        integer, intent(in) :: p
+        real, intent(in) :: u
+        real, intent(in), dimension(:,:) :: Pw_array
+        real, intent(in), dimension(:) :: U_array
+        real, dimension(:,:), allocatable :: Cwders, Aders, wders
+        real, dimension(2) :: Ci, Cders
+        real, dimension(2), intent(out) :: tang_vec
+
+        integer :: d
+
+        d = 1
+
+        allocate(Cwders(d+1,3))
+        allocate(Aders(d+1,2))
+        allocate(wders(d+1,1))
+
+        call compute_curve_derivatives(Pw_array, U_array, p, d, u, Cwders)
+        Aders = Cwders(:,1:2)
+        wders = reshape(Cwders(:,3), shape(wders))
+
+        Ci = Aders(1,:)/wders(1,1)
+
+        Cders = (Aders(d+1,:) - wders(d+1,1)*Ci)/wders(1,1)
+        tang_vec = Cders
+        ! call print_row_vector(Cders)
+    end subroutine
+
+    subroutine compute_tangent_vector_2(P_array, U_array, p, u, tang_vec)
+        use utils
+        integer, intent(in) :: p
+        real, intent(in) :: u
+        real, intent(in), dimension(:,:) :: P_array
+        real, intent(in), dimension(:) :: U_array
+        real, dimension(:,:), allocatable :: Cders
+        real, dimension(2), intent(out) :: tang_vec
+
+        integer :: d
+
+        d = 1
+
+        allocate(Cders(d+1,2))
+
+        call compute_curve_derivatives_2(P_array, U_array, p, d, u, Cders)
+        tang_vec = Cders(d+1,:)
+    end subroutine compute_tangent_vector_2
 
     subroutine create_tangent_curve(P_array, w_array, U_array, p, dcpts)
         use utils
@@ -209,8 +322,9 @@ contains
         real, intent(in), dimension(:,:) :: w_array
         real, intent(in), dimension(:) :: U_array
         real, intent(out), dimension(:,:), allocatable :: dcpts
-        real, dimension(:,:), allocatable :: CKi
+        real, dimension(:,:), allocatable :: Cwders, Aders, wders
         real, dimension(:,:), allocatable :: Pw
+        real, dimension(2) :: Ci, Cders
 
         integer :: num_points, m, n, d, i
         real :: U_min, U_max, u
@@ -227,13 +341,23 @@ contains
 
         allocate(dcpts(num_points+1, 2))
 
-        allocate(Cki(d+1,2))
+        allocate(Cwders(d+1,2))
+        allocate(Aders(d+1,2))
+        allocate(wders(d+1,2))
 
         do i = 1, num_points+1
             u = ((U_max - U_min)/num_points)*(i-1) + U_min
-            call rat_curve_derivs(Pw, U_array, p, d, u, CKi)
-            dcpts(i,1) = CKi(1,1)
-            dcpts(i,2) = CKi(1,2)
+            ! call rat_curve_derivs(Pw, U_array, p, d, u, CKi)
+            call compute_curve_derivatives(Pw, U_array, p, d, u, Cwders)
+            Aders = Cwders(:,1:2)
+            wders = reshape(Cwders(:,3), shape(wders))
+
+            Ci = Aders(1,:)/wders(1,1)
+
+            Cders = (Aders(d+1,:) - wders(d+1,1)*Ci)/wders(1,1)
+
+            dcpts(i,1) = Cders(1)
+            dcpts(i,2) = Cders(2)
             ! call print_matrix(Cki)
         end do
     end subroutine create_tangent_curve

@@ -1,7 +1,7 @@
 module utils
     implicit none
 contains
-    subroutine linspace(min_val, max_val, num_points, ndim, vec)
+    subroutine linspace_real(min_val, max_val, num_points, ndim, vec)
         real, intent(in) :: min_val, max_val
         integer, intent(in) :: num_points, ndim
         real, dimension(:,:), intent(out), allocatable :: vec
@@ -14,8 +14,32 @@ contains
         do i = 1, num_points
             vec(i,1) = ((max_val - min_val)/(num_points-1))*(i-1) + min_val
         end do
-    end subroutine linspace
+    end subroutine linspace_real
 
+    subroutine linspace_intg(min_val, max_val, step, vec)
+        integer, intent(in) :: min_val, max_val
+        integer, intent(in) :: step
+        integer, dimension(:), intent(out), allocatable :: vec
+        integer :: i, num_points
+
+        num_points = (max_val-min_val)/step + 1
+        allocate(vec(num_points))
+
+        do i = 1, num_points
+            vec(i) = min_val + step*(i-1)
+        end do
+    end subroutine linspace_intg
+
+    subroutine print_integer(num)
+        integer, intent(in) :: num
+        print "(I3)", num
+    end subroutine print_integer
+
+    subroutine print_real(num)
+        real, intent(in) :: num
+        print "(F6.3)", num
+    end subroutine print_real
+    
     subroutine print_matrix(mat)
         real, intent(in) :: mat(:,:)
         integer :: num_rows, num_cols, i, j
@@ -25,7 +49,8 @@ contains
 
         print *, "===================="
         do i = 1, num_rows
-            print '(*(3X, f8.5))', (mat(i,j), j=1,num_cols)
+            ! print '(*(3X, f8.5))', (mat(i,j), j=1,num_cols)
+            print '(*(3X, f15.4))', (mat(i,j), j=1,num_cols)
         end do
         print *, "===================="
     end subroutine print_matrix
@@ -37,9 +62,31 @@ contains
         num_cols = size(row_vec,1)
 
         print *, "===================="
-        print '(*(3X, f8.5))', (row_vec(i), i=1,num_cols)
+        print '(*(3X, F8.5))', (row_vec(i), i=1,num_cols)
         print *, "===================="
     end subroutine print_row_vector
+
+    subroutine print_row_vector_intg(row_vec)
+        integer, intent(in) :: row_vec(:)
+        integer :: i, num_cols
+
+        num_cols = size(row_vec,1)
+
+        print *, "===================="
+        print '(*(3X, I5))', (row_vec(i), i=1,num_cols)
+        print *, "===================="
+    end subroutine print_row_vector_intg
+
+    subroutine print_row_vector_bool(row_vec)
+        logical, intent(in) :: row_vec(:)
+        integer :: i, num_cols
+
+        num_cols = size(row_vec,1)
+
+        print *, "===================="
+        print '(*(3X, L5))', (row_vec(i), i=1,num_cols)
+        print *, "===================="
+    end subroutine print_row_vector_bool
 
     subroutine print_column_vector(col_vec)
         real, intent(in) :: col_vec(:,:)
@@ -49,7 +96,7 @@ contains
 
         print *, "===================="
         do i = 1, num_rows
-            print '((3X, f9.5))', col_vec(i, 1)
+            print '((3X, f15.3))', col_vec(i, 1)
         end do
         print *, "===================="
     end subroutine print_column_vector

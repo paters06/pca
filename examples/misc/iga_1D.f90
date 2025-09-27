@@ -11,6 +11,8 @@ program iga_1D
     real, dimension(:), allocatable :: U_reduced
     real, dimension(:,:), allocatable :: control_points, weight_ctrl_pts, Kmat, Fvec
     real, dimension(:,:), allocatable :: Usol, solution_points, solution_weights, cpts, theo_vals
+    integer, dimension(3,2) :: array
+    ! integer, dimension(5,2) :: array
     
 
     L = 10.0
@@ -23,18 +25,19 @@ program iga_1D
 
     numGaussPoints = 3
 
-    ! Uinit = (/0.,0.,0.5,1.,1./)
+    Uinit = (/0.,0.,0.5,1.,1./)
     ! Uinit = (/0., 0., 0.25, 0.5, 0.75, 1., 1./)
     ! Uinit = (/0., 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1., 1./)
-    ! p = 1
-    Uinit = (/0., 0., 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1., 1., 1./)
-    p = 2
+    p = 1
+    ! Uinit = (/0., 0., 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1., 1., 1./)
+    ! p = 2
+    ! Uinit = (/0.,0.,0.,1.,1.,1./)
+    ! p = 2
 
     num_knots = size(Uinit)
     num_control_points = size(Uinit) - p - 1
 
     U_reduced = Uinit(p+1:num_knots-p)
-    call print_row_vector(U_reduced)
 
     id_load = num_control_points
 
@@ -45,18 +48,23 @@ program iga_1D
 
     call linspace(0., L, num_control_points, 2, control_points)
     weight_ctrl_pts(:,1) = 1.0
+    ! control_points=reshape((/1.,1.,0.,0.,1.,1./),shape(array))
+    ! weight_ctrl_pts(:,1) = (/1.,1.,2./)
+    ! control_points=reshape((/0., 1., 3., 4., 5., 0., 1., 2., 1., -1./),shape(array))
+    ! weight_ctrl_pts(:,1) = (/1., 4., 1., 1., 1./)
 
+    call print_row_vector(U_reduced)
     ! call print_matrix(control_points)
 
     call assemble_weak_form(control_points, weight_ctrl_pts, Uinit, U_reduced, p, numGaussPoints, E, I, tx, id_load, Kmat, Fvec)
 
     call solve_matrix_equations(Kmat, Fvec, id_disp, Usol)
 
-    solution_points(:,1) = control_points(:,1)
-    solution_points(:,2) = Usol(:,1)
-    solution_weights(:,1) = 1.0
+    ! solution_points(:,1) = control_points(:,1)
+    ! solution_points(:,2) = Usol(:,1)
+    ! solution_weights(:,1) = 1.0
 
-    call compute_field_solution(Uinit, p, solution_points, solution_weights, cpts)
+    ! call compute_field_solution(Uinit, p, solution_points, solution_weights, cpts)
 
     ! call print_matrix(cpts)
 end program iga_1D
