@@ -1,5 +1,5 @@
 import numpy as np
-import pca_01 as pca
+import pca
 import nurbs as rbs
 import plottingScripts as plts
 import matplotlib.pyplot as plt
@@ -101,16 +101,16 @@ Uinp = np.array([0,0,0,1,1,1])
 # option = 1
 # numberToScript(Uinp,pinp,Pinp,winp,option)
 
-# reflist = ['k']
+reflist = ['p']
 # reflist = ['h','p']
 # reflist = ['k','h','h']
 Uref,pref,Pref,wref = crfn.curveRefinement(reflist,Uinp,pinp,Pinp,winp)
 # print(Uref)
 # print(pref)
 
-cx,cy = rbs.nurbsCurve(Uinp,pinp,Pinp,winp)
-cxref,cyref = rbs.nurbsCurve(Uref,pref,Pref,wref)
+# cx,cy = rbs.nurbsCurve(Uinp,pinp,Pinp,winp)
+# cxref,cyref = rbs.nurbsCurve(Uref,pref,Pref,wref)
 
 # plts.plotCurve2d(cx,cy,Pinp)
 # plts.plotCurve2d(cxref,cyref,Pref)
-plts.plotCurveRefinement(cx,cy,cxref,cyref,Pinp,Pref)
+# plts.plotCurveRefinement(cx,cy,cxref,cyref,Pinp,Pref)

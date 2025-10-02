@@ -2,10 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # import src.spline_functions.basisFunctions as bfunc
-# from src.spline_functions.basisFunctions import find_knot_interval
-# from src.spline_functions.basisFunctions import basis_function
-# from src.spline_functions.basisFunctions import der_basis_function
+from src.spline_functions.basisFunctions import find_knot_interval
+from src.spline_functions.basisFunctions import basis_function
+from src.spline_functions.basisFunctions import der_basis_function
 from src.spline_functions.basisFunctions import one_basis_function
+
 from src.spline_functions.nurbs import NURBSObject
 
 # F2py imported modules
@@ -41,16 +42,16 @@ class NURBSCurve(NURBSObject):
 
         self.cpts = np.zeros((numpoints,2))
 
-        # mu = len(self.U) - 1
-        # nu = mu - self.p - 1
+        mu = len(self.U) - 1
+        nu = mu - self.p - 1
         idx = np.arange(0,self.p+1)
 
         for i in range(len(urank)):
-            # uspan = find_knot_interval(nu,self.p,urank[i],self.U)
-            uspan = bspline_basis_functions.find_span(self.p, urank[i], self.U)
+            uspan = find_knot_interval(nu,self.p,urank[i],self.U)
+            # uspan = bspline_basis_functions.find_span(self.p, urank[i], self.U)
             idxU = uspan + idx - self.p
-            # nbas = basis_function(uspan,urank[i],self.p,self.U)
-            nbas = bspline_basis_functions.basis_function(uspan, urank[i], self.p, self.U)
+            nbas = basis_function(uspan,urank[i],self.p,self.U)
+            # nbas = bspline_basis_functions.basis_function(uspan, urank[i], self.p, self.U)
 
             nbas = np.reshape(nbas,(1,len(nbas)))
 
@@ -91,20 +92,20 @@ class NURBSCurve(NURBSObject):
 
         Pw = self.weightedControlPoints(self.P,self.w)
 
-        # mu = len(self.U) - 1
-        # nu = mu - self.p - 1
+        mu = len(self.U) - 1
+        nu = mu - self.p - 1
         idx = np.arange(0,self.p+1)
 
         # Derivative order
         d = 1
 
         for i in range(len(urank)):
-            # uspan = find_knot_interval(nu,self.p,urank[i],self.U)
-            uspan = bspline_basis_functions.find_span(self.p, urank[i], self.U)
+            uspan = find_knot_interval(nu,self.p,urank[i],self.U)
+            # uspan = bspline_basis_functions.find_span(self.p, urank[i], self.U)
             idxU = uspan + idx - self.p
             # nbas = basis_function(uspan,urank[i],self.p,self.U)
-            # dnbasU = der_basis_function(uspan,urank[i],mu,self.p,self.U,d)
-            dnbasU = bspline_basis_functions.der_basis_functions(uspan, urank[i], self.p, d, self.U)
+            dnbasU = der_basis_function(uspan,urank[i],mu,self.p,self.U,d)
+            # dnbasU = bspline_basis_functions.der_basis_functions(uspan, urank[i], self.p, d, self.U)
 
             # Hughes' way
             Aders = dnbasU*Pw[idxU,-1].T

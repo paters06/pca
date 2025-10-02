@@ -10,7 +10,7 @@ contains
 
         bc = 1.0
         do j = 1, b
-            bc = bc*((a+1-j)/j)
+            bc = bc*((real(a)+1.-real(j))/real(j))
         end do
     end subroutine binomial
     
@@ -51,10 +51,11 @@ contains
     end subroutine geometric_control_points
 
     subroutine curve_point(n, p, m, U_arr, Pw, u, C)
+        ! Algoritm A4.1 from the NURBS book
         ! Compute point on rational B-spline curve
         ! Input: n, p, U, Pw, u
-        ! n is the number of control points
-        ! m is the number of knots
+        ! n+1 is the number of control points
+        ! m+1 is the number of knots
         ! N has p+1 nonzero elements
         ! Output: C
         use bspline_basis_functions
@@ -63,9 +64,9 @@ contains
         integer, intent(in) :: p
         integer, intent(in) :: m
         real, intent(in) :: u
-        real, dimension(m), intent(in) :: U_arr
-        real, dimension(n,3), intent(in) :: Pw
-        real, dimension(p+1) :: N_arr
+        real, dimension(0:m), intent(in) :: U_arr
+        real, dimension(0:n,0:2), intent(in) :: Pw
+        real, dimension(0:p) :: N_arr
         real, dimension(2) :: Cw
         real :: w
         real, dimension(2), intent(out) :: C
@@ -79,8 +80,8 @@ contains
         w = 0.0
 
         do j = 0, p
-            Cw = Cw + N_arr(j+1)*Pw(span-p+j+1,1:2)
-            w = w + N_arr(j+1)*Pw(span-p+j+1,3)
+            Cw = Cw + N_arr(j)*Pw(span-p+j,0:1)
+            w = w + N_arr(j)*Pw(span-p+j,2)
         end do
 
         C = Cw/w
@@ -99,8 +100,8 @@ contains
         real, dimension(:), allocatable :: Ci
 
         num_points = 41
-        n = size(P_array, 1)
-        m = size(U_array)
+        n = size(P_array, 1) - 1
+        m = size(U_array) - 1
         U_max = maxval(U_array)
         U_min = minval(U_array)
 
@@ -139,24 +140,24 @@ contains
         integer :: du, span, k, j, m
         real, dimension(:,:), allocatable :: nders
 
-        allocate(Cki(d+1,3))
+        allocate(Cki(0:d,0:2))
 
         du = min(d, p)
         do k = p+1, d
-            Cki(k+1,:) = 0.0
+            Cki(k,:) = 0.0
         end do
 
-        m = size(U_array,1)
+        m = size(U_array,1) - 1
 
-        allocate(nders(d+1,p+1))
+        allocate(nders(0:d,0:p))
 
         call find_span(m, p, u, U_array, span)
         call der_basis_functions(span, u, p, d, m, U_array, nders)
         ! call print_matrix(nders)
         do k = 0, du
-            CKi(k+1,:) = 0.0
+            CKi(k,:) = 0.0
             do j = 0, p
-                Cki(k+1,:) = Cki(k+1,:) + nders(k+1,j+1)*Pw_array(span-p+j+1,:)
+                Cki(k,:) = Cki(k,:) + nders(k,j)*Pw_array(span-p+j,:)
             end do
         end do
 
@@ -185,24 +186,24 @@ contains
         integer :: du, span, k, j, m
         real, dimension(:,:), allocatable :: nders
 
-        allocate(Cki(d+1,3))
+        allocate(Cki(0:d,0:2))
 
         du = min(d, p)
         do k = p+1, d
-            Cki(k+1,:) = 0.0
+            Cki(k,:) = 0.0
         end do
 
-        m = size(U_array,1)
+        m = size(U_array,1) - 1
 
-        allocate(nders(d+1,p+1))
+        allocate(nders(0:d,0:p))
 
         call find_span(m, p, u, U_array, span)
         call der_basis_functions(span, u, p, d, m, U_array, nders)
         ! call print_matrix(nders)
         do k = 0, du
-            CKi(k+1,:) = 0.0
+            CKi(k,:) = 0.0
             do j = 0, p
-                Cki(k+1,:) = Cki(k+1,:) + nders(k+1,j+1)*P_array(span-p+j+1,:)
+                Cki(k,:) = Cki(k,:) + nders(k,j)*P_array(span-p+j,:)
             end do
         end do
 
@@ -222,46 +223,47 @@ contains
         real, intent(in) :: u
         real, dimension(:,:), intent(in) :: Pw_array
         real, dimension(:), intent(in) :: U_array
-        real, dimension(d+1, 2), intent(out) :: CK
+        real, dimension(0:d, 0:1), intent(out) :: CK
         ! real, dimension(:,:), allocatable :: Pw
         real, dimension(:,:), allocatable :: Cwders, Cders, w_ders
+        ! real, dimension(:), allocatable :: w_ders
         
         integer :: ndims, n, k, i
         real :: bc
 
-        real, dimension(d+1,2) :: Aders
-        real, dimension(d+1,1) :: wders
-        real, dimension(2) :: v
+        real, dimension(0:d,0:1) :: Aders
+        real, dimension(0:d) :: wders
+        real, dimension(0:1) :: v
 
         n = size(Pw_array,1)
         ndims = size(Pw_array,2)
 
-        allocate(Cwders(d+1,3))
-        allocate(Cders(d+1,2))
-        allocate(w_ders(d+1,1))
+        allocate(Cwders(0:d,0:2))
+        allocate(Cders(0:d,0:1))
+        allocate(w_ders(0:d,0))
 
         call compute_curve_derivatives(Pw_array, U_array, p, d, u, Cwders)
 
         call geometric_control_points(Cwders, Cders, w_ders)
 
-        CK(1,:) = Cders(1,:)
+        CK(0,:) = Cders(0,:)
 
-        Aders = Cwders(:,1:2)
-        wders = reshape(Cwders(:,3), shape(wders))
+        Aders = Cwders(:,0:1)
+        wders = reshape(Cwders(:,2), shape(wders))
 
         ! call print_matrix(Cwders)
         ! call print_matrix(Aders)
         ! call print_matrix(wders)
 
         do k = 0, d
-            v = Aders(k+1,:)
+            v = Aders(k,:)
             do i = 1, k
                 if (k >= i) then
                     call binomial(k, i, bc)
-                    v = v - bc*wders(i+1,1)*CK(k+1-i,:)
+                    v = v - bc*wders(i)*CK(k+1,:)
                 end if
             end do
-            CK(k+1,:) = v/wders(1,1)
+            CK(k,:) = v/wders(1)
         end do
 
         ! call print_matrix(CK)

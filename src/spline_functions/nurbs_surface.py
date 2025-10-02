@@ -1,10 +1,10 @@
 import numpy as np
 
-# from src.spline_functions.basisFunctions import find_knot_interval
+from src.spline_functions.basisFunctions import find_knot_interval
 from src.spline_functions.nurbs import NURBSObject
 
 # F2py imported modules
-from bspline_basis_functions_pmod import bspline_basis_functions  # noqa: E402
+# from bspline_basis_functions_pmod import bspline_basis_functions  # noqa: E402
 
 class NURBSSurface(NURBSObject):
     """
@@ -43,17 +43,17 @@ class NURBSSurface(NURBSObject):
 
     def point_in_surface(self,upt,vpt):
         mu = len(self.U) - 1
-        # mv = len(self.V) - 1
+        mv = len(self.V) - 1
         nu = mu - self.p - 1
-        # nv = mv - self.q - 1
+        nv = mv - self.q - 1
 
         Pwl = self.weightedControlPoints(self.P,self.w)
         Pw = self.listToGridControlPoints(Pwl,self.U,self.V,self.p,self.q)
 
-        # uspan = find_knot_interval(nu,self.p,upt,self.U)
-        # vspan = find_knot_interval(nv,self.q,vpt,self.V)
-        uspan = bspline_basis_functions.find_span(self.p, upt, self.U)
-        vspan = bspline_basis_functions.find_span(self.q, vpt, self.V)
+        uspan = find_knot_interval(nu,self.p,upt,self.U)
+        vspan = find_knot_interval(nv,self.q,vpt,self.V)
+        # uspan = bspline_basis_functions.find_span(self.p, upt, self.U)
+        # vspan = bspline_basis_functions.find_span(self.q, vpt, self.V)
 
         idR = self.nonZeroIndicesElement(uspan,vspan,self.p,self.q,nu)
 
@@ -84,10 +84,10 @@ class NURBSSurface(NURBSObject):
 
         for j in range(len(vrank)):
             for i in range(len(urank)):
-                # uspan = find_knot_interval(nu,self.p,urank[i],self.U)
-                # vspan = find_knot_interval(nv,self.q,vrank[j],self.V)
-                uspan = bspline_basis_functions.find_span(self.p, urank[i], self.U)
-                vspan = bspline_basis_functions.find_span(self.q, vrank[i], self.V)
+                uspan = find_knot_interval(nu,self.p,urank[i],self.U)
+                vspan = find_knot_interval(nv,self.q,vrank[j],self.V)
+                # uspan = bspline_basis_functions.find_span(self.p, urank[i], self.U)
+                # vspan = bspline_basis_functions.find_span(self.q, vrank[i], self.V)
 
                 idR = self.nonZeroIndicesElement(uspan,vspan,self.p,self.q,nu)
 
