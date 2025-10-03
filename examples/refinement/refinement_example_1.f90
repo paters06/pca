@@ -10,9 +10,17 @@ program refinement_example_1
     integer :: pinp
     real :: u
 
-    allocate(P_pts(3,2))
-    P_pts = reshape((/(/1,1,0,0,1,1/)/),(/size(P_pts,1),size(P_pts,2)/))
-    w_pts = reshape((/1.,sqrt(2.),1./), (/size(P_pts,1), 1/))
+    integer :: size_1, size_2, size_vec
+
+    size_1 = 3
+    size_2 = 2
+    size_vec = 6
+
+    allocate(P_pts(0:size_1-1,0:size_2-1))
+    allocate(w_pts(0:size_1-1,0))
+    allocate(U_knot(0:size_vec-1))
+    P_pts = reshape((/(/1,1,0,0,1,1/)/),(/size_1,size_2/))
+    w_pts = reshape((/1.,sqrt(2.),1./), (/size_1, 1/))
     pinp = 2
     U_knot = (/0,0,0,1,1,1/)
 

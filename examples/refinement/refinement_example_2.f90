@@ -1,4 +1,4 @@
-program refinement_example_1
+program refinement_example_2
     use utils
     use curve_refinement
     use nurbs_curve
@@ -20,7 +20,6 @@ program refinement_example_1
     allocate(w_pts(0:size_1-1,0))
     allocate(U_knot(0:size_vec-1))
     P_pts = reshape((/(/1,1,0,0,1,1/)/),(/size_1,size_2/))
-    ! P_pts = (/1,1,0,0,1,1/)
     w_pts = reshape((/1.,sqrt(2.),1./), (/size_1, 1/))
     pinp = 2
     U_knot = (/0,0,0,1,1,1/)
@@ -48,4 +47,4 @@ program refinement_example_1
 
     call assess_refinement(cpts_1, cpts_2)
 
-end program refinement_example_1
+end program refinement_example_2
