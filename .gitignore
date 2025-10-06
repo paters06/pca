@@ -129,3 +129,7 @@ dmypy.json
 .pyre/
 .vscode/settings.json
 .vscode/launch.json
+examples/refinement/refinement_example_1
+examples/refinement/refinement_example_2
+examples/refinement/refinement_example_3
+src/spline_functions/curve_refinement.mod

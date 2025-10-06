@@ -2,11 +2,12 @@ import matplotlib.pyplot as plt
 # import matplotlib.tri as tri
 from matplotlib.tri import Triangulation
 from matplotlib.tri import TriAnalyzer
-from matplotlib.tri import UniformTriRefiner
+# from matplotlib.tri import UniformTriRefiner
 import numpy as np
-from scipy.interpolate import griddata
+# from scipy.interpolate import griddata
+import sys
 
-from mpl_toolkits.mplot3d import Axes3D
+# from mpl_toolkits.mplot3d import Axes3D
 
 ####################################################
 ##################### PLOTS ########################
@@ -15,7 +16,7 @@ from mpl_toolkits.mplot3d import Axes3D
 ##################### IGA 1D ########################
 
 def plotCurve1d(cx,uy,*argv):
-    fig = plt.figure()
+    # fig = plt.figure()
     plt.plot(cx,uy)
     if argv != ():
         if argv[0] == 'yes':
@@ -26,7 +27,7 @@ def plotCurve1d(cx,uy,*argv):
         plt.show()
 
 def plotComparisonCurves(cx,cy,cey,field):
-    fig = plt.figure()
+    # fig = plt.figure()
     plt.plot(cx,cy)
     plt.plot(cx,cey)
 
@@ -44,7 +45,7 @@ def plotComparisonCurves(cx,cy,cey,field):
     plt.show()
 
 def plot1DField(cx,uy,field,*argv):
-    fig = plt.figure()
+    # fig = plt.figure()
     plt.plot(cx,uy)
 
     plt.xlabel('Distance [m]')
@@ -68,7 +69,7 @@ def plot1DField(cx,uy,field,*argv):
 ##################### INTERPOLATION ########################
 
 def plotInterpolatedCurve(cx,cy,P,Q):
-    fig = plt.figure()
+    # fig = plt.figure()
     plt.plot(cx,cy)
     plt.plot(P[0,:],P[1,:],'ro')
     plt.plot(P[0,:],P[1,:])
@@ -79,7 +80,8 @@ def plotInterpolatedCurve(cx,cy,P,Q):
 
 def plotting3d(cx,cy,cz,*argv):
     fig = plt.figure()
-    ax = plt.axes(projection='3d')
+    ax = fig.add_subplot(111, projection='3d')
+    # ax = plt.axes(projection='3d')
     ax.plot3D(cx, cy, cz, 'gray')
     if argv != ():
         if argv[0]=='on':
@@ -110,7 +112,7 @@ def plotting2DField(cx,cy,fz,*argv):
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_title(titlestring)
-    # cb.set_label(colorbarstring)
+    cb.set_label(colorbarstring)
     plt.show()
 
 
@@ -131,7 +133,7 @@ def plot_multipatch_field(fullc, fullf, comp, *argv):
     Fix the refiner implementation
     """
     min_circle_ratio = 0.2
-    subdiv = 3
+    # subdiv = 3
     titlestring = ""
     colorbarstring = ""
 
@@ -170,7 +172,7 @@ def plotMultipatchField(fullc,fullf,comp,*argv):
     cmap = 'viridis'
     # cmap = 'RdBu_r'
     num_levels = 20
-    field = ax.tricontour(fullc[:,0], fullc[:,1], fullf[:,comp], levels=num_levels, linewidths=0.5, colors='k')
+    # field = ax.tricontour(fullc[:,0], fullc[:,1], fullf[:,comp], levels=num_levels, linewidths=0.5, colors='k')
     cntr2 = ax.tricontourf(fullc[:,0], fullc[:,1], fullf[:,comp], levels=num_levels, cmap=cmap)
     # ax.plot(fullc[:,0], fullc[:,1], 'ko', ms=3)
 
@@ -186,7 +188,7 @@ def plotMultipatchField(fullc,fullf,comp,*argv):
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_title(titlestring)
-    # cb.set_label(colorbarstring)
+    cb.set_label(colorbarstring)
     plt.show()
 
 ##################### SURFACE REFINEMENT ########################

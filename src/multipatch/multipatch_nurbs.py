@@ -4,8 +4,8 @@ import numpy.linalg
 import matplotlib.pyplot as plt
 
 # Local project
-import src.basisFunctions as bfunc
-from src.nurbs import NURBSCurve
+import src.spline_functions.basisFunctions as bfunc
+from src.nurbs_curve import NURBSCurve
 
 class MultiPatchNURBSCurve():
     def __init__(self, curve1: NURBSCurve, curve2: NURBSCurve) -> None:

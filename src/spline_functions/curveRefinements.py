@@ -1,6 +1,8 @@
 import numpy as np
 import nurbs as rbs
 
+from src.spline_functions.nurbs_curve import NURBSCurve
+
 tol = 1e-5
 
 def findKnotIndex(U,u):
@@ -304,8 +306,13 @@ def degreeElevation(U,p,Pw,t):
     #Big loop through knot vector
     while b < m:
         i = b
+        # print(b, m)
+        
         while b < m and abs(U[b+1] - U[b]) < 1e-5:
+            print(b, m)
             b += 1
+            print(b)
+        print("Out")
 
         mul = b - i + 1
         mh += mul + t
@@ -433,10 +440,16 @@ def hRefinement(U,p,P,w):
 
 #Degree Elevation
 def pRefinement(U,p,P,w):
-    Pw = rbs.weightedControlPoints(P,w)
+    # Pw = rbs.weightedControlPoints(P,w)
+    Pw = np.hstack((P,np.ones((P.shape[0],1))))
+    Pw *= w
     t = 1
     Qp,Up,pp = degreeElevation(U,p,Pw,t)
-    Pp,wp = rbs.geometricControlPoints(Qp)
+    # Pp,wp = rbs.geometricControlPoints(Qp)
+
+    wp = Qp[:,-1]
+    wp = np.reshape(wp,(len(wp),1))
+    Pp = Qp[:,:-1]/p
 
     return Up,pp,Pp,wp
 
