@@ -1,0 +1,13 @@
+**START**
+*GEOMETRY
+*CONTROL_POINTS
+1.0, 0.0, 1.0
+1.0, 1.0, 1.414
+0.0, 1.0, 1.0
+*p_ORDER
+2
+*U_KNOT
+0.0, 0.0, 0.0, 1.0, 1.0, 1.0
+*REFN_U
+h, h
+**END**

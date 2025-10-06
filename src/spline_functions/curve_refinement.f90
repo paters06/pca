@@ -562,7 +562,7 @@ contains
         Uprev_knot = U_knot
 
         do i = 1, size(ref_list)
-            print *, ref_list(i)
+            ! print *, ref_list(i)
             if (ref_list(i) == 'h') then
                 ! Uout,pout,Pout,wout = hRefinement(Uin,pin,Pin,win)
                 call h_refinement(pprev, Pprev_pts, wprev_pts, Uprev_knot, pref, Pref_pts, wref_pts, Uref)
