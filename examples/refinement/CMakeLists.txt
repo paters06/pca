@@ -1,0 +1,3 @@
+add_executable(refinement_example_4_2 refinement_example_4.f90)
+target_include_directories(refinement_example_4_2 PUBLIC $<TARGET_PROPERTY:spline_mod,Fortran_MODULE_DIRECTORY>)
+target_link_libraries(refinement_example_4_2 PRIVATE spline_mod)
