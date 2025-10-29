@@ -1,1 +1,1 @@
-add_library(spline_mod utils.f90 curve_refinement.f90 bspline_basis_functions.f90 nurbs_curve_module.f90)
+add_library(spline_mod input_output.f90 utils.f90 curve_refinement.f90 bspline_basis_functions.f90 nurbs_curve_module.f90 nurbs_surface_module.f90 surface_refinement.f90)

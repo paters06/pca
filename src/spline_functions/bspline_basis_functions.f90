@@ -4,7 +4,8 @@ contains
     subroutine find_span(m, p, u, U_arr, mid)
         ! Algorithm A2.1 from The NURBS Book
         ! Determine knot span index
-        ! Input: n, p, u, U
+        ! Input: m, p, u, U
+        ! m+1 is the number of elements of the knot vector
         ! Return: the knot span index
         implicit none
     
