@@ -101,6 +101,21 @@ contains
         print *, "===================="
     end subroutine print_column_vector
 
+    subroutine print_string_matrix(str_mat)
+        character(len=*), dimension(:,:), intent(in) :: str_mat
+        integer :: num_rows, num_cols, i, j
+
+        num_rows = size(str_mat,1)
+        num_cols = size(str_mat,2)
+
+        print *, "===================="
+        do i = 1, num_rows
+            ! print '(*(3X, f8.5))', (mat(i,j), j=1,num_cols)
+            print '(*(1X, A))', (str_mat(i,j), j=1,num_cols)
+        end do
+        print *, "===================="
+    end subroutine print_string_matrix
+
     subroutine export_matrix(mat, file_name)
         ! This function is to be generalized for more than two columns
         real, intent(in) :: mat(:,:)

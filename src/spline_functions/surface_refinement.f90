@@ -238,7 +238,7 @@ contains
                 Ubar(j) = UP(j)
             end do
     
-            do j = b+p, mp
+            do j = b+p, rp
                 Ubar(j+r+1) = UP(j)
             end do
 
@@ -317,7 +317,7 @@ contains
                 Vbar(j) = VP(j)
             end do
     
-            do j = b+p, np
+            do j = b+p, sp
                 Vbar(j+r+1) = VP(j)
             end do
 
@@ -387,7 +387,7 @@ contains
     subroutine surface_degree_elevation
     end subroutine surface_degree_elevation
 
-    subroutine surface_h_refinement(p, q, P_pts, w_pts, UP, VP, dir, ph, Ph_pts, wh_pts, Ubar, Vbar)
+    subroutine surface_h_refinement(p, q, P_pts, w_pts, UP, VP, ref_list, ph, Ph_pts, wh_pts, Ubar, Vbar)
         ! Input: 
         !   p: previous spline degree
         !   P_pts: previous control points
@@ -405,7 +405,8 @@ contains
         real, dimension(:,:), intent(in) :: P_pts
         real, dimension(:,:), intent(in) :: w_pts
         real, dimension(0:), intent(in) :: UP, VP
-        character(len=*), intent(in) :: dir
+        ! character(len=*), intent(in) :: dir
+        character(len=*), dimension(:,:), allocatable, intent(in) :: ref_list
         integer, intent(out) :: ph
         real, dimension(:,:), allocatable, intent(out) :: Ph_pts
         real, dimension(:,:), allocatable, intent(out) :: wh_pts
@@ -413,8 +414,9 @@ contains
 
         real, dimension(:), allocatable :: Ured, Vred, X_array
         real, dimension(:,:), allocatable :: Pw_pts, Qw_pts
-        integer :: np, mp, mred, nq, mq, nred, r, s, nu, nv
+        integer :: np, mp, mred, nq, mq, nred, r, s, nu, nv, i
         real, dimension(:,:,:), allocatable :: Pw_net, Qw_net
+        character(:), allocatable :: dir
 
         r = size(UP) - 1
         s = size(VP) - 1
@@ -438,11 +440,23 @@ contains
         
         ! X_array = 0.5*(Ured(0:mred-1) + Ured(1:mred))
         
-        if (dir == "U") then
-            Ured = UP(p:r-p)
-            X_array = 0.5*(Ured(0:mred-1) + Ured(1:mred))
+        do i = 1, size(ref_list,1)
+            dir = ref_list(i,1)
+            if (dir == "U") then
+                Ured = UP(p:r-p)
+                X_array = 0.5*(Ured(0:mred-1) + Ured(1:mred))
+            else if (dir == "V") then
+                Vred = VP(q:s-q)
+                X_array = 0.5*(Vred(0:nred-1) + Vred(1:nred))
+            end if
             call surface_knot_refinement(p, UP, q, VP, Pw_net, X_array, dir, Ubar, Vbar, Qw_net)
-        end if
+        end do
+
+        ! if (ref_list(1,1) == "U") then
+        !     Ured = UP(p:r-p)
+        !     X_array = 0.5*(Ured(0:mred-1) + Ured(1:mred))
+        !     call surface_knot_refinement(p, UP, q, VP, Pw_net, X_array, "U", Ubar, Vbar, Qw_net)
+        ! end if
 
         call create_control_list(Qw_net, Qw_pts)
         call geometric_control_points(Qw_pts, Ph_pts, wh_pts)

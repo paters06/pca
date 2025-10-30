@@ -18,7 +18,8 @@ program refinement_example_7
     integer :: p, q, pref, qref
     integer :: size_1, size_2, size_vec_1, size_vec_2
     
-    character(len=1), dimension(:), allocatable :: ref_list
+    ! character(len=1), dimension(:), allocatable :: ref_list
+    character(len=1), dimension(:,:), allocatable :: ref_list
 
     character :: dir
     integer :: r, s, nu, nv
@@ -58,9 +59,9 @@ program refinement_example_7
 
     call print_matrix(P_pts)
     call print_matrix(w_pts)
-    print *, ref_list
+    call print_string_matrix(ref_list)
 
-    dir = "U"
+    dir = "V"
 
     r = size(UP) - 1
     s = size(VP) - 1
@@ -69,7 +70,7 @@ program refinement_example_7
 
     ! call surface_knot_insertion(p, U_knot, q, V_knot, Pw_net, uv, dir, nq, UQ, mq, VQ, Qw_net)
     ! call surface_knot_refinement(p, UP, q, VP, Pw_net, X_array, dir, Uref, Vref, Pwref_net)
-    call surface_h_refinement(p, q, P_pts, w_pts, UP, VP, dir, pref, Pref_pts, wref_pts, Uref, Vref)
+    call surface_h_refinement(p, q, P_pts, w_pts, UP, VP, ref_list, pref, Pref_pts, wref_pts, Uref, Vref)
 
     call print_matrix(Pref_pts)
     call print_row_vector(Uref)

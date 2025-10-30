@@ -75,7 +75,7 @@ contains
         control_points_label = "*CONTROL_POINTS"
         p_label = "*p_ORDER"
         uknot_label = "*U_KNOT"
-        refinement_label = "*REFN_U"
+        refinement_label = "*REFN"
         end_label = "**END**"
 
         ! label_array = (/control_points_label, p_label, uknot_label, end_label/)
@@ -145,13 +145,14 @@ contains
         integer, intent(out) :: p, q
         real, dimension(:), allocatable, intent(out) :: U_knot, V_knot
         real, dimension(:,:), allocatable, intent(out) :: ctrl_pts
-        character(len=1), dimension(:), allocatable, intent(out), optional :: refn_array
+        ! character(len=1), dimension(:), allocatable, intent(out), optional :: refn_array
+        character(len=1), dimension(:,:), allocatable, intent(out), optional :: refn_array
 
         character(:), allocatable :: format_line, second_format_line
         ! character(len=50), dimension(:), allocatable :: label_array
         character(:), allocatable :: control_points_label, p_label, q_label, uknot_label, vknot_label, end_label, refinement_label
         integer :: i, label_counter
-        integer :: control_points_flag, p_flag, q_flag, uknot_flag, vknot_flag, refinement_flag
+        integer :: control_points_flag, p_flag, q_flag, uknot_flag, vknot_flag, refinement_flag, end_flag
         integer, dimension(:), allocatable :: label_position
 
         format_line = "(A)"
@@ -162,7 +163,7 @@ contains
         q_label = "*q_ORDER"
         uknot_label = "*U_KNOT"
         vknot_label = "*V_KNOT"
-        refinement_label = "*REFN_U"
+        refinement_label = "*REFN"
         end_label = "**END**"
 
         ! label_array = (/control_points_label, p_label, uknot_label, end_label/)
@@ -177,6 +178,7 @@ contains
         uknot_flag = 0
         vknot_flag = 0
         refinement_flag = 0
+        end_flag = 0
 
         do i = 0, size(line_array)-1
             if (control_points_label == line_array(i)) then
@@ -203,6 +205,10 @@ contains
                 label_counter =  label_counter + 1
                 label_position(label_counter) = i
                 refinement_flag = 1
+            else if (end_label == line_array(i)) then
+                label_counter =  label_counter + 1
+                label_position(label_counter) = i
+                end_flag = 1
             end if
         end do
 
@@ -240,7 +246,8 @@ contains
 
         ! Reading refining types
         if (refinement_flag == 1) then
-            call read_row_string(line_array(label_position(6)+1), ",", refn_array)
+            ! call read_row_string(line_array(label_position(6)+1), ",", refn_array)
+            call read_string_matrix(line_array(label_position(6)+1:label_position(7)-1), ",", refn_array)
         end if
 
         ! print *, p
@@ -361,4 +368,36 @@ contains
         allocate(array(num_values))
         array = temp(1:num_values)
     end subroutine read_row_string
+
+    subroutine read_string_matrix(strings, delim, matrix)
+        character(len=*), dimension(:), intent(in) :: strings
+        character(len=*), intent(in) :: delim
+        character(len=*), dimension(:,:), allocatable, intent(out) :: matrix
+
+        character(len=1), dimension(:), allocatable :: array
+        character(len=1), dimension(:,:), allocatable :: temp_matrix
+
+        integer :: i, num_rows
+
+        integer, parameter :: MAX_SIZE = 50
+        
+        num_rows = size(strings)
+        
+        allocate(temp_matrix(num_rows, MAX_SIZE))
+
+        do i = 1, size(strings)
+            ! print "(A)", strings(i)
+            call read_row_string(strings(i), delim, array)
+            temp_matrix(i,1:size(array)) = array
+            ! call print_row_vector(array)
+        end do
+
+        matrix = temp_matrix(:,1:size(array))
+
+        ! do i = 1, size(matrix,1)
+        !     print *, matrix(i,:)
+        ! end do
+        
+        ! call print_matrix(matrix)
+    end subroutine read_string_matrix
 end module input_output
