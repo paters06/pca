@@ -1,0 +1,3 @@
+add_executable(nurbs_surface_example nurbs_surface_example.f90)
+target_include_directories(nurbs_surface_example PUBLIC $<TARGET_PROPERTY:spline_mod,Fortran_MODULE_DIRECTORY>)
+target_link_libraries(nurbs_surface_example PRIVATE spline_mod)

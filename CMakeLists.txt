@@ -10,7 +10,7 @@ enable_language(Fortran)
 # Currently setting the Fortran compiler to use -std=gnu, change this if you
 # want a specific standard
 set(FVERSION "-std=f2008")
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${FVERSION} -g -fbounds-check")
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${FVERSION} -fcheck=all -Wall -g -fbounds-check -Wno-uninitialized")
 
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/src)
 

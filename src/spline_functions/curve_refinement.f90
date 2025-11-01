@@ -5,6 +5,7 @@ contains
         ! Algorithm 5.1 from the NURBS Book
         ! Input: np, p, UP, Pw, u, k, s, r
         ! Output: nq, UQ, Qw_pts
+        ! k: knot span
         ! s: knot multiplicity
         ! r: number of insertions
         use bspline_basis_functions
@@ -118,7 +119,7 @@ contains
         Qw_pts = 0.0
         Ubar = 0.0
 
-        do j = 0, a-p+0
+        do j = 0, a-p
             Qw_pts(j,:) = Pw_pts(j,:)
         end do
 
