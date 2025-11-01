@@ -143,4 +143,17 @@ contains
         end if
 
     end subroutine export_matrix
+
+    subroutine compute_element_midvalues(array, p, midvalues)
+        real, dimension(0:), intent(in) :: array
+        integer, intent(in) :: p
+        real, dimension(:), allocatable, intent(out) :: midvalues
+        integer :: r
+
+        r = size(array) - 1
+
+        allocate(midvalues(0:r-1))
+
+        midvalues = 0.5*(array(p:r-p-1) + array(p+1:r-p))
+    end subroutine compute_element_midvalues
 end module utils

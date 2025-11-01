@@ -302,7 +302,7 @@ contains
             np = size(Pw_net,1) - 1
             mp = size(Pw_net,2) - 1
 
-            sp = np + q + 1
+            sp = mp + q + 1
 
             call find_span(sp, q, X_array(0), VP, a)
             call find_span(sp, q, X_array(num_ref_pts-1), VP, b)
@@ -317,7 +317,7 @@ contains
                 Vbar(j) = VP(j)
             end do
     
-            do j = b+p, sp
+            do j = b+q, sp
                 Vbar(j+r+1) = VP(j)
             end do
 
@@ -329,7 +329,7 @@ contains
                     Qw_net(row,k,:) = Pw_net(row,k,:)
                 end do
 
-                do k = b-1, np
+                do k = b-1, mp
                     Qw_net(row,k+r+1,:) = Pw_net(row,k,:)
                 end do
             end do
@@ -369,7 +369,7 @@ contains
                         end do
                     else
                         alfa = alfa/(Vbar(k+l) - VP(i-q+l))
-                        do row = 0, mp
+                        do row = 0, np
                             Qw_net(row,ind-1,:) = alfa*Qw_net(row,ind-1,:) + (1.0-alfa)*Qw_net(row,ind,:)
                         end do
                     end if
@@ -412,10 +412,10 @@ contains
         real, dimension(:,:), allocatable, intent(out) :: wh_pts
         real, dimension(:), allocatable, intent(out) :: Ubar, Vbar
 
-        real, dimension(:), allocatable :: Ured, Vred, X_array
+        real, dimension(:), allocatable :: X_array, Utemp, Vtemp
         real, dimension(:,:), allocatable :: Pw_pts, Qw_pts
-        integer :: np, mp, mred, nq, mq, nred, r, s, nu, nv, i
-        real, dimension(:,:,:), allocatable :: Pw_net, Qw_net
+        integer :: r, s, nu, nv, i
+        real, dimension(:,:,:), allocatable :: Pw_net, Qw_net, Pw_temp
         character(:), allocatable :: dir
 
         r = size(UP) - 1
@@ -426,37 +426,24 @@ contains
         call weighted_control_points(P_pts, w_pts, Pw_pts)
         call create_control_net(nu, nv, Pw_pts, Pw_net)
 
-        ! mp = size(UP) - 1
-        ! mq = size(VP) - 1
-        ! np = rp - p - 1
-        ! nq = sq - q - 1
+        Utemp = UP
+        Vtemp = VP
+        Pw_temp = Pw_net
 
-        mred = r-(2*p)
-        nred = s-(2*q)
-
-        allocate(Ured(0:mred))
-        allocate(Vred(0:nred))
-        allocate(X_array(0:mred-1))
-        
-        ! X_array = 0.5*(Ured(0:mred-1) + Ured(1:mred))
-        
         do i = 1, size(ref_list,1)
             dir = ref_list(i,1)
             if (dir == "U") then
-                Ured = UP(p:r-p)
-                X_array = 0.5*(Ured(0:mred-1) + Ured(1:mred))
+                call compute_element_midvalues(Utemp, p, X_array)
             else if (dir == "V") then
-                Vred = VP(q:s-q)
-                X_array = 0.5*(Vred(0:nred-1) + Vred(1:nred))
+                call compute_element_midvalues(Vtemp, q, X_array)
             end if
-            call surface_knot_refinement(p, UP, q, VP, Pw_net, X_array, dir, Ubar, Vbar, Qw_net)
-        end do
+            
+            call surface_knot_refinement(p, Utemp, q, Vtemp, Pw_temp, X_array, dir, Ubar, Vbar, Qw_net)
 
-        ! if (ref_list(1,1) == "U") then
-        !     Ured = UP(p:r-p)
-        !     X_array = 0.5*(Ured(0:mred-1) + Ured(1:mred))
-        !     call surface_knot_refinement(p, UP, q, VP, Pw_net, X_array, "U", Ubar, Vbar, Qw_net)
-        ! end if
+            Utemp = Ubar
+            Vtemp = Vbar
+            Pw_temp = Qw_net
+        end do
 
         call create_control_list(Qw_net, Qw_pts)
         call geometric_control_points(Qw_pts, Ph_pts, wh_pts)
