@@ -112,7 +112,6 @@ contains
         V_min = minval(V_array)
 
         call weighted_control_points(P_pts, w_pts, Pw)
-
         call create_control_net(nu,nv,Pw,Pw_net)
         
         allocate(spts(num_points+1,3))

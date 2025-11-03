@@ -117,7 +117,7 @@ contains
             nq = np
             mq = mp + r
 
-            sp = np + q + 1
+            sp = nq + q + 1
 
             allocate(alpha(0:p-s-1,r))
             allocate(VQ(0:mq+q+1))
@@ -209,12 +209,10 @@ contains
         real, dimension(:), allocatable, intent(out) :: Ubar, Vbar
         real, dimension(:,:,:), allocatable, intent(out) :: Qw_net
         
-        integer :: r, s, a, b, num_ref_pts
+        integer :: r, a, b, num_ref_pts
         integer :: row, j, k, i, np, mp, rp, l, ind, sp
         ! real, dimension(:,:), allocatable :: alpha
         real :: alfa
-
-        ! s = 0
 
         num_ref_pts = size(X_array)
         r = size(X_array) - 1
@@ -357,7 +355,7 @@ contains
                 end do
 
                 do row = 0, np
-                    Qw_net(row,k-p-1,:) = Qw_net(row,k-p,:)
+                    Qw_net(row,k-q-1,:) = Qw_net(row,k-q,:)
                 end do
 
                 do l = 1, q
@@ -384,10 +382,475 @@ contains
         ! end do
     end subroutine surface_knot_refinement
 
-    subroutine surface_degree_elevation
+    subroutine surface_degree_elevation(p, UP, q, VP, Pw_net, dir, t, ph, Uh, qh, Vh, Qw_net)
+        ! Algorithm A5.10 from the NURBS book
+        ! Degree elevate a surface t times
+        ! ---------------------------------------------------------------------
+        ! Input: n, p, U, m, q, V, Pw, dir, t
+        ! Output: nh, Uh, mh, Vh, Qw
+        ! ---------------------------------------------------------------------
+        ! Variables:
+        ! np+1 are the rows of the Pw_net control net
+        ! mp+1 are the columns of the Pw_net control net
+        ! nq+1 are the rows of the Qw_net control net
+        ! mq+1 are the columns of the Qw_net control net
+        ! UP and VP are the U and V knot vectors before the refinement
+        ! Ubar and Vbar are the U and V knot vectors after the refinement
+        ! Pw_net and Qw_net are the control nets before and after refinement
+        ! s: knot multiplicity
+        ! r: number of insertions
+        use nurbs_curve
+        integer, intent(in) :: p, q, t
+        real, dimension(0:), intent(in) :: UP, VP
+        real, dimension(0:,0:,0:), intent(in) :: Pw_net
+        character(len=*), intent(in) :: dir
+        integer, intent(out) :: ph, qh
+        real, dimension(:), allocatable, intent(out) :: Uh, Vh
+        real, dimension(:,:,:), allocatable, intent(out) :: Qw_net
+
+        integer :: np, mp, rp, sq, ph2, qh2, i, mpi, j, kind, r, a, b, cind
+        integer :: mul, oldr, lbz, rbz, k, save_var, s, first, last, tr, kj
+        integer :: rh, sh, nh, mqi
+        real :: bc, inv, bc1, bc2, ua, ub, numer, den, bet, alf, gam, va, vb
+        real, dimension(:), allocatable :: alfs, Uh_prev, Vh_prev
+        real, dimension(:,:), allocatable :: bezalfs
+        real, dimension(:,:,:), allocatable :: bpts, ebpts, Nextbpts, Qw_prev
+
+        dir_refn: if (dir == "U") then
+            np = size(Pw_net,1) - 1
+            mp = size(Pw_net,2) - 1
+            rp = np + p + 1
+            ph = p + t
+            ph2 = ph/2
+
+            allocate(bezalfs(0:p+t,0:p))
+            allocate(bpts(0:p,0:mp,0:3))
+            allocate(ebpts(0:p+t,0:mp,0:3))
+            allocate(Nextbpts(0:p-2,size(Pw_net,2),0:3))
+            allocate(alfs(0:p-2))
+            allocate(Uh_prev(0:2*size(UP)-1))
+            allocate(Qw_prev(0:size(Uh_prev)-ph-1,0:mp,0:3))
+
+            bpts = 0.0
+            ebpts = 0.0
+            Nextbpts = 0.0
+            alfs = 0.0
+            Uh_prev = 0.0
+            Qw_prev = 0.0
+
+            ! Compute bezier degree elevation coefficients
+            bezalfs(0,0) = 1.0
+            bezalfs(ph,p) = 1.0
+
+            do i = 1, ph2
+                call binomial(ph, i, bc)
+                inv = 1.0/bc
+                mpi = min(p,i)
+                
+                do j = max(0,i-t), mpi
+                    call binomial(p, j, bc1)
+                    call binomial(t, i-j, bc2)
+                    bezalfs(i,j) = inv*bc1*bc2
+                end do
+            end do
+
+            do i = ph2+1, ph-1
+                mpi = min(p,i)
+                do j = max(0,i-t), mpi
+                    bezalfs(i,j) = bezalfs(ph-i,p-j)
+                end do
+            end do
+
+            rh = ph
+            kind = ph + 1
+            r = -1
+            a = p
+            b = p + 1
+            cind = 1
+            ua = UP(0)
+            Qw_prev(0,:,:) = Pw_net(0,:,:)
+
+            do i = 0, ph
+                Uh_prev(i) = ua
+            end do
+
+            ! Initialize first bezier segment
+            do i = 0, p
+                bpts(i,:,:) = Pw_net(i,:,:)
+            end do
+
+            ! Big loop through knot vector
+            do while (b < rp)
+                i = b
+                do 
+                    if ((b < rp)) then
+                        if (abs(UP(b+1) - UP(b)) < 1e-5) then
+                            b = b + 1
+                        else
+                            exit
+                        end if
+                    else
+                        exit
+                    end if
+                end do
+
+                mul = b - i + 1
+                rh = rh + mul + t
+                ub = UP(b)
+                oldr = r
+                r = p - mul
+
+                ! Insert knot u(b) r times
+                if (oldr > 0) then
+                    lbz = (oldr + 2)/2
+                else
+                    lbz = 1
+                end if
+
+                if (r > 0) then
+                    rbz = ph - (r + 1)/2
+                else
+                    rbz = ph
+                end if
+
+                ! Insert knot to get bezier segment
+                if (r > 0) then
+                    numer = ub - ua
+                    ! for k in range(p,mul,-1):
+                    do k = p, mul+1, -1
+                        alfs(k-mul-1) = numer/(UP(a+k) - ua)
+                    end do
+
+                    do j = 1, r
+                        save_var = r - j
+                        s = mul + j
+                        do k = p, s,-1
+                            bpts(k,:,:) = alfs(k-s)*bpts(k,:,:) + (1.0 - alfs(k-s))*bpts(k-1,:,:)
+                        end do
+
+                        Nextbpts(save_var,:,:) = bpts(p,:,:)
+                    end do
+                end if
+
+                ! End of insert knot
+                ! Degree elevate bezier
+                ! Only points lbz,...,ph are used below
+                do i = lbz, ph
+                    ebpts(i,:,:) = 0.0
+                    mpi = min(p,i)
+                    do j = max(0,i-t), mpi
+                        ebpts(i,:,:) = ebpts(i,:,:) + bezalfs(i,j)*bpts(j,:,:)
+                    end do
+                end do
+
+                ! print('Bezier + t control points of current segment')
+                ! print(ebpts)
+                ! End of degree elevating bezier
+                ! Must remove knot u = U(a) oldr times
+                if (oldr > 1) then
+                    first = kind - 2
+                    last = kind
+                    den = ub - ua
+                    bet = (ub - Uh_prev(kind-1))/den
+                    ! Knot removal loop
+                    do tr = 1, oldr-1
+                        i = first
+                        j = last
+                        kj = j - kind + 1
+                        ! Loop and compute the new
+                        ! Control points for one removal step
+                        do while ((j - i) > tr)
+                            if (i < cind) then
+                                alf = (ub - Uh_prev(i))/(ua - Uh_prev(i))
+                                Qw_prev(i,:,:) = alf*Qw_prev(i,:,:) + (1.0 - alf)*Qw_prev(i-1,:,:)
+                            end if
+
+                            if (j >= lbz) then
+                                if ((j - tr) <= (kind - ph + oldr)) then
+                                    gam = (ub - Uh_prev(j - tr))/den
+                                    ebpts(kj,:,:) = gam*ebpts(kj,:,:) + (1.0 - gam)*ebpts(kj+1,:,:)
+                                else
+                                    ebpts(kj,:,:) = bet*ebpts(kj,:,:) + (1.0 - bet)*ebpts(kj+1,:,:)
+                                end if
+                            end if
+                            i = i + 1
+                            j = j - 1
+                            kj = kj - 1
+                        end do
+
+                        first = first - 1
+                        last = last + 1
+                    end do
+                end if
+
+                ! End of removing knot u = U(a)
+                ! Load the knot ua
+                if (a /= p) then
+                    do i = 0, ph-oldr-1
+                        Uh_prev(kind) = ua
+                        kind = kind + 1
+                    end do
+                end if
+
+                ! Load control points into Qw
+                do j = lbz, rbz
+                    Qw_prev(cind,:,:) = ebpts(j,:,:)
+                    cind = cind + 1
+                end do
+
+                if (b < rp) then
+                    ! Set up for the next loop through
+                    do j = 0, r-1
+                        bpts(j,:,:) = Nextbpts(j,:,:)
+                    end do
+
+                    do j = r, p
+                        bpts(j,:,:) = Pw_net(b-p+j,:,:)
+                    end do
+
+                    a = b
+                    b = b + 1
+                    ua = ub
+                else
+                    ! End knot
+                    do i = 0, ph
+                        Uh_prev(kind+i) = ub
+                    end do
+                end if
+
+            end do
+            ! End of while loop (b < m)
+            nh = rh - ph - 1
+
+            allocate(Uh(0:rh))
+            allocate(Qw_net(0:nh,0:mp,0:3))
+            Uh = 0.0
+            
+            Uh = Uh_prev(0:rh)
+            Qw_net = Qw_prev(0:nh,:,:)
+
+            Vh = VP
+            qh = q
+        else if (dir == "V") then
+            np = size(Pw_net,1) - 1
+            mp = size(Pw_net,2) - 1
+            sq = mp + q + 1
+            qh = q + t
+            qh2 = qh/2
+
+            ! Fix allocations
+            allocate(bezalfs(0:q+t,0:q))
+            allocate(bpts(0:np,0:q,0:3))
+            allocate(ebpts(0:np,0:q+t,0:3))
+            allocate(Nextbpts(0:np,0:q-2,0:3))
+            allocate(alfs(0:q-2))
+            allocate(Vh_prev(0:2*size(VP)-1))
+            allocate(Qw_prev(0:np,0:size(Vh_prev)-qh-1,0:3))
+
+            bpts = 0.0
+            ebpts = 0.0
+            Nextbpts = 0.0
+            alfs = 0.0
+            Vh_prev = 0.0
+            Qw_prev = 0.0
+
+            ! Compute bezier degree elevation coefficients
+            bezalfs(0,0) = 1.0
+            bezalfs(qh,q) = 1.0
+
+            do i = 1, qh2
+                call binomial(qh, i, bc)
+                inv = 1.0/bc
+                mqi = min(q,i)
+                
+                do j = max(0,i-t), mqi
+                    call binomial(q, j, bc1)
+                    call binomial(t, i-j, bc2)
+                    bezalfs(i,j) = inv*bc1*bc2
+                end do
+            end do
+
+            do i = qh2+1, qh-1
+                mqi = min(q,i)
+                do j = max(0,i-t), mqi
+                    bezalfs(i,j) = bezalfs(qh-i,q-j)
+                end do
+            end do
+
+            sh = qh
+            kind = qh + 1
+            r = -1
+            a = q
+            b = q + 1
+            cind = 1
+            va = VP(0)
+            Qw_prev(:,0,:) = Pw_net(:,0,:)
+
+            do i = 0, qh
+                Vh_prev(i) = va
+            end do
+
+            ! Initialize first bezier segment
+            do i = 0, q
+                bpts(:,i,:) = Pw_net(:,i,:)
+            end do
+
+            ! Big loop through knot vector
+            do while (b < sq)
+                i = b
+                do 
+                    if ((b < sq)) then
+                        if (abs(VP(b+1) - VP(b)) < 1e-5) then
+                            b = b + 1
+                        else
+                            exit
+                        end if
+                    else
+                        exit
+                    end if
+                end do
+
+                mul = b - i + 1
+                sh = sh + mul + t
+                vb = VP(b)
+                oldr = r
+                r = q - mul
+                
+                ! Insert knot u(b) r times
+                if (oldr > 0) then
+                    lbz = (oldr + 2)/2
+                else
+                    lbz = 1
+                end if
+
+                if (r > 0) then
+                    rbz = qh - (r + 1)/2
+                else
+                    rbz = qh
+                end if
+
+                ! Insert knot to get bezier segment
+                if (r > 0) then
+                    numer = vb - va
+                    ! for k in range(p,mul,-1):
+                    do k = q, mul+1, -1
+                        alfs(k-mul-1) = numer/(VP(a+k) - va)
+                    end do
+
+                    do j = 1, r
+                        save_var = r - j
+                        s = mul + j
+                        do k = q, s, -1
+                            bpts(:,k,:) = alfs(k-s)*bpts(:,k,:) + (1.0 - alfs(k-s))*bpts(:,k-1,:)
+                        end do
+
+                        Nextbpts(:,save_var,:) = bpts(:,q,:)
+                    end do
+                end if
+
+                ! End of insert knot
+                ! Degree elevate bezier
+                ! Only points lbz,...,qh are used below
+                do i = lbz, qh
+                    ebpts(:,i,:) = 0.0
+                    mqi = min(q,i)
+                    do j = max(0,i-t), mqi
+                        ebpts(:,i,:) = ebpts(:,i,:) + bezalfs(i,j)*bpts(:,j,:)
+                    end do
+                end do
+
+                ! print('Bezier + t control points of current segment')
+                ! print(ebpts)
+                ! End of degree elevating bezier
+                ! Must remove knot v = V(a) oldr times
+                if (oldr > 1) then
+                    first = kind - 2
+                    last = kind
+                    den = vb - va
+                    bet = (vb - Vh_prev(kind-1))/den
+                    ! Knot removal loop
+                    do tr = 1, oldr-1
+                        i = first
+                        j = last
+                        kj = j - kind + 1
+                        ! Loop and compute the new
+                        ! Control points for one removal step
+                        do while ((j - i) > tr)
+                            if (i < cind) then
+                                alf = (vb - Vh_prev(i))/(va - Vh_prev(i))
+                                Qw_prev(:,i,:) = alf*Qw_prev(:,i,:) + (1.0 - alf)*Qw_prev(:,i-1,:)
+                            end if
+
+                            if (j >= lbz) then
+                                if ((j - tr) <= (kind - qh + oldr)) then
+                                    gam = (vb - Vh_prev(j - tr))/den
+                                    ebpts(:,kj,:) = gam*ebpts(:,kj,:) + (1.0 - gam)*ebpts(:,kj+1,:)
+                                else
+                                    ebpts(:,kj,:) = bet*ebpts(:,kj,:) + (1.0 - bet)*ebpts(:,kj+1,:)
+                                end if
+                            end if
+                            i = i + 1
+                            j = j - 1
+                            kj = kj - 1
+                        end do
+
+                        first = first - 1
+                        last = last + 1
+                    end do
+                end if
+
+                ! End of removing knot v = V(a)
+                ! Load the knot ua
+                if (a /= q) then
+                    do i = 0, qh-oldr-1
+                        Vh_prev(kind) = va
+                        kind = kind + 1
+                    end do
+                end if
+
+                ! Load control points into Qw
+                do j = lbz, rbz
+                    Qw_prev(:,cind,:) = ebpts(:,j,:)
+                    cind = cind + 1
+                end do
+
+                if (b < sq) then
+                    ! Set up for the next loop through
+                    do j = 0, r-1
+                        bpts(:,j,:) = Nextbpts(:,j,:)
+                    end do
+
+                    do j = r, q
+                        bpts(:,j,:) = Pw_net(:,b-q+j,:)
+                    end do
+
+                    a = b
+                    b = b + 1
+                    va = vb
+                else
+                    ! End knot
+                    do i = 0, qh
+                        Vh_prev(kind+i) = vb
+                    end do
+                end if
+
+            end do
+            ! End of while loop (b < m)
+            nh = sh - qh - 1
+
+            allocate(Vh(0:sh))
+            allocate(Qw_net(0:np,0:nh,0:3))
+            Vh = 0.0
+            
+            Vh = Vh_prev(0:sh)
+            Qw_net = Qw_prev(:,0:nh,:)
+
+            Uh = UP
+            ph = p
+        end if dir_refn
     end subroutine surface_degree_elevation
 
-    subroutine surface_h_refinement(p, q, P_pts, w_pts, UP, VP, ref_list, ph, Ph_pts, wh_pts, Ubar, Vbar)
+    subroutine surface_h_refinement(p, q, P_pts, w_pts, UP, VP, ref_list, ph, qh, Ph_pts, wh_pts, Ubar, Vbar)
         ! Input: 
         !   p: previous spline degree
         !   P_pts: previous control points
@@ -407,7 +870,7 @@ contains
         real, dimension(0:), intent(in) :: UP, VP
         ! character(len=*), intent(in) :: dir
         character(len=*), dimension(:,:), allocatable, intent(in) :: ref_list
-        integer, intent(out) :: ph
+        integer, intent(out) :: ph, qh
         real, dimension(:,:), allocatable, intent(out) :: Ph_pts
         real, dimension(:,:), allocatable, intent(out) :: wh_pts
         real, dimension(:), allocatable, intent(out) :: Ubar, Vbar
@@ -431,7 +894,7 @@ contains
         Pw_temp = Pw_net
 
         do i = 1, size(ref_list,1)
-            dir = ref_list(i,1)
+            dir = ref_list(i,2)
             if (dir == "U") then
                 call compute_element_midvalues(Utemp, p, X_array)
             else if (dir == "V") then
@@ -448,15 +911,247 @@ contains
         call create_control_list(Qw_net, Qw_pts)
         call geometric_control_points(Qw_pts, Ph_pts, wh_pts)
         ph = p
+        qh = q
     end subroutine surface_h_refinement
 
-    subroutine surface_p_refinement
+    subroutine surface_p_refinement(p, q, P_pts, w_pts, UP, VP, ref_list, ph, qh, Ph_pts, wh_pts, Ubar, Vbar)
+        ! Input: 
+        !   p: previous spline degree
+        !   q: previous spline degree
+        !   P_pts: previous control points
+        !   w_pts: previous weights
+        !   U_knot: previous knot vector
+        !   V_knot: previous knot vector
+        ! Output: 
+        !   ph: spline degree after p-refinement
+        !   qh: spline degree after p-refinement
+        !   Ph_pts: control points after p-refinement
+        !   wh_pts: weights after p-refinement
+        !   Ubar: knot vector after p-refinement
+        !   Vbar: knot vector after p-refinement
+        use nurbs_curve
+        use nurbs_surface
+        use utils
+        integer, intent(in) :: p, q
+        real, dimension(:,:), intent(in) :: P_pts
+        real, dimension(:,:), intent(in) :: w_pts
+        real, dimension(0:), intent(in) :: UP, VP
+        ! character(len=*), intent(in) :: dir
+        character(len=*), dimension(:,:), allocatable, intent(in) :: ref_list
+        integer, intent(out) :: ph, qh
+        real, dimension(:,:), allocatable, intent(out) :: Ph_pts
+        real, dimension(:,:), allocatable, intent(out) :: wh_pts
+        real, dimension(:), allocatable, intent(out) :: Ubar, Vbar
+
+        real, dimension(:), allocatable :: Utemp, Vtemp
+        real, dimension(:,:), allocatable :: Pw_pts, Qw_pts
+        integer :: r, s, nu, nv, i, t, ptemp, qtemp
+        real, dimension(:,:,:), allocatable :: Pw_net, Qw_net, Pw_temp
+        character(:), allocatable :: dir
+
+        t = 1
+        
+        r = size(UP) - 1
+        s = size(VP) - 1
+        nu = r - p - 1
+        nv = s - q - 1
+        
+        call weighted_control_points(P_pts, w_pts, Pw_pts)
+        call create_control_net(nu, nv, Pw_pts, Pw_net)
+
+        ptemp = p
+        qtemp = q
+        Utemp = UP
+        Vtemp = VP
+        Pw_temp = Pw_net
+
+        do i = 1, size(ref_list,1)
+            dir = ref_list(i,2)
+            
+            call surface_degree_elevation(ptemp, Utemp, qtemp, Vtemp, Pw_temp, dir, t, ph, Ubar, qh, Vbar, Qw_net)
+
+            ptemp = ph
+            qtemp = qh
+            Utemp = Ubar
+            Vtemp = Vbar
+            Pw_temp = Qw_net
+        end do
+
+        call create_control_list(Qw_net, Qw_pts)
+        call geometric_control_points(Qw_pts, Ph_pts, wh_pts)
     end subroutine surface_p_refinement
 
-    subroutine surface_k_refinement
+    subroutine surface_k_refinement(p, q, P_pts, w_pts, Uknot, Vknot, ref_list, pk, qk, Pk_pts, wk_pts, Uk, Vk)
+        ! Input: 
+        !   p: previous spline degree
+        !   q: previous spline degree
+        !   P_pts: previous control points
+        !   w_pts: previous weights
+        !   U_knot: previous knot vector
+        !   V_knot: previous knot vector
+        ! Output: 
+        !   pp: spline degree after p-refinement
+        !   qp: spline degree after p-refinement
+        !   Pp_pts: control points after p-refinement
+        !   wp_pts: weights after p-refinement
+        !   Up: knot vector after p-refinement
+        !   Vp: knot vector after p-refinement
+        !   pk: spline degree after k-refinement
+        !   qk: spline degree after k-refinement
+        !   Pk_pts: control points after k-refinement
+        !   wk_pts: weights after k-refinement
+        !   Uk: knot vector after k-refinement
+        !   Vk: knot vector after k-refinement
+        use nurbs_curve
+        use nurbs_surface
+        use utils
+        integer, intent(in) :: p, q
+        real, dimension(:,:), intent(in) :: P_pts
+        real, dimension(:,:), intent(in) :: w_pts
+        real, dimension(0:), intent(in) :: Uknot, Vknot
+        character(len=*), dimension(:,:), allocatable, intent(in) :: ref_list
+        integer, intent(out) :: pk, qk
+        real, dimension(:,:), allocatable, intent(out) :: Pk_pts
+        real, dimension(:,:), allocatable, intent(out) :: wk_pts
+        real, dimension(:), allocatable, intent(out) :: Uk, Vk
+
+        integer :: i, ptemp, qtemp, t, r, s, nu, nv, ph, qh
+        character(:), allocatable :: dir
+
+        real, dimension(:), allocatable :: Utemp, Vtemp, X_array, Uh, Vh
+        real, dimension(:,:), allocatable :: Pw_pts, Qw_pts
+        real, dimension(:,:,:), allocatable :: Pw_net, Qkw_net, Pw_temp, Qhw_net
+
+        t = 1
+        
+        r = size(Uknot) - 1
+        s = size(Vknot) - 1
+        nu = r - p - 1
+        nv = s - q - 1
+
+        call weighted_control_points(P_pts, w_pts, Pw_pts)
+        call create_control_net(nu, nv, Pw_pts, Pw_net)
+
+        ptemp = p
+        qtemp = q
+        Utemp = Uknot
+        Vtemp = Vknot
+        Pw_temp = Pw_net
+
+        do i = 1, size(ref_list,1)
+            dir = ref_list(i,2)
+            
+            call surface_degree_elevation(ptemp, Utemp, qtemp, Vtemp, Pw_temp, dir, t, ph, Uh, qh, Vh, Qhw_net)
+            
+            if (dir == "U") then
+                call compute_element_midvalues(Uh, ph, X_array)
+            else if (dir == "V") then
+                call compute_element_midvalues(Vh, qh, X_array)
+            end if
+            
+            call surface_knot_refinement(ph, Uh, qh, Vh, Qhw_net, X_array, dir, Uk, Vk, Qkw_net)
+
+            ptemp = ph
+            qtemp = qh
+            Utemp = Uk
+            Vtemp = Vk
+            Pw_temp = Qkw_net
+        end do
+
+        pk = ptemp
+        qk = qtemp
+
+        call create_control_list(Qkw_net, Qw_pts)
+        call geometric_control_points(Qw_pts, Pk_pts, wk_pts)
     end subroutine surface_k_refinement
 
-    subroutine surface_spline_refinement
+    subroutine surface_spline_refinement(p, q, P_pts, w_pts, Uknot, Vknot, ref_list, pk, qk, Pk_pts, wk_pts, Uk, Vk)
+        use nurbs_curve
+        use nurbs_surface
+        use utils
+        integer, intent(in) :: p, q
+        real, dimension(:,:), intent(in) :: P_pts
+        real, dimension(:,:), intent(in) :: w_pts
+        real, dimension(0:), intent(in) :: Uknot, Vknot
+        character(len=*), dimension(:,:), allocatable, intent(in) :: ref_list
+        integer, intent(out) :: pk, qk
+        real, dimension(:,:), allocatable, intent(out) :: Pk_pts
+        real, dimension(:,:), allocatable, intent(out) :: wk_pts
+        real, dimension(:), allocatable, intent(out) :: Uk, Vk
+
+        integer :: i, ptemp, qtemp, t, r, s, nu, nv, ph, qh
+        character(:), allocatable :: dir, refn_type
+
+        real, dimension(:), allocatable :: Utemp, Vtemp, X_array, Uh, Vh
+        real, dimension(:,:), allocatable :: Pw_pts, Qw_pts
+        real, dimension(:,:,:), allocatable :: Pw_net, Qkw_net, Pw_temp, Qhw_net
+
+        t = 1
+        
+        r = size(Uknot) - 1
+        s = size(Vknot) - 1
+        nu = r - p - 1
+        nv = s - q - 1
+
+        call weighted_control_points(P_pts, w_pts, Pw_pts)
+        call create_control_net(nu, nv, Pw_pts, Pw_net)
+
+        ptemp = p
+        qtemp = q
+        Utemp = Uknot
+        Vtemp = Vknot
+        Pw_temp = Pw_net
+
+        do i = 1, size(ref_list,1)
+            refn_type = ref_list(i,1)
+            dir = ref_list(i,2)
+            
+            if (refn_type == "h") then
+                
+                if (dir == "U") then
+                    call compute_element_midvalues(Utemp, ptemp, X_array)
+                else if (dir == "V") then
+                    call compute_element_midvalues(Vtemp, qtemp, X_array)
+                end if
+                
+                call surface_knot_refinement(ptemp, Utemp, qtemp, Vtemp, Pw_temp, X_array, dir, Uk, Vk, Qkw_net)
+                ph = ptemp
+                qh = qtemp
+
+            else if (refn_type == "p") then
+                
+                call surface_degree_elevation(ptemp, Utemp, qtemp, Vtemp, Pw_temp, dir, t, ph, Uk, qh, Vk, Qkw_net)
+
+            else if (refn_type == "k") then
+                
+                call surface_degree_elevation(ptemp, Utemp, qtemp, Vtemp, Pw_temp, dir, t, ph, Uh, qh, Vh, Qhw_net)
+            
+                if (dir == "U") then
+                    call compute_element_midvalues(Uh, ph, X_array)
+                else if (dir == "V") then
+                    call compute_element_midvalues(Vh, qh, X_array)
+                end if
+                
+                call surface_knot_refinement(ph, Uh, qh, Vh, Qhw_net, X_array, dir, Uk, Vk, Qkw_net)
+
+            else
+                exit
+            end if
+
+            ptemp = ph
+            qtemp = qh
+            Utemp = Uk
+            Vtemp = Vk
+            Pw_temp = Qkw_net
+        end do
+
+        pk = ptemp
+        qk = qtemp
+        Uk = Utemp
+        Vk = Vtemp
+
+        call create_control_list(Qkw_net, Qw_pts)
+        call geometric_control_points(Qw_pts, Pk_pts, wk_pts)
     end subroutine surface_spline_refinement
 
     subroutine assess_surface_refinement(spts_1, spts_2)
