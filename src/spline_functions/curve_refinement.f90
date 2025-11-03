@@ -185,6 +185,13 @@ contains
         ! Degree eleate a curve t times
         ! Input: n, p, U, Pw, t
         ! Output: nh, Uh, Qw
+        ! ---------------------------------------------------------------------
+        ! Variables:
+        ! bezalfs(p+t+1,p+1): coefficients for degree elevating the Bezier segments
+        ! bpts(p+1): pth degree Bezier conrol points of the current segment
+        ! ebpts(p+t+1): (p+t)th degree Bezier control points of the current segment
+        ! Nextbpts(p-1): leftmost control points of the next Bezier segment
+        ! alphas(p-1): knot insertion alphas
         use utils
         use nurbs_curve
 
