@@ -156,4 +156,112 @@ contains
 
         midvalues = 0.5*(array(p:r-p-1) + array(p+1:r-p))
     end subroutine compute_element_midvalues
+
+    subroutine calculate_surface_elements(Uarray, Varray, surface_elem_bounds)
+        real, dimension(0:), intent(in) :: Uarray
+        real, dimension(0:), intent(in) :: Varray
+        integer :: i, j, U_size, V_size, num_elems_U, num_elems_V
+        real, dimension(:), allocatable :: unique_Uarray, unique_Varray, temp_Uarray, temp_Varray
+        integer :: i_unique, i_elems, num_bounds
+        real, dimension(:,:), allocatable, intent(out) :: surface_elem_bounds
+
+        U_size = size(Uarray) - 1
+        V_size = size(Varray) - 1
+        num_elems_U = 0
+        num_elems_V = 0
+
+        allocate(temp_Uarray(0:U_size))
+        allocate(temp_Varray(0:V_size))
+        temp_Uarray = 0.
+        temp_Varray = 0.
+
+        i_unique = 0
+
+        do i = 0, U_size-1
+            if (abs(Uarray(i+1) - Uarray(i)) > 1e-5) then
+                num_elems_U = num_elems_U + 1
+                temp_Uarray(i_unique) = Uarray(i)
+                temp_Uarray(i_unique+1) = Uarray(i+1)
+                i_unique = i_unique + 1
+            end if
+        end do
+
+        i_unique = 0
+
+        do i = 0, V_size-1
+            if (abs(Varray(i+1) - Varray(i)) > 1e-5) then
+                num_elems_V = num_elems_V + 1
+                temp_Varray(i_unique) = Varray(i)
+                temp_Varray(i_unique+1) = Varray(i+1)
+                i_unique = i_unique + 1
+            end if
+        end do
+
+        print "(A, I3)", "Number of elements in U direction: ", num_elems_U
+        print "(A, I3)", "Number of elements in V direction: ", num_elems_V
+
+        allocate(unique_Uarray(0:num_elems_U))
+        allocate(unique_Varray(0:num_elems_V))
+        
+        unique_Uarray = temp_Uarray(0:num_elems_U)
+        unique_Varray = temp_Varray(0:num_elems_V)
+
+        num_bounds = num_elems_U*num_elems_V
+
+        allocate(surface_elem_bounds(0:num_bounds-1,0:3))
+
+        i_elems = 0
+        
+        do j = 0, num_elems_V-1
+            do i = 0, num_elems_U-1
+                surface_elem_bounds(i_elems, 0) = unique_Uarray(i)
+                surface_elem_bounds(i_elems, 1) = unique_Varray(j)
+                surface_elem_bounds(i_elems, 2) = unique_Uarray(i+1)
+                surface_elem_bounds(i_elems, 3) = unique_Varray(j+1)
+                i_elems = i_elems + 1
+            end do
+        end do
+    end subroutine calculate_surface_elements
+
+    function inverse_matrix_2(mat) result(inv_mat)
+        real, dimension(0:1,0:1), intent(in) :: mat
+        real, dimension(0:1,0:1) :: inv_mat
+        real :: det_mat
+
+        inv_mat = 0.
+
+        det_mat = mat(0,0)*mat(1,1) - mat(0,1)*mat(1,0)
+        inv_mat(0,0) = (1./det_mat)*mat(1,1)
+        inv_mat(0,1) = -(1./det_mat)*mat(0,1)
+        inv_mat(1,0) = -(1./det_mat)*mat(1,0)
+        inv_mat(1,1) = (1./det_mat)*mat(0,0)
+    end function inverse_matrix_2
+
+    function inverse_matrix_3(mat) result(inv_mat)
+        real, dimension(0:2,0:2), intent(in) :: mat
+        real, dimension(0:2,0:2) :: inv_mat
+        real :: A, B, C, D, E, F, G, H, I, det_mat
+
+        A = (mat(1,1)*mat(2,2) - mat(1,2)*mat(2,1))
+        B = -(mat(1,0)*mat(2,2) - mat(1,2)*mat(2,0))
+        C = (mat(1,0)*mat(2,1) - mat(1,1)*mat(2,0))
+        D = -(mat(0,1)*mat(2,2) - mat(0,2)*mat(2,1))
+        E = (mat(0,0)*mat(2,2) - mat(0,2)*mat(2,0))
+        F = -(mat(0,0)*mat(2,1) - mat(0,1)*mat(2,0))
+        G = (mat(0,1)*mat(1,2) - mat(0,2)*mat(1,1))
+        H = -(mat(0,0)*mat(1,2) - mat(0,2)*mat(1,0))
+        I = (mat(0,0)*mat(1,1) - mat(0,1)*mat(1,0))
+
+        det_mat = mat(0,0)*A + mat(0,1)*B + mat(0,2)*C
+
+        inv_mat(0,0) = (1./det_mat)*A
+        inv_mat(1,0) = (1./det_mat)*B
+        inv_mat(2,0) = (1./det_mat)*C
+        inv_mat(0,1) = (1./det_mat)*D
+        inv_mat(1,1) = (1./det_mat)*E
+        inv_mat(2,1) = (1./det_mat)*F
+        inv_mat(0,2) = (1./det_mat)*G
+        inv_mat(1,2) = (1./det_mat)*H
+        inv_mat(2,2) = (1./det_mat)*I
+    end function inverse_matrix_3
 end module utils
