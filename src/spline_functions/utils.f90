@@ -264,4 +264,23 @@ contains
         inv_mat(1,2) = (1./det_mat)*H
         inv_mat(2,2) = (1./det_mat)*I
     end function inverse_matrix_3
+
+    subroutine compute_connectivity_matrices(p, q, n, m, IEN, INC)
+        ! Adapted from Algorithm 7. Appendix A Connectivity arrays from
+        ! Isogeometric Analysis, Cottrell, Hughes and Bazilevs (2009)
+        ! --------------------------------------------------------------------
+        ! Variables
+        ! p: polynomial order in U direction
+        ! q: polynomial order in V direction
+        ! n: number of functions in U direction
+        ! m: number of functions in V direction
+        integer, intent(in) :: p, q, n, m
+        integer, dimension(:), intent(out) :: IEN, INC
+
+        integer :: num_elements, num_global_functions, num_local_functions
+
+        num_elements = (n-p)*(m-q)
+        num_global_functions = n*m
+        num_local_functions = (p+1)*(q+1)
+    end subroutine compute_connectivity_matrices
 end module utils

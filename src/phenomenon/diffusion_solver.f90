@@ -36,18 +36,18 @@ contains
         end if
     end subroutine gauss_legendre_nodes_weights
 
-    
-    
-    function compute_parametric_coords(ua, va, ub, vb, gauss_pts) result(param_pts)
+    subroutine compute_parametric_coords(ua, va, ub, vb, gauss_pts, gauss_weights, param_pts, param_weights)
         real, intent(in) :: ua, ub, va, vb
-        real, dimension(:), intent(in) :: gauss_pts
-        real, dimension(:,:), allocatable :: param_pts
+        real, dimension(:), intent(in) :: gauss_pts, gauss_weights
+        real, dimension(:,:), allocatable, intent(out) :: param_pts
+        real, dimension(:), allocatable, intent(out) :: param_weights
 
         integer :: i, j, i_param, num_gauss_pts
 
         num_gauss_pts = size(gauss_pts)
 
         allocate(param_pts(num_gauss_pts**2,0:1))
+        allocate(param_weights(num_gauss_pts**2))
 
         param_pts = 0.0
         i_param = 1
@@ -56,10 +56,11 @@ contains
             inner_loop: do j = 1, num_gauss_pts
                 param_pts(i_param,0) = 0.5*(ub - ua)*gauss_pts(i) + 0.5*(ub + ua)
                 param_pts(i_param,1) = 0.5*(vb - va)*gauss_pts(j) + 0.5*(vb + va)
+                param_weights(i_param) = gauss_weights(i)*gauss_weights(j)
                 i_param = i_param + 1
             end do inner_loop
         end do outer_loop
-    end function compute_parametric_coords
+    end subroutine compute_parametric_coords
 
     subroutine derivative_shape_function_parametric(p, q, UP, VP, n_der, Pw_net, u, v, dR_dxi, non_zero_indices)
         use bspline_basis_functions, only: der_basis_functions, find_span
@@ -175,15 +176,15 @@ contains
         do i = 0, local_num
             aa_loop: do aa = 0, 1
                 bb_loop: do bb = 0, 1
-                    ! print *, bb, aa, dxi_dx(bb,aa), dR_dxi(i,bb+1), dxi_dx(bb,aa)*dR_dxi(i,bb+1)
-                    ! print *, dxi_dx(bb,aa)*dR_dxi(i,bb+1)
                     dR_dx(i,aa) = dR_dx(i,aa) + dxi_dx(bb,aa)*dR_dxi(i,bb+1)
                 end do bb_loop
             end do aa_loop
         end do
     end function derivative_basis_function_physical
 
-    subroutine element_stiffness_matrix(p, q, UP, VP, ua, va, ub, vb, n_der, Pw_net, parametric_coordinates)
+    subroutine element_stiffness_matrix(p, q, UP, VP, ua, va, ub, vb, n_der, Pw_net, &
+                                        parametric_coordinates, parametric_weights, &
+                                        K_local, non_zero_indices)
         ! Adapted from Algorithm 1. Appendix 3.A Shape function routine from
         ! Isogeometric Analysis, Cottrell, Hughes and Bazilevs (2009)
         ! --------------------------------------------------------------------
@@ -195,17 +196,27 @@ contains
         use bspline_basis_functions, only: der_basis_functions, find_span
         integer, intent(in) :: p, q, n_der
         real, intent(in) :: ua, ub, va, vb
-        real, dimension(0:), intent(in) :: UP, VP
+        real, dimension(0:), intent(in) :: UP, VP, parametric_weights
         real, dimension(0:,0:,0:), intent(in) :: Pw_net
         real, dimension(0:,0:), intent(in) :: parametric_coordinates
-        integer :: i_coor, num_param_coords
-        real :: u, v, J_det
+
+        integer :: i_coor, num_param_coords, aa, bb, num_non_zero
+        real :: u, v, J_det, J_mod, kappa
         real, dimension(0:(p+1)*(q+1)-1,0:2) :: dR_dxi
         real, dimension(0:(p+1)*(q+1)-1,0:1) :: dR_dx
-        real, dimension(0:1,0:1) :: dx_dxi, dxi_dx, J_mat
-        integer, dimension(0:(p+1)*(q+1)-1,0:1) :: non_zero_indices
+        real, dimension(0:1,0:1) :: dx_dxi, dxi_dx, J_mat, kappa_mat
+        
+        real, dimension(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1), intent(out) :: K_local
+        integer, dimension(0:(p+1)*(q+1)-1,0:1), intent(out) :: non_zero_indices
+
+        kappa = 1.0
+        J_mat = 0.0
+        J_mod = 0.0
+        K_local = 0.0
+        kappa_mat = conductivity_matrix(kappa)
 
         num_param_coords = size(parametric_coordinates,1)
+        num_non_zero = (p+1)*(q+1)
 
         param_coor_loop: do i_coor = 0, num_param_coords-1
             u = parametric_coordinates(i_coor, 0)
@@ -217,9 +228,16 @@ contains
 
             J_mat = gradient_parent_parametric(ua, va, ub, vb, dx_dxi)
             J_det = J_mat(0,0)*J_mat(1,1) - J_mat(1,0)*J_mat(0,1)
+            J_mod = J_det*parametric_weights(i_coor)
 
             dR_dx = derivative_basis_function_physical(p, q, dxi_dx, dR_dxi)
-            call print_matrix(dR_dx)
+
+            row_loop: do bb = 0, num_non_zero - 1
+                column_loop: do aa = 0, num_non_zero - 1
+                    K_local(aa,bb) = K_local(aa,bb) + (dR_dx(aa,0)*kappa_mat(0,0)*dR_dx(bb,0) &
+                                    + dR_dx(aa,1)*kappa_mat(1,1)*dR_dx(bb,1))*J_mod
+                end do column_loop
+            end do row_loop
         end do param_coor_loop
     end subroutine element_stiffness_matrix
     
@@ -229,15 +247,18 @@ contains
         integer, intent(in) :: p, q, num_gauss_pts
         real, dimension(0:), intent(in) :: UP, VP
         real, dimension(0:,0:), intent(in) :: P_pts, w_pts
-        real, dimension(0:,0:), intent(out) :: Kmat, Fvec
+        real, dimension(:,:), allocatable, intent(out) :: Kmat, Fvec
 
-        real, dimension(:), allocatable :: gauss_nodes, gauss_weights
-        real, dimension(:,:), allocatable :: surface_elem_bounds, parametric_coordinates
+        real, dimension(:), allocatable :: gauss_nodes, gauss_weights, param_intg_weights
+        real, dimension(:,:), allocatable :: surface_elem_bounds, param_intg_points
         real, dimension(:,:), allocatable :: Pw_pts
         real, dimension(:,:,:), allocatable :: Pw_net
+        real, dimension(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1) :: K_local
+        integer, dimension(0:(p+1)*(q+1)-1,0:1) :: non_zero_indices
 
         integer :: n_der
-        integer :: i_elem, num_elements, r, s, nu, nv
+        integer :: i_elem, num_elements, r, s, nu, nv, num_dofs, i_coor
+        integer :: i_global, j_global, num_non_zero, aa, bb
         real :: ua, ub, va, vb
 
         r = size(UP) - 1
@@ -256,16 +277,37 @@ contains
         call calculate_surface_elements(UP, VP, surface_elem_bounds)
         num_elements = size(surface_elem_bounds,1)
 
-        call print_matrix(surface_elem_bounds)
+        ! call print_matrix(surface_elem_bounds)
+
+        num_dofs = size(P_pts,1)
+        allocate(Kmat(0:num_dofs-1,0:num_dofs-1))
+        Kmat = 0.
+        num_non_zero = (p+1)*(q+1)
 
         element_loop: do i_elem = 0, num_elements - 1
+            K_local = 0.  
+        
             ua = surface_elem_bounds(i_elem, 0)
             ub = surface_elem_bounds(i_elem, 1)
             va = surface_elem_bounds(i_elem, 2)
             vb = surface_elem_bounds(i_elem, 3)
             
-            parametric_coordinates = compute_parametric_coords(ua, ub, va, vb, gauss_nodes)
-            call element_stiffness_matrix(p, q, UP, VP, ua, ub, va, vb, n_der, Pw_net, parametric_coordinates)
+            call compute_parametric_coords(ua, ub, va, vb, gauss_nodes, gauss_weights, param_intg_points, param_intg_weights)
+            call element_stiffness_matrix(p, q, UP, VP, ua, ub, va, vb, n_der, &
+                                          Pw_net, param_intg_points, param_intg_weights, K_local, non_zero_indices)
+
+            global_assembly_loop: do i_coor = 0, 1
+                i_global = non_zero_indices(i_coor, 0)
+                j_global = non_zero_indices(i_coor, 1)
+                row_loop: do bb = 0, num_non_zero - 1
+                    column_loop: do aa = 0, num_non_zero - 1
+                        print *, i_global, j_global, K_local(aa,bb)
+                        Kmat(i_global, j_global) = Kmat(i_global, j_global) + K_local(aa,bb)
+                    end do column_loop
+                end do row_loop
+            end do global_assembly_loop
         end do element_loop
+
+        call print_matrix(Kmat)
     end subroutine assemble_weak_form
 end module diffusion_solver
