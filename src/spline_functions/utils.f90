@@ -55,6 +55,21 @@ contains
         print *, "===================="
     end subroutine print_matrix
 
+    subroutine print_integer_matrix(mat)
+        integer, intent(in) :: mat(:,:)
+        integer :: num_rows, num_cols, i, j
+
+        num_rows = size(mat,1)
+        num_cols = size(mat,2)
+
+        print *, "===================="
+        do i = 1, num_rows
+            ! print '(*(3X, f8.5))', (mat(i,j), j=1,num_cols)
+            print '(*(3X, I5))', (mat(i,j), j=1,num_cols)
+        end do
+        print *, "===================="
+    end subroutine print_integer_matrix
+
     subroutine print_row_vector(row_vec)
         real, intent(in) :: row_vec(:)
         integer :: i, num_cols
@@ -275,12 +290,49 @@ contains
         ! n: number of functions in U direction
         ! m: number of functions in V direction
         integer, intent(in) :: p, q, n, m
-        integer, dimension(:), intent(out) :: IEN, INC
+        integer, dimension(:,:), allocatable, intent(out) :: IEN, INC
 
         integer :: num_elements, num_global_functions, num_local_functions
+        integer :: e, A, BB, b, i, j, iloc, jloc
 
         num_elements = (n-p)*(m-q)
         num_global_functions = n*m
         num_local_functions = (p+1)*(q+1)
+
+        allocate(INC(num_global_functions,2))
+        allocate(IEN(num_elements,num_elements))
+        INC = 0
+        IEN = 0
+
+        e = 0
+        A = 0
+        BB = 0
+        b = 0
+
+        do j = 1, m
+            do i = 1, n
+                A = A+1
+                INC(A,1) = i
+                INC(A,2) = j
+                if (i >= p+1) then
+                    if (j >= q+1) then
+                        e = e+1
+                        do jloc = 0, q
+                            do iloc = 0, p
+                                BB = A - jloc*n - iloc
+                                b = jloc*(p+1) + iloc + 1
+                                IEN(b,e) = BB
+                            end do
+                        end do
+                    end if
+                end if
+            end do
+        end do
     end subroutine compute_connectivity_matrices
+
+    function compute_global_dof(i,j,nu) result(dof)
+        integer, intent(in) :: i,j,nu
+        integer :: dof
+        dof = j*(nu+1) + i
+    end function compute_global_dof
 end module utils

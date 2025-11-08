@@ -62,7 +62,7 @@ contains
         end do outer_loop
     end subroutine compute_parametric_coords
 
-    subroutine derivative_shape_function_parametric(p, q, UP, VP, n_der, Pw_net, u, v, dR_dxi, non_zero_indices)
+    subroutine derivative_shape_function_parametric(p, q, UP, VP, n_der, Pw_net, u, v, dR_dxi, non_zero_indices, global_dofs)
         use bspline_basis_functions, only: der_basis_functions, find_span
         integer, intent(in) :: p, q, n_der
         real, intent(in) :: u, v
@@ -70,8 +70,9 @@ contains
         real, dimension(0:,0:,0:), intent(in) :: Pw_net
         real, dimension(0:(p+1)*(q+1)-1,0:2), intent(out) :: dR_dxi
         integer, dimension(0:(p+1)*(q+1)-1,0:1), intent(out) :: non_zero_indices
+        integer, dimension(0:(p+1)*(q+1)-1), intent(out) :: global_dofs
 
-        integer :: i, j, mp, mq, uspan, vspan
+        integer :: i, j, rp, sq, nu, nv, uspan, vspan
         integer :: iu, jv, local_num
         real :: sum_W
 
@@ -81,13 +82,15 @@ contains
         real, dimension(0:(p+1)*(q+1)-1,0:1) :: dA_dxi
         real, dimension(0:1) :: dW_dxi
 
-        mp = size(UP) - 1
-        mq = size(VP) - 1
+        rp = size(UP) - 1
+        sq = size(VP) - 1
+        nu = rp - p - 1
+        nv = sq - q - 1
 
-        call find_span(mp, p, u, UP, uspan)
-        call find_span(mq, q, v, VP, vspan)
-        call der_basis_functions(uspan, u, p, n_der, mp, UP, dN_dxi)
-        call der_basis_functions(vspan, v, q, n_der, mq, VP, dM_deta)
+        call find_span(rp, p, u, UP, uspan)
+        call find_span(sq, q, v, VP, vspan)
+        call der_basis_functions(uspan, u, p, n_der, rp, UP, dN_dxi)
+        call der_basis_functions(vspan, v, q, n_der, sq, VP, dM_deta)
 
         local_num = 0
         dR_dxi = 0.
@@ -99,6 +102,8 @@ contains
                 jv = vspan - q + j
                 non_zero_indices(local_num, 0) = iu
                 non_zero_indices(local_num, 1) = jv
+                global_dofs(local_num) = compute_global_dof(iu,jv,nu)
+                ! print "(A, I3, A, I3, A, I3, A, I3)", "iu:", iu, " |jv:", jv, " |nu:", nu, " |dof:", global_dofs(local_num)
                 dR_dxi(local_num, 0) = dN_dxi(0,i)*dM_deta(0,j)*Pw_net(iu,jv,3)
                 dA_dxi(local_num, 0) = dN_dxi(n_der,i)*dM_deta(0,j)*Pw_net(iu,jv,3)
                 dA_dxi(local_num, 1) = dN_dxi(0,i)*dM_deta(n_der,j)*Pw_net(iu,jv,3)
@@ -184,7 +189,7 @@ contains
 
     subroutine element_stiffness_matrix(p, q, UP, VP, ua, va, ub, vb, n_der, Pw_net, &
                                         parametric_coordinates, parametric_weights, &
-                                        K_local, non_zero_indices)
+                                        K_local, global_dofs_loc)
         ! Adapted from Algorithm 1. Appendix 3.A Shape function routine from
         ! Isogeometric Analysis, Cottrell, Hughes and Bazilevs (2009)
         ! --------------------------------------------------------------------
@@ -200,14 +205,18 @@ contains
         real, dimension(0:,0:,0:), intent(in) :: Pw_net
         real, dimension(0:,0:), intent(in) :: parametric_coordinates
 
-        integer :: i_coor, num_param_coords, aa, bb, num_non_zero
+        integer :: i_coor, num_param_coords, aa, bb, num_non_zero, i_global_loop
         real :: u, v, J_det, J_mod, kappa
         real, dimension(0:(p+1)*(q+1)-1,0:2) :: dR_dxi
         real, dimension(0:(p+1)*(q+1)-1,0:1) :: dR_dx
         real, dimension(0:1,0:1) :: dx_dxi, dxi_dx, J_mat, kappa_mat
+        real, dimension(0:1,0:(p+1)*(q+1)-1) :: temp_prod
+        real, dimension(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1) :: temp_prod_2
         
         real, dimension(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1), intent(out) :: K_local
-        integer, dimension(0:(p+1)*(q+1)-1,0:1), intent(out) :: non_zero_indices
+        integer, dimension(0:(p+1)*(q+1)-1,0:1) :: non_zero_indices
+        integer, dimension(0:(p+1)*(q+1)-1) :: global_dofs
+        integer, dimension(:,:), allocatable, intent(out) :: global_dofs_loc
 
         kappa = 1.0
         J_mat = 0.0
@@ -218,11 +227,16 @@ contains
         num_param_coords = size(parametric_coordinates,1)
         num_non_zero = (p+1)*(q+1)
 
+        allocate(global_dofs_loc(0:(num_non_zero**2)-1,0:1))
+        global_dofs_loc = 0
+
         param_coor_loop: do i_coor = 0, num_param_coords-1
             u = parametric_coordinates(i_coor, 0)
             v = parametric_coordinates(i_coor, 1)
 
-            call derivative_shape_function_parametric(p, q, UP, VP, n_der, Pw_net, u, v, dR_dxi, non_zero_indices)
+            call derivative_shape_function_parametric(p, q, UP, VP, n_der, &
+                                                      Pw_net, u, v, dR_dxi, &
+                                                      non_zero_indices, global_dofs)
             dx_dxi = gradient_parametric_physical(p, q, non_zero_indices, dR_dxi, Pw_net)
             dxi_dx = inverse_matrix_2(dx_dxi)
 
@@ -232,12 +246,23 @@ contains
 
             dR_dx = derivative_basis_function_physical(p, q, dxi_dx, dR_dxi)
 
+            i_global_loop = 0
+
             row_loop: do bb = 0, num_non_zero - 1
                 column_loop: do aa = 0, num_non_zero - 1
+                    global_dofs_loc(i_global_loop,0) = global_dofs(aa)
+                    global_dofs_loc(i_global_loop,1) = global_dofs(bb)
+                    
                     K_local(aa,bb) = K_local(aa,bb) + (dR_dx(aa,0)*kappa_mat(0,0)*dR_dx(bb,0) &
                                     + dR_dx(aa,1)*kappa_mat(1,1)*dR_dx(bb,1))*J_mod
+                    
+                    i_global_loop = i_global_loop + 1
                 end do column_loop
             end do row_loop
+
+            ! temp_prod = matmul(kappa_mat,transpose(dR_dx))
+            ! temp_prod_2 = matmul(dR_dx, temp_prod)*J_mod
+            ! K_local = K_local + temp_prod_2
         end do param_coor_loop
     end subroutine element_stiffness_matrix
     
@@ -254,10 +279,10 @@ contains
         real, dimension(:,:), allocatable :: Pw_pts
         real, dimension(:,:,:), allocatable :: Pw_net
         real, dimension(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1) :: K_local
-        integer, dimension(0:(p+1)*(q+1)-1,0:1) :: non_zero_indices
+        integer, dimension(:,:), allocatable :: global_dofs_loc
 
         integer :: n_der
-        integer :: i_elem, num_elements, r, s, nu, nv, num_dofs, i_coor
+        integer :: i_elem, num_elements, r, s, nu, nv, num_dofs, i_global_loop
         integer :: i_global, j_global, num_non_zero, aa, bb
         real :: ua, ub, va, vb
 
@@ -277,15 +302,15 @@ contains
         call calculate_surface_elements(UP, VP, surface_elem_bounds)
         num_elements = size(surface_elem_bounds,1)
 
-        ! call print_matrix(surface_elem_bounds)
-
         num_dofs = size(P_pts,1)
         allocate(Kmat(0:num_dofs-1,0:num_dofs-1))
+        allocate(Fvec(0:num_dofs-1,0))
         Kmat = 0.
+        Fvec = 0.
         num_non_zero = (p+1)*(q+1)
 
         element_loop: do i_elem = 0, num_elements - 1
-            K_local = 0.  
+            K_local = 0.
         
             ua = surface_elem_bounds(i_elem, 0)
             ub = surface_elem_bounds(i_elem, 1)
@@ -294,20 +319,64 @@ contains
             
             call compute_parametric_coords(ua, ub, va, vb, gauss_nodes, gauss_weights, param_intg_points, param_intg_weights)
             call element_stiffness_matrix(p, q, UP, VP, ua, ub, va, vb, n_der, &
-                                          Pw_net, param_intg_points, param_intg_weights, K_local, non_zero_indices)
+                                          Pw_net, param_intg_points, param_intg_weights, K_local, global_dofs_loc)
 
-            global_assembly_loop: do i_coor = 0, 1
-                i_global = non_zero_indices(i_coor, 0)
-                j_global = non_zero_indices(i_coor, 1)
-                row_loop: do bb = 0, num_non_zero - 1
-                    column_loop: do aa = 0, num_non_zero - 1
-                        print *, i_global, j_global, K_local(aa,bb)
-                        Kmat(i_global, j_global) = Kmat(i_global, j_global) + K_local(aa,bb)
-                    end do column_loop
-                end do row_loop
-            end do global_assembly_loop
+            i_global_loop = 0
+
+            row_loop: do bb = 0, num_non_zero - 1
+                column_loop: do aa = 0, num_non_zero - 1
+                    i_global = global_dofs_loc(i_global_loop,0)
+                    j_global = global_dofs_loc(i_global_loop,1)
+                    Kmat(i_global, j_global) = Kmat(i_global, j_global) + K_local(aa,bb)
+                    i_global_loop = i_global_loop + 1
+                end do column_loop
+            end do row_loop
         end do element_loop
 
+        ! print *, Kmat(0,0)
+        ! print *, lbound(Kmat,dim=1), lbound(Kmat,dim=2)
         call print_matrix(Kmat)
     end subroutine assemble_weak_form
+
+    subroutine matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred)
+        use utils
+        real, dimension(:), intent(in) :: u_pres
+        integer, dimension(:), intent(in) :: id_disp
+        real, dimension(:,:), allocatable, intent(in) :: Kmat, Fvec
+        real, dimension(:,:), allocatable, intent(out) :: Kred, Fred
+
+        integer :: num_dofs, i, num_reduced_dofs
+        integer, dimension(:), allocatable :: full_dofs, remainder_dofs
+        logical, dimension(:), allocatable :: logical_array
+
+        num_dofs = size(Kmat, 1)
+
+        allocate(full_dofs(0:num_dofs-1))
+        allocate(logical_array(0:num_dofs-1))
+        full_dofs = (/(i, i=0, num_dofs-1)/)
+
+        logical_array = (/(.false., i = 0, num_dofs-1)/)
+
+        do i = 0, num_dofs-1
+            if (any(full_dofs(i) == id_disp)) then
+                logical_array(i) = .true.
+            end if
+        end do
+
+        remainder_dofs = pack(full_dofs,.not. logical_array)
+
+        num_reduced_dofs = size(remainder_dofs)
+        allocate(Kred(0:num_reduced_dofs-1,0:num_reduced_dofs-1))
+        allocate(Fred(0:num_reduced_dofs-1,1))
+
+        ! print *, lbound(Kmat,dim=1), lbound(Kmat,dim=2)
+        ! call print_row_vector_bool(logical_array)
+        ! call print_row_vector_intg(remainder_dofs)
+        Kred = Kmat(remainder_dofs,remainder_dofs)
+        Fred = Fvec(remainder_dofs,1:0)
+        call print_matrix(Kred)
+    end subroutine matrix_reduction
+
+    subroutine solve_matrix_equations()
+    end subroutine solve_matrix_equations
 end module diffusion_solver

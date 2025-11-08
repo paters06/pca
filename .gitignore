@@ -133,3 +133,4 @@ dmypy.json
 .vscode/launch.json
 build/
 src/phenomenon/isogeometric_beam_1d.mod
+bin/
