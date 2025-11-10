@@ -14,7 +14,7 @@ program refinement_example_9
     real, dimension(:), allocatable :: UP, VP, Uref, Vref
 
     integer :: p, q, pref, qref
-    integer :: size_1, size_2, size_vec_1, size_vec_2
+    integer :: size_1, size_2, size_vec_1, size_vec_2, num_points
     
     character(len=1), dimension(:,:), allocatable :: ref_list
 
@@ -47,8 +47,9 @@ program refinement_example_9
     call print_row_vector(Uref)
     call print_row_vector(Vref)
 
-    call create_surface(p, q, P_pts, w_pts, UP, VP, spts_1)
-    call create_surface(pref, qref, Pref_pts, wref_pts, Uref, Vref, spts_2)
+    num_points = 41
+    call create_surface(num_points, p, q, P_pts, w_pts, UP, VP, spts_1)
+    call create_surface(num_points, pref, qref, Pref_pts, wref_pts, Uref, Vref, spts_2)
 
     call assess_surface_refinement(spts_1, spts_2)
 end program refinement_example_9

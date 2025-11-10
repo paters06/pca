@@ -1,4 +1,6 @@
 add_executable(diffusion_example_1 diffusion_example_1.f90)
+find_package(LAPACK)
 target_include_directories(diffusion_example_1 PUBLIC $<TARGET_PROPERTY:spline_mod,Fortran_MODULE_DIRECTORY>)
 target_include_directories(diffusion_example_1 PUBLIC $<TARGET_PROPERTY:solver_mod,Fortran_MODULE_DIRECTORY>)
-target_link_libraries(diffusion_example_1 PRIVATE spline_mod solver_mod)
+target_link_libraries(diffusion_example_1 PRIVATE spline_mod solver_mod LAPACK::LAPACK)
+# target_link_libraries(diffusion_example_1 PRIVATE LAPACK::LAPACK)

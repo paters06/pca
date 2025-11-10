@@ -134,3 +134,4 @@ dmypy.json
 build/
 src/phenomenon/isogeometric_beam_1d.mod
 bin/
+src/postprocessor/first_results.txt

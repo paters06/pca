@@ -15,13 +15,15 @@ program diffusion_example_1
     real, dimension(:), allocatable :: UP, VP, Uref, Vref
 
     integer :: p, q, pref, qref
-    integer :: size_1, size_2, size_vec_1, size_vec_2
+    integer :: size_1, size_2, size_vec_1, size_vec_2, num_points
     
     character(len=1), dimension(:,:), allocatable :: ref_list
 
     integer :: num_gauss_pts
-    real, dimension(:,:), allocatable :: Kmat, Fvec, Kred, Fred
-    integer, dimension(:), allocatable :: id_disp
+    real :: kappa
+    real, dimension(:,:), allocatable :: Kmat, Fvec, Kred, Usol
+    real, dimension(:), allocatable :: Fred
+    integer, dimension(:), allocatable :: id_disp, remainder_dofs
     real, dimension(:), allocatable :: u_pres
 
     ! Information import
@@ -52,15 +54,19 @@ program diffusion_example_1
     call print_row_vector(Uref)
     call print_row_vector(Vref)
 
-    call create_surface(p, q, P_pts, w_pts, UP, VP, spts_1)
-    call create_surface(pref, qref, Pref_pts, wref_pts, Uref, Vref, spts_2)
+    num_points = 41
+    call create_surface(num_points, p, q, P_pts, w_pts, UP, VP, spts_1)
+    call create_surface(num_points, pref, qref, Pref_pts, wref_pts, Uref, Vref, spts_2)
 
     call assess_surface_refinement(spts_1, spts_2)
 
     ! IGA implementation
     num_gauss_pts = 3
-    id_disp = (/0, 5, 4, 9/)
+    kappa = 355
+    id_disp = (/0, 4, 5, 9/)
     u_pres = (/0., 100., 0., 100./)
-    call assemble_weak_form(pref, qref, Uref, Vref, Pref_pts, wref_pts, num_gauss_pts, Kmat, Fvec)
-    call matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred)
+    call assemble_weak_form(pref, qref, Uref, Vref, Pref_pts, wref_pts, num_gauss_pts, kappa, Kmat, Fvec)
+    call matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred, remainder_dofs)
+    call solve_matrix_equations(Kred, Fred, remainder_dofs, id_disp, u_pres, Usol)
+    call compute_postprocessing_solutions(pref, qref, Usol, Pref_pts, wref_pts, Uref, Vref)
 end program diffusion_example_1

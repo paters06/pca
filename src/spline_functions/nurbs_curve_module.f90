@@ -23,12 +23,12 @@ contains
         num_control_points = size(P,1)
         num_cols = size(P,2) + 1
 
-        allocate(Pw(num_control_points,0:num_cols-1))
+        allocate(Pw(0:num_control_points-1,0:num_cols-1))
         Pw(:,0:num_cols-2) = P
 
-        do j = 1,num_control_points
-            Pw(j, 0:num_cols-2) = Pw(j, 0:num_cols-2)*w(j,1)
-            Pw(j, num_cols-1) = w(j,1)
+        do j = 0,num_control_points-1
+            Pw(j, 0:num_cols-2) = Pw(j, 0:num_cols-2)*w(j+1,1)
+            Pw(j, num_cols-1) = w(j+1,1)
         end do
     end subroutine weighted_control_points
 

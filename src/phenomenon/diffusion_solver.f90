@@ -187,7 +187,7 @@ contains
         end do
     end function derivative_basis_function_physical
 
-    subroutine element_stiffness_matrix(p, q, UP, VP, ua, va, ub, vb, n_der, Pw_net, &
+    subroutine element_stiffness_matrix(p, q, UP, VP, ua, va, ub, vb, n_der, kappa, Pw_net, &
                                         parametric_coordinates, parametric_weights, &
                                         K_local, global_dofs_loc)
         ! Adapted from Algorithm 1. Appendix 3.A Shape function routine from
@@ -200,25 +200,21 @@ contains
         ! p, q: degrees of the B-splines in the U and V direction
         use bspline_basis_functions, only: der_basis_functions, find_span
         integer, intent(in) :: p, q, n_der
-        real, intent(in) :: ua, ub, va, vb
+        real, intent(in) :: ua, ub, va, vb, kappa
         real, dimension(0:), intent(in) :: UP, VP, parametric_weights
         real, dimension(0:,0:,0:), intent(in) :: Pw_net
         real, dimension(0:,0:), intent(in) :: parametric_coordinates
+        real, dimension(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1), intent(out) :: K_local
+        integer, dimension(:,:), allocatable, intent(out) :: global_dofs_loc
 
         integer :: i_coor, num_param_coords, aa, bb, num_non_zero, i_global_loop
-        real :: u, v, J_det, J_mod, kappa
+        real :: u, v, J_det, J_mod
         real, dimension(0:(p+1)*(q+1)-1,0:2) :: dR_dxi
         real, dimension(0:(p+1)*(q+1)-1,0:1) :: dR_dx
         real, dimension(0:1,0:1) :: dx_dxi, dxi_dx, J_mat, kappa_mat
-        real, dimension(0:1,0:(p+1)*(q+1)-1) :: temp_prod
-        real, dimension(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1) :: temp_prod_2
-        
-        real, dimension(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1), intent(out) :: K_local
         integer, dimension(0:(p+1)*(q+1)-1,0:1) :: non_zero_indices
         integer, dimension(0:(p+1)*(q+1)-1) :: global_dofs
-        integer, dimension(:,:), allocatable, intent(out) :: global_dofs_loc
 
-        kappa = 1.0
         J_mat = 0.0
         J_mod = 0.0
         K_local = 0.0
@@ -266,10 +262,11 @@ contains
         end do param_coor_loop
     end subroutine element_stiffness_matrix
     
-    subroutine assemble_weak_form(p, q, UP, VP, P_pts, w_pts, num_gauss_pts, Kmat, Fvec)
+    subroutine assemble_weak_form(p, q, UP, VP, P_pts, w_pts, num_gauss_pts, kappa, Kmat, Fvec)
         use nurbs_curve, only: weighted_control_points
         use nurbs_surface, only: create_control_net
         integer, intent(in) :: p, q, num_gauss_pts
+        real, intent(in) :: kappa
         real, dimension(0:), intent(in) :: UP, VP
         real, dimension(0:,0:), intent(in) :: P_pts, w_pts
         real, dimension(:,:), allocatable, intent(out) :: Kmat, Fvec
@@ -304,7 +301,7 @@ contains
 
         num_dofs = size(P_pts,1)
         allocate(Kmat(0:num_dofs-1,0:num_dofs-1))
-        allocate(Fvec(0:num_dofs-1,0))
+        allocate(Fvec(0:num_dofs-1,1))
         Kmat = 0.
         Fvec = 0.
         num_non_zero = (p+1)*(q+1)
@@ -318,7 +315,7 @@ contains
             vb = surface_elem_bounds(i_elem, 3)
             
             call compute_parametric_coords(ua, ub, va, vb, gauss_nodes, gauss_weights, param_intg_points, param_intg_weights)
-            call element_stiffness_matrix(p, q, UP, VP, ua, ub, va, vb, n_der, &
+            call element_stiffness_matrix(p, q, UP, VP, ua, ub, va, vb, n_der, kappa, &
                                           Pw_net, param_intg_points, param_intg_weights, K_local, global_dofs_loc)
 
             i_global_loop = 0
@@ -332,21 +329,19 @@ contains
                 end do column_loop
             end do row_loop
         end do element_loop
-
-        ! print *, Kmat(0,0)
-        ! print *, lbound(Kmat,dim=1), lbound(Kmat,dim=2)
-        call print_matrix(Kmat)
     end subroutine assemble_weak_form
 
-    subroutine matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred)
+    subroutine matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred, remainder_dofs)
         use utils
-        real, dimension(:), intent(in) :: u_pres
-        integer, dimension(:), intent(in) :: id_disp
+        real, dimension(0:), intent(in) :: u_pres
+        integer, dimension(0:), intent(in) :: id_disp
         real, dimension(:,:), allocatable, intent(in) :: Kmat, Fvec
-        real, dimension(:,:), allocatable, intent(out) :: Kred, Fred
+        real, dimension(:,:), allocatable, intent(out) :: Kred
+        real, dimension(:), allocatable, intent(out) :: Fred
+        integer, dimension(:), allocatable, intent(out) :: remainder_dofs
 
         integer :: num_dofs, i, num_reduced_dofs
-        integer, dimension(:), allocatable :: full_dofs, remainder_dofs
+        integer, dimension(:), allocatable :: full_dofs
         logical, dimension(:), allocatable :: logical_array
 
         num_dofs = size(Kmat, 1)
@@ -367,16 +362,76 @@ contains
 
         num_reduced_dofs = size(remainder_dofs)
         allocate(Kred(0:num_reduced_dofs-1,0:num_reduced_dofs-1))
-        allocate(Fred(0:num_reduced_dofs-1,1))
+        allocate(Fred(0:num_reduced_dofs-1))
 
-        ! print *, lbound(Kmat,dim=1), lbound(Kmat,dim=2)
-        ! call print_row_vector_bool(logical_array)
-        ! call print_row_vector_intg(remainder_dofs)
         Kred = Kmat(remainder_dofs,remainder_dofs)
-        Fred = Fvec(remainder_dofs,1:0)
-        call print_matrix(Kred)
+        Fred = Fvec(remainder_dofs,1)
+
+        do i = 0, size(id_disp)-1
+            Fred = Fred - Kmat(remainder_dofs,id_disp(i))*u_pres(i)
+        end do
     end subroutine matrix_reduction
 
-    subroutine solve_matrix_equations()
+    subroutine solve_matrix_equations(Kred, Fred, remainder_dofs, id_disp, u_pres, Usol)
+        real, dimension(:,:), intent(in) :: Kred
+        real, dimension(:), intent(in) :: Fred
+        integer, dimension(:), intent(in) :: id_disp, remainder_dofs
+        real, dimension(:), intent(in) :: u_pres
+        real, dimension(:,:), intent(out), allocatable :: Usol
+        
+        real, dimension(:,:), allocatable :: Ured
+        integer, dimension(:), allocatable :: pivot
+
+        integer :: num_dofs_full, num_dofs_red, rc, i
+
+        num_dofs_red = size(Kred,1)
+        num_dofs_full = num_dofs_red + size(id_disp)
+
+        allocate(pivot(num_dofs_red))
+        allocate(Usol(0:num_dofs_full-1,1))
+
+        Usol = 0.
+
+        Ured = reshape(Fred, shape=(/size(Fred),1/))
+
+        call sgesv(num_dofs_red, 1, Kred, num_dofs_red, pivot, Ured, num_dofs_red, rc)
+
+        do i = 0, size(remainder_dofs)-1
+            Usol(remainder_dofs(i+1),1) = Ured(i+1,1)
+        end do
+        
+        do i = 0, size(id_disp)-1
+            Usol(id_disp(i+1),1) = u_pres(i+1) 
+        end do
+
+        ! Usol(remainder_dofs,1) = Ured
+        ! Usol(id_disp) = u_pres
+
+        call print_column_vector(Usol)
     end subroutine solve_matrix_equations
+
+    subroutine compute_postprocessing_solutions(p, q, F_pts, P_pts, w_pts, UP, VP)
+        use nurbs_surface
+        use input_output, only: export_matrix
+        integer, intent(in) :: p, q
+        real, dimension(:,:), allocatable, intent(in) :: P_pts, w_pts, F_pts
+        real, dimension(:,:), allocatable :: spts, fpts, post_pts
+        real, dimension(:), allocatable, intent(in) :: UP, VP
+        integer :: num_points, n_dim_1, n_dim_2
+        character(:), allocatable :: file_name
+
+        num_points = 25
+        call create_surface(num_points, p, q, P_pts, w_pts, UP, VP, spts)
+        call create_n_surface(num_points, p, q, F_pts, UP, VP, fpts)
+
+        n_dim_1 = size(spts,2)
+        n_dim_2 = size(fpts,2)
+
+        allocate(post_pts((num_points+1)**2,n_dim_1+n_dim_2))
+        post_pts(:,1:n_dim_1) = spts
+        post_pts(:,n_dim_1+1:) = fpts
+
+        file_name = "first_results.txt"
+        call export_matrix(post_pts, file_name)
+    end subroutine compute_postprocessing_solutions
 end module diffusion_solver
