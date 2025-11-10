@@ -400,4 +400,33 @@ contains
         
         ! call print_matrix(matrix)
     end subroutine read_string_matrix
+
+    subroutine export_matrix(mat, file_name)
+        ! This function is to be generalized for more than two columns
+        real, intent(in) :: mat(:,:)
+        integer :: num_rows, num_cols, i, j, io, num_characters
+        logical :: exists
+        character(:), intent(in), allocatable :: file_name
+
+        num_rows = size(mat,1)
+        num_cols = size(mat,2)
+        num_characters = len(file_name)
+
+        inquire(file=file_name, exist=exists)
+        if (exists) then
+            open(newunit=io, file=file_name, status="old", action="write")
+            do i = 1, num_rows
+                write(io,"(*(3X, F15.4))") (mat(i,j), j=1,num_cols)
+                ! print '(*(3X, f15.4))', (mat(i,j), j=1,num_cols)
+            end do
+            close(io)
+        else
+            open(newunit=io, file=file_name, status="new", action="write")
+            do i = 1, num_rows
+                ! write(io,"(F6.3, A, F8.3)") mat(i,1), ", ", mat(i,2)
+                write(io,"(*(3X, F15.4))") (mat(i,j), j=1,num_cols)
+            end do
+            close(io)
+        end if
+    end subroutine export_matrix
 end module input_output

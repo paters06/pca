@@ -1,8 +1,9 @@
-program refinement_example_9
+program diffusion_example_1
     use utils
     use nurbs_surface
     use surface_refinement
     use input_output
+    use diffusion_solver
     implicit none
 
     character(:), allocatable :: file_name
@@ -18,10 +19,15 @@ program refinement_example_9
     
     character(len=1), dimension(:,:), allocatable :: ref_list
 
-    ! character :: dir
-    ! integer :: r, s, nu, nv
+    integer :: num_gauss_pts
+    real :: kappa
+    real, dimension(:,:), allocatable :: Kmat, Fvec, Kred, Usol
+    real, dimension(:), allocatable :: Fred
+    integer, dimension(:), allocatable :: id_disp, remainder_dofs
+    real, dimension(:), allocatable :: u_pres
 
-    file_name = "input_file_surface.txt"
+    ! Information import
+    file_name = "input_file_diffusion.txt"
 
     call import_data(file_name, line_array)
     call convert_data_to_surface(line_array, p, q, UP, VP, ctrl_pts, ref_list)
@@ -37,10 +43,11 @@ program refinement_example_9
     P_pts = ctrl_pts(1:size_1,1:size_2)
     w_pts = reshape(ctrl_pts(1:size_1,size_2+1), (/size_1, 1/))
 
-    call print_matrix(P_pts)
-    call print_matrix(w_pts)
-    call print_string_matrix(ref_list)
+    ! call print_matrix(P_pts)
+    ! call print_matrix(w_pts)
+    ! call print_string_matrix(ref_list)
 
+    ! Surface refinement
     call surface_spline_refinement(p, q, P_pts, w_pts, UP, VP, ref_list, pref, qref, Pref_pts, wref_pts, Uref, Vref)
 
     call print_matrix(Pref_pts)
@@ -52,4 +59,14 @@ program refinement_example_9
     call create_surface(num_points, pref, qref, Pref_pts, wref_pts, Uref, Vref, spts_2)
 
     call assess_surface_refinement(spts_1, spts_2)
-end program refinement_example_9
+
+    ! IGA implementation
+    num_gauss_pts = 3
+    kappa = 355
+    id_disp = (/0, 4, 5, 9/)
+    u_pres = (/0., 100., 0., 100./)
+    call assemble_weak_form(pref, qref, Uref, Vref, Pref_pts, wref_pts, num_gauss_pts, kappa, Kmat, Fvec)
+    call matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred, remainder_dofs)
+    call solve_matrix_equations(Kred, Fred, remainder_dofs, id_disp, u_pres, Usol)
+    call compute_postprocessing_solutions(pref, qref, Usol, Pref_pts, wref_pts, Uref, Vref)
+end program diffusion_example_1

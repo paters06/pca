@@ -13,6 +13,7 @@ set(FVERSION "-std=f2008")
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${FVERSION} -fcheck=all -Wall -g -fbounds-check -Wno-uninitialized")
 
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/src)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${pca_SOURCE_DIR}/bin)
 
 # Source code
 add_subdirectory(src)

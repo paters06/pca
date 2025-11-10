@@ -4,7 +4,7 @@ program nurbs_surface_example
     implicit none
 
     integer :: p, q
-    integer :: size_1, size_2, size_vec_1, size_vec_2
+    integer :: size_1, size_2, size_vec_1, size_vec_2, num_points
     real, dimension(:,:), allocatable :: P_pts
     real, dimension(:,:), allocatable :: w_pts
     real, dimension(:), allocatable :: U_knot, V_knot
@@ -38,7 +38,8 @@ program nurbs_surface_example
     call print_row_vector(U_knot)
     call print_row_vector(V_knot)
 
-    call create_surface(p, q, P_pts, w_pts, U_knot, V_knot, spts)
+    num_points = 41
+    call create_surface(num_points, p, q, P_pts, w_pts, U_knot, V_knot, spts)
     call create_tangent_surface(p, q, P_pts, w_pts, U_knot, V_knot, dspts)
 
     ! call print_matrix(spts)
