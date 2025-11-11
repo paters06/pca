@@ -410,7 +410,7 @@ contains
         call print_column_vector(Usol)
     end subroutine solve_matrix_equations
 
-    subroutine compute_postprocessing_solutions(p, q, F_pts, P_pts, w_pts, UP, VP)
+    subroutine compute_postprocessing_solutions(p, q, F_pts, P_pts, w_pts, UP, VP, file_name)
         use nurbs_surface
         use input_output, only: export_matrix
         integer, intent(in) :: p, q
@@ -418,7 +418,8 @@ contains
         real, dimension(:,:), allocatable :: spts, fpts, post_pts
         real, dimension(:), allocatable, intent(in) :: UP, VP
         integer :: num_points, n_dim_1, n_dim_2
-        character(:), allocatable :: file_name
+        character(:), allocatable, intent(in) :: file_name
+        character(:), allocatable :: file_output
 
         num_points = 25
         call create_surface(num_points, p, q, P_pts, w_pts, UP, VP, spts)
@@ -431,7 +432,7 @@ contains
         post_pts(:,1:n_dim_1) = spts
         post_pts(:,n_dim_1+1:) = fpts
 
-        file_name = "first_results.txt"
-        call export_matrix(post_pts, file_name)
+        file_output = 'output_'//file_name
+        call export_matrix(post_pts, file_output)
     end subroutine compute_postprocessing_solutions
 end module diffusion_solver

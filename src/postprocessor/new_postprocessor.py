@@ -54,7 +54,7 @@ def plotTemperatureField(temp_mat: np.ndarray) -> None:
 
 
 def main() -> None:
-    temp_mat = read_input_files('first_results.txt')
+    temp_mat = read_input_files('output_input_file_diffusion_2.txt')
     plotTemperatureField(temp_mat)
 
 

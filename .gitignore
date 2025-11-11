@@ -132,6 +132,6 @@ dmypy.json
 .vscode/settings.json
 .vscode/launch.json
 build/
-src/phenomenon/isogeometric_beam_1d.mod
+src/phenomenon/*.mod
 bin/
-src/postprocessor/first_results.txt
+src/postprocessor/*.txt

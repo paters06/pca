@@ -49,10 +49,6 @@ contains
         allocate(line_array(0:num_values-1))
 
         line_array = line_array_temp(0:num_values-1)
-
-        ! do i = 0, size(line_array)-1
-        !     print format_line, line_array(i)
-        ! end do
     end subroutine import_data
 
     subroutine convert_data_to_curve(line_array, p, U_knot, ctrl_pts, refn_array)
@@ -77,8 +73,6 @@ contains
         uknot_label = "*U_KNOT"
         refinement_label = "*REFN"
         end_label = "**END**"
-
-        ! label_array = (/control_points_label, p_label, uknot_label, end_label/)
 
         label_counter = 0
         allocate(label_position(5))
@@ -109,10 +103,6 @@ contains
             end if
         end do
 
-        ! do i = 1, 5
-        !     print *, label_position(i)
-        ! end do
-
         p = 0
         
         ! Reading control points
@@ -134,10 +124,6 @@ contains
         if (refinement_flag == 1) then
             call read_row_string(line_array(label_position(4)+1), ",", refn_array)
         end if
-
-        ! print *, p
-        ! call print_row_vector(U_knot)
-        ! call print_matrix(ctrl_pts)
     end subroutine
 
     subroutine convert_data_to_surface(line_array, p, q, U_knot, V_knot, ctrl_pts, refn_array)
@@ -150,71 +136,77 @@ contains
 
         character(:), allocatable :: format_line, second_format_line
         ! character(len=50), dimension(:), allocatable :: label_array
-        character(:), allocatable :: control_points_label, p_label, q_label, uknot_label, vknot_label, end_label, refinement_label
-        integer :: i, label_counter
-        integer :: control_points_flag, p_flag, q_flag, uknot_flag, vknot_flag, refinement_flag, end_flag
+        character(:), allocatable :: start_geom_label, control_points_label
+        character(:), allocatable :: p_label, q_label, uknot_label, vknot_label
+        character(:), allocatable :: end_geom_label, refinement_label
+        
+        integer :: i, label_counter, i_start, i_end
+        integer :: start_geom_flag, control_points_flag, p_flag, q_flag
+        integer :: uknot_flag, vknot_flag, refinement_flag, end_geom_flag
         integer, dimension(:), allocatable :: label_position
 
         format_line = "(A)"
         second_format_line = "(A, I3)"
 
+        start_geom_label = "**START_GEOMETRY**"
         control_points_label = "*CONTROL_POINTS"
         p_label = "*p_ORDER"
         q_label = "*q_ORDER"
         uknot_label = "*U_KNOT"
         vknot_label = "*V_KNOT"
         refinement_label = "*REFN"
-        end_label = "**END**"
-
-        ! label_array = (/control_points_label, p_label, uknot_label, end_label/)
+        end_geom_label = "**END_GEOMETRY**"
 
         label_counter = 0
-        allocate(label_position(7))
+        allocate(label_position(6))
         label_position = 0
 
+        start_geom_flag = 0
         control_points_flag = 0
         p_flag = 0
         q_flag = 0
         uknot_flag = 0
         vknot_flag = 0
         refinement_flag = 0
-        end_flag = 0
+        end_geom_flag = 0
 
         do i = 0, size(line_array)-1
-            if (control_points_label == line_array(i)) then
-                label_counter =  label_counter + 1
-                label_position(label_counter) = i
-                control_points_flag = 1
-            else if (p_label == line_array(i)) then
-                label_counter =  label_counter + 1
-                label_position(label_counter) = i
-                p_flag = 1
-            else if (q_label == line_array(i)) then
-                label_counter =  label_counter + 1
-                label_position(label_counter) = i
-                q_flag = 1
-            else if (uknot_label == line_array(i)) then
-                label_counter =  label_counter + 1
-                label_position(label_counter) = i
-                uknot_flag = 1
-            else if (vknot_label == line_array(i)) then
-                label_counter =  label_counter + 1
-                label_position(label_counter) = i
-                vknot_flag = 1
-            else if (refinement_label == line_array(i)) then
-                label_counter =  label_counter + 1
-                label_position(label_counter) = i
-                refinement_flag = 1
-            else if (end_label == line_array(i)) then
-                label_counter =  label_counter + 1
-                label_position(label_counter) = i
-                end_flag = 1
+            if (start_geom_label == line_array(i)) then
+                i_start = i
+                start_geom_flag = 1
+            else if (end_geom_label == line_array(i)) then
+                i_end = i
+                end_geom_flag = 1
             end if
         end do
 
-        ! do i = 1, size(label_position)
-        !     print *, label_position(i)
-        ! end do
+        do i = i_start, i_end
+            if (control_points_label == line_array(i)) then
+                label_counter = label_counter + 1
+                label_position(label_counter) = i
+                control_points_flag = 1
+            else if (p_label == line_array(i)) then
+                label_counter = label_counter + 1
+                label_position(label_counter) = i
+                p_flag = 1
+            else if (q_label == line_array(i)) then
+                label_counter = label_counter + 1
+                label_position(label_counter) = i
+                q_flag = 1
+            else if (uknot_label == line_array(i)) then
+                label_counter = label_counter + 1
+                label_position(label_counter) = i
+                uknot_flag = 1
+            else if (vknot_label == line_array(i)) then
+                label_counter = label_counter + 1
+                label_position(label_counter) = i
+                vknot_flag = 1
+            else if (refinement_label == line_array(i)) then
+                label_counter = label_counter + 1
+                label_position(label_counter) = i
+                refinement_flag = 1
+            end if
+        end do
 
         p = 0
         q = 0
@@ -247,13 +239,137 @@ contains
         ! Reading refining types
         if (refinement_flag == 1) then
             ! call read_row_string(line_array(label_position(6)+1), ",", refn_array)
-            call read_string_matrix(line_array(label_position(6)+1:label_position(7)-1), ",", refn_array)
+            call read_string_matrix(line_array(label_position(6)+1:i_end-1), ",", refn_array)
+        end if
+    end subroutine
+
+    subroutine convert_data_to_solver(line_array, num_gauss_pts, kappa, id_disp, u_pres)
+        character(len=*), dimension(0:), intent(in) :: line_array
+        integer, intent(out) :: num_gauss_pts
+        real, intent(out) :: kappa
+        integer, dimension(:), allocatable, intent(out) :: id_disp
+        real, dimension(:), allocatable, intent(out) :: u_pres
+
+        character(:), allocatable :: format_line, second_format_line
+        character(:), allocatable :: start_solver_label, intg_label
+        character(:), allocatable :: diffusion_label, ec_dof_label, temp_label
+        character(:), allocatable :: end_solver_label
+        integer :: i, label_counter, i_start, i_end
+        integer :: start_solver_flag, intg_flag, diffusion_flag, ec_dof_flag
+        integer :: temp_flag, end_solver_flag
+        integer, dimension(:), allocatable :: label_position
+
+        format_line = "(A)"
+        second_format_line = "(A, I3)"
+
+        start_solver_label = "**START_SOLVER**"
+        intg_label = "*GAUSS_NUM"
+        diffusion_label = "*DIFFUSION"
+        ec_dof_label = "*ESSENTIAL_COND_DOFS"
+        temp_label = "*TEMP_ENFORCED"
+        end_solver_label = "**END_SOLVER**"
+
+        label_counter = 0
+        allocate(label_position(4))
+        label_position = 0
+
+        start_solver_flag = 0
+        intg_flag = 0
+        diffusion_flag = 0
+        ec_dof_flag = 0
+        temp_flag = 0
+        end_solver_flag = 0
+
+        do i = 0, size(line_array)-1
+            if (start_solver_label == line_array(i)) then
+                i_start = i
+            else if (end_solver_label == line_array(i)) then
+                i_end = i
+            end if
+        end do
+
+        do i = i_start, i_end
+            if (intg_label == line_array(i)) then
+                label_counter = label_counter + 1
+                label_position(label_counter) = i
+                intg_flag = 1
+            else if (diffusion_label == line_array(i)) then
+                label_counter = label_counter + 1
+                label_position(label_counter) = i
+                diffusion_flag = 1
+            else if (ec_dof_label == line_array(i)) then
+                label_counter = label_counter + 1
+                label_position(label_counter) = i
+                ec_dof_flag = 1
+            else if (temp_label == line_array(i)) then
+                label_counter = label_counter + 1
+                label_position(label_counter) = i
+                temp_flag = 1
+            end if
+        end do
+
+        ! Reading number of gauss points for numerical integration
+        if (intg_flag == 1) then
+            read (line_array(label_position(1)+1),*) num_gauss_pts
+        end if
+        
+        ! Reading diffusion conductivity value
+        if (diffusion_flag == 1) then
+            read (line_array(label_position(2)+1),*) kappa
         end if
 
-        ! print *, p
-        ! call print_row_vector(U_knot)
-        ! call print_matrix(ctrl_pts)
-    end subroutine
+        ! Reading dofs to enforce boundary conditions
+        if (temp_flag == 1) then
+            call read_integer_row_array(line_array(label_position(3)+1), ",", id_disp)
+        end if
+
+        ! Reading prescribed temperatures
+        if (temp_flag == 1) then
+            call read_real_row_array(line_array(label_position(4)+1), ",", u_pres)
+        end if
+    end subroutine convert_data_to_solver
+
+    subroutine read_integer_row_array(string, delim, array)
+        ! Adapted from Beliavksy
+        ! https://fortran-lang.discourse.group/t/allocation-of-array-for-reading-strings-from-a-text-file/5986/2
+        
+        character(len=*), intent(in) :: string
+        character(len=*), intent(in) :: delim
+        integer, dimension(:), allocatable, intent(out) :: array
+        character(:), allocatable :: substring, remainder_text
+        integer, parameter :: MAX_SIZE = 50
+        integer, dimension(:), allocatable :: temp
+        
+        integer :: ipos, string_length, num_values
+
+        num_values = 0
+        allocate(temp(MAX_SIZE))
+        temp = 0.
+        
+        remainder_text = string
+        ! string_length = len(remainder_text)
+        do 
+            ipos = index(remainder_text, delim)
+            if (ipos /= 0) then
+                substring = remainder_text(1:ipos-1)
+                ! print "('Number: ', a)", substring
+                num_values =  num_values + 1
+                read (substring,*) temp(num_values)
+                remainder_text = remainder_text(ipos+1:)
+                string_length = len(remainder_text)
+                ! print "('Remainder length: ', I3)", string_length 
+            else
+                substring = remainder_text
+                num_values =  num_values + 1
+                read (substring,*) temp(num_values)
+                ! print "('Last number: ', a)", substring
+                exit
+            end if
+        end do
+
+        allocate(array(num_values))
+        array = temp(1:num_values)
+    end subroutine read_integer_row_array
 
     subroutine read_real_row_array(string, delim, array)
         ! Adapted from Beliavksy
@@ -295,8 +411,6 @@ contains
 
         allocate(array(num_values))
         array = temp(1:num_values)
-
-        ! call print_row_vector(array)
     end subroutine read_real_row_array
 
     subroutine read_real_matrix(strings, delim, matrix)
@@ -317,15 +431,11 @@ contains
         temp_matrix = 0.
 
         do i = 1, size(strings)
-            ! print "(A)", strings(i)
             call read_real_row_array(strings(i), delim, array)
             temp_matrix(i,1:size(array)) = array
-            ! call print_row_vector(array)
         end do
 
         matrix = temp_matrix(:,1:size(array))
-        
-        ! call print_matrix(matrix)
     end subroutine read_real_matrix
 
     subroutine read_row_string(string, delim, array)
@@ -386,19 +496,11 @@ contains
         allocate(temp_matrix(num_rows, MAX_SIZE))
 
         do i = 1, size(strings)
-            ! print "(A)", strings(i)
             call read_row_string(strings(i), delim, array)
             temp_matrix(i,1:size(array)) = array
-            ! call print_row_vector(array)
         end do
 
         matrix = temp_matrix(:,1:size(array))
-
-        ! do i = 1, size(matrix,1)
-        !     print *, matrix(i,:)
-        ! end do
-        
-        ! call print_matrix(matrix)
     end subroutine read_string_matrix
 
     subroutine export_matrix(mat, file_name)
@@ -417,13 +519,11 @@ contains
             open(newunit=io, file=file_name, status="old", action="write")
             do i = 1, num_rows
                 write(io,"(*(3X, F15.4))") (mat(i,j), j=1,num_cols)
-                ! print '(*(3X, f15.4))', (mat(i,j), j=1,num_cols)
             end do
             close(io)
         else
             open(newunit=io, file=file_name, status="new", action="write")
             do i = 1, num_rows
-                ! write(io,"(F6.3, A, F8.3)") mat(i,1), ", ", mat(i,2)
                 write(io,"(*(3X, F15.4))") (mat(i,j), j=1,num_cols)
             end do
             close(io)
