@@ -136,3 +136,4 @@ build/
 src/phenomenon/*.mod
 bin/
 src/postprocessor/*.txt
+src/preprocessor/*.txt

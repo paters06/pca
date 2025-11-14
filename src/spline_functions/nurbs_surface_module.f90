@@ -312,6 +312,59 @@ contains
         end do
     end subroutine create_tangent_surface
 
+    subroutine create_surface_boundary(p, q, P_pts, w_pts, U_array, V_array, sbpts)
+        ! r+1 is the length of the U knot vector
+        ! s+1 is the length of the V knot vector
+        ! n+1 is the number of control points
+        use utils
+        use nurbs_curve_module, only: weighted_control_points
+        
+        integer, intent(in) :: p, q
+        real, intent(in), dimension(:,:) :: P_pts
+        real, intent(in), dimension(:,:) :: w_pts
+        real, intent(in), dimension(:) :: U_array, V_array
+        real, intent(out), dimension(:,:), allocatable :: sbpts
+
+        real :: u, v
+        integer :: j, nu, nv, r, s, num_boundary_points
+        real, dimension(:,:), allocatable :: Pw, bound_param_pts
+        real, dimension(:), allocatable :: S_pti
+        real, dimension(:,:,:), allocatable :: Pw_net
+
+        real, dimension(0:3) :: first_boundary, second_boundary
+        real, dimension(0:3) :: third_boundary, fourth_boundary
+
+        r = size(U_array) - 1
+        s = size(V_array) - 1
+        nu = r - p - 1
+        nv = s - q - 1
+
+        call weighted_control_points(P_pts, w_pts, Pw)
+        call create_control_net(nu,nv,Pw,Pw_net)
+
+        first_boundary = (/0.0,0.0,1.0,0.0/)
+        second_boundary = (/1.0,0.0,1.0,1.0/)
+        third_boundary = (/1.0,1.0,0.0,1.0/)
+        fourth_boundary = (/0.0,1.0,0.0,0.0/)
+
+        bound_param_pts = compute_parametric_boundary_points(first_boundary, &
+                          second_boundary, third_boundary, fourth_boundary)
+        
+        num_boundary_points = size(bound_param_pts,1)
+
+        allocate(sbpts(0:num_boundary_points-1,0:2))
+        allocate(S_pti(0:2))
+        sbpts = 0.0
+        S_pti = 0.0
+
+        do j = 1, num_boundary_points
+            u = bound_param_pts(j, 1)
+            v = bound_param_pts(j, 2)
+            call surface_point(r, s, p, q, u, v, Pw_net, U_array, V_array, S_pti)
+            sbpts(j-1,:) = S_pti(:)
+        end do
+    end subroutine create_surface_boundary
+
     subroutine bspline_surface_gradient(r, p, U_array, s, q, V_array, Pw_net, u, v, d, SKL)
         ! Algorithm 3.6 from the NURBS Book
         ! Compute surface point and derivatives
