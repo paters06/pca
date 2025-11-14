@@ -1,4 +1,4 @@
-module nurbs_surface
+module nurbs_surface_module
     implicit none
 contains
     subroutine create_control_net(nu, nv, P_pts, P_net)
@@ -151,7 +151,7 @@ contains
         ! s+1 is the length of the V knot vector
         ! n+1 is the number of control points
         use utils
-        use nurbs_curve, only: weighted_control_points
+        use nurbs_curve_module, only: weighted_control_points
         
         integer, intent(in) :: p, q, num_points
         real, intent(in), dimension(:,:) :: P_pts
@@ -201,7 +201,7 @@ contains
         ! n+1 is the number of control points
         ! F_pts are the control points of the Field of interest
         use utils
-        use nurbs_curve, only: weighted_control_points
+        use nurbs_curve_module, only: weighted_control_points
         
         integer, intent(in) :: p, q, num_points
         real, intent(in), allocatable, dimension(:,:) :: F_pts
@@ -261,7 +261,7 @@ contains
         ! s+1 is the length of the V knot vector
         ! n+1 is the number of control points
         use utils
-        use nurbs_curve, only: weighted_control_points
+        use nurbs_curve_module, only: weighted_control_points
         
         integer, intent(in) :: p, q
         real, intent(in), dimension(:,:) :: P_pts
@@ -378,7 +378,7 @@ contains
         ! from Sw(u,v) derivatives
         ! Input: Aders, dwers, d
         ! Output: SKL
-        use nurbs_curve, only: binomial
+        use nurbs_curve_module, only: binomial
 
         real, dimension(0:,0:,0:), intent(in) :: Aders
         real, dimension(0:,0:), intent(in) :: wders
@@ -412,4 +412,4 @@ contains
             end do
         end do
     end subroutine bivariate_rational_gradient
-end module nurbs_surface
+end module nurbs_surface_module

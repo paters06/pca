@@ -1,5 +1,5 @@
 program nurbs_curve_example
-    use nurbs_curve
+    use nurbs_curve_module
     use utils
     implicit none
 

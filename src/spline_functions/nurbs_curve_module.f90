@@ -1,4 +1,4 @@
-module nurbs_curve
+module nurbs_curve_module
     implicit none
 contains
     subroutine binomial(a, b, bc)
@@ -363,4 +363,4 @@ contains
             ! call print_matrix(Cki)
         end do
     end subroutine create_tangent_curve
-end module nurbs_curve
+end module nurbs_curve_module

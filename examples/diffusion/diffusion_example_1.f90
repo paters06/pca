@@ -1,9 +1,10 @@
 program diffusion_example_1
     use utils
-    use nurbs_surface
+    use nurbs_surface_module
     use surface_refinement
     use input_output
     use diffusion_solver
+    use derived_types
     implicit none
 
     character(:), allocatable :: file_name
@@ -27,17 +28,15 @@ program diffusion_example_1
     integer, dimension(:), allocatable :: id_disp, remainder_dofs
     real, dimension(:), allocatable :: u_pres
 
-    ! Information import
-    ! file_name = "input_file_diffusion.txt"
-    write (*,*) "Write the name of the input file"
-    write (*,*) "for the IGA solver"
-    read (*,*) file_name_inp
+    type(boundary_condition), dimension(:), allocatable :: bc_array
 
+    call get_command_argument(1, file_name_inp)
     file_name = file_name_inp
 
+    ! Information import
     call import_data(file_name, line_array)
     call convert_data_to_surface(line_array, p, q, UP, VP, ctrl_pts, ref_list)
-    call convert_data_to_solver(line_array, num_gauss_pts, kappa, id_disp, u_pres)
+    call convert_data_to_solver(line_array, num_gauss_pts, kappa, bc_array)
 
     size_1 = size(ctrl_pts, 1)
     size_2 = size(ctrl_pts, 2) - 1
@@ -66,6 +65,8 @@ program diffusion_example_1
     call create_surface(num_points, pref, qref, Pref_pts, wref_pts, Uref, Vref, spts_2)
 
     call assess_surface_refinement(spts_1, spts_2)
+
+    call get_boundary_conditions_dof(pref, qref, Uref, Vref, bc_array, id_disp, u_pres)
 
     ! IGA implementation
     call assemble_weak_form(pref, qref, Uref, Vref, Pref_pts, wref_pts, num_gauss_pts, kappa, Kmat, Fvec)

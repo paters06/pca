@@ -243,21 +243,23 @@ contains
         end if
     end subroutine
 
-    subroutine convert_data_to_solver(line_array, num_gauss_pts, kappa, id_disp, u_pres)
+    subroutine convert_data_to_solver(line_array, num_gauss_pts, kappa, bc_array)
+        ! bc_array: array with information for the enforcement of boundary conditions
+        use derived_types
         character(len=*), dimension(0:), intent(in) :: line_array
         integer, intent(out) :: num_gauss_pts
         real, intent(out) :: kappa
-        integer, dimension(:), allocatable, intent(out) :: id_disp
-        real, dimension(:), allocatable, intent(out) :: u_pres
 
         character(:), allocatable :: format_line, second_format_line
         character(:), allocatable :: start_solver_label, intg_label
-        character(:), allocatable :: diffusion_label, ec_dof_label, temp_label
+        character(:), allocatable :: diffusion_label, bc_label
         character(:), allocatable :: end_solver_label
         integer :: i, label_counter, i_start, i_end
-        integer :: start_solver_flag, intg_flag, diffusion_flag, ec_dof_flag
-        integer :: temp_flag, end_solver_flag
+        integer :: start_solver_flag, intg_flag, diffusion_flag, bc_flag
+        integer :: end_solver_flag
         integer, dimension(:), allocatable :: label_position
+        
+        type(boundary_condition), dimension(:), allocatable, intent(out) :: bc_array
 
         format_line = "(A)"
         second_format_line = "(A, I3)"
@@ -265,8 +267,7 @@ contains
         start_solver_label = "**START_SOLVER**"
         intg_label = "*GAUSS_NUM"
         diffusion_label = "*DIFFUSION"
-        ec_dof_label = "*ESSENTIAL_COND_DOFS"
-        temp_label = "*TEMP_ENFORCED"
+        bc_label = "*ESSENTIAL_COND_DOFS"
         end_solver_label = "**END_SOLVER**"
 
         label_counter = 0
@@ -276,8 +277,7 @@ contains
         start_solver_flag = 0
         intg_flag = 0
         diffusion_flag = 0
-        ec_dof_flag = 0
-        temp_flag = 0
+        bc_flag = 0
         end_solver_flag = 0
 
         do i = 0, size(line_array)-1
@@ -297,14 +297,10 @@ contains
                 label_counter = label_counter + 1
                 label_position(label_counter) = i
                 diffusion_flag = 1
-            else if (ec_dof_label == line_array(i)) then
+            else if (bc_label == line_array(i)) then
                 label_counter = label_counter + 1
                 label_position(label_counter) = i
-                ec_dof_flag = 1
-            else if (temp_label == line_array(i)) then
-                label_counter = label_counter + 1
-                label_position(label_counter) = i
-                temp_flag = 1
+                bc_flag = 1
             end if
         end do
 
@@ -318,14 +314,9 @@ contains
             read (line_array(label_position(2)+1),*) kappa
         end if
 
-        ! Reading dofs to enforce boundary conditions
-        if (temp_flag == 1) then
-            call read_integer_row_array(line_array(label_position(3)+1), ",", id_disp)
-        end if
-
-        ! Reading prescribed temperatures
-        if (temp_flag == 1) then
-            call read_real_row_array(line_array(label_position(4)+1), ",", u_pres)
+        ! Reading essential boundary conditions
+        if (bc_flag == 1) then
+            call read_derived_type_matrix(line_array(label_position(3)+1:i_end-1), bc_array)
         end if
     end subroutine convert_data_to_solver
 
@@ -502,6 +493,27 @@ contains
 
         matrix = temp_matrix(:,1:size(array))
     end subroutine read_string_matrix
+
+    subroutine read_derived_type_matrix(strings, derived_array)
+        use derived_types
+        character(len=*), dimension(:), intent(in) :: strings
+        type(boundary_condition), dimension(:), allocatable, intent(out) :: derived_array
+        integer, parameter :: MAX_SIZE = 50
+        type(boundary_condition) :: temp
+
+        integer :: num_values, i
+
+        num_values = size(strings)
+        allocate(derived_array(num_values))
+
+        do i = 1, num_values
+            read (strings(i),*) temp
+            derived_array(i) = temp
+            ! print "('Direction: ', A)", temp%dir
+            ! print "('Parameter: ', F4.2)", temp%UV_param
+            ! print "('Prescribed value: ', F6.2)", temp%prescribed_val
+        end do
+    end subroutine read_derived_type_matrix
 
     subroutine export_matrix(mat, file_name)
         ! This function is to be generalized for more than two columns

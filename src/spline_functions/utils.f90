@@ -131,6 +131,28 @@ contains
         print *, "===================="
     end subroutine print_string_matrix
 
+    function get_unique_values(full_arr) result(unique_arr)
+        real, dimension(0:), intent(in) :: full_arr
+        real, dimension(:), allocatable :: temp_arr, unique_arr
+        integer :: i, arr_size, i_unique
+
+        arr_size = size(full_arr)
+        i_unique = 0
+
+        allocate(temp_arr(0:arr_size-1))
+
+        do i = 0, arr_size-2
+            if (abs(full_arr(i+1) - full_arr(i)) > 1e-5) then
+                temp_arr(i_unique) = full_arr(i)
+                temp_arr(i_unique+1) = full_arr(i+1)
+                i_unique = i_unique + 1
+            end if
+        end do
+
+        allocate(unique_arr(0:i_unique))
+        unique_arr = temp_arr(0:i_unique)
+    end function get_unique_values
+
     subroutine compute_element_midvalues(array, p, midvalues)
         real, dimension(0:), intent(in) :: array
         integer, intent(in) :: p
@@ -148,8 +170,8 @@ contains
         real, dimension(0:), intent(in) :: Uarray
         real, dimension(0:), intent(in) :: Varray
         integer :: i, j, U_size, V_size, num_elems_U, num_elems_V
-        real, dimension(:), allocatable :: unique_Uarray, unique_Varray, temp_Uarray, temp_Varray
-        integer :: i_unique, i_elems, num_bounds
+        real, dimension(:), allocatable :: unique_Uarray, unique_Varray
+        integer :: i_elems, num_bounds
         real, dimension(:,:), allocatable, intent(out) :: surface_elem_bounds
 
         U_size = size(Uarray) - 1
@@ -157,41 +179,17 @@ contains
         num_elems_U = 0
         num_elems_V = 0
 
-        allocate(temp_Uarray(0:U_size))
-        allocate(temp_Varray(0:V_size))
-        temp_Uarray = 0.
-        temp_Varray = 0.
-
-        i_unique = 0
-
-        do i = 0, U_size-1
-            if (abs(Uarray(i+1) - Uarray(i)) > 1e-5) then
-                num_elems_U = num_elems_U + 1
-                temp_Uarray(i_unique) = Uarray(i)
-                temp_Uarray(i_unique+1) = Uarray(i+1)
-                i_unique = i_unique + 1
-            end if
-        end do
-
-        i_unique = 0
-
-        do i = 0, V_size-1
-            if (abs(Varray(i+1) - Varray(i)) > 1e-5) then
-                num_elems_V = num_elems_V + 1
-                temp_Varray(i_unique) = Varray(i)
-                temp_Varray(i_unique+1) = Varray(i+1)
-                i_unique = i_unique + 1
-            end if
-        end do
-
-        print "(A, I3)", "Number of elements in U direction: ", num_elems_U
-        print "(A, I3)", "Number of elements in V direction: ", num_elems_V
-
         allocate(unique_Uarray(0:num_elems_U))
         allocate(unique_Varray(0:num_elems_V))
         
-        unique_Uarray = temp_Uarray(0:num_elems_U)
-        unique_Varray = temp_Varray(0:num_elems_V)
+        unique_Uarray = get_unique_values(Uarray)
+        unique_Varray = get_unique_values(Varray)
+
+        num_elems_U = size(unique_Uarray) - 1
+        num_elems_V = size(unique_Varray) - 1
+
+        print "(A, I3)", "Number of elements in U direction: ", num_elems_U
+        print "(A, I3)", "Number of elements in V direction: ", num_elems_V
 
         num_bounds = num_elems_U*num_elems_V
 
@@ -199,8 +197,8 @@ contains
 
         i_elems = 0
         
-        do j = 0, num_elems_V-1
-            do i = 0, num_elems_U-1
+        do j = 1, num_elems_V
+            do i = 1, num_elems_U
                 surface_elem_bounds(i_elems, 0) = unique_Uarray(i)
                 surface_elem_bounds(i_elems, 1) = unique_Varray(j)
                 surface_elem_bounds(i_elems, 2) = unique_Uarray(i+1)
