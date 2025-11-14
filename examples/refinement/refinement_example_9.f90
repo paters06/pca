@@ -1,6 +1,6 @@
 program refinement_example_9
     use utils
-    use nurbs_surface
+    use nurbs_surface_module
     use surface_refinement
     use input_output
     implicit none

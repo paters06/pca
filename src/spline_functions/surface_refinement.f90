@@ -399,7 +399,7 @@ contains
         ! Pw_net and Qw_net are the control nets before and after refinement
         ! s: knot multiplicity
         ! r: number of insertions
-        use nurbs_curve
+        use nurbs_curve_module
         integer, intent(in) :: p, q, t
         real, dimension(0:), intent(in) :: UP, VP
         real, dimension(0:,0:,0:), intent(in) :: Pw_net
@@ -861,8 +861,8 @@ contains
         !   Ph_pts: control points after h-refinement
         !   wh_pts: weights after h-refinement
         !   Ubar: knot vector after h-refinement
-        use nurbs_curve
-        use nurbs_surface
+        use nurbs_curve_module
+        use nurbs_surface_module
         use utils
         integer, intent(in) :: p, q
         real, dimension(:,:), intent(in) :: P_pts
@@ -929,8 +929,8 @@ contains
         !   wh_pts: weights after p-refinement
         !   Ubar: knot vector after p-refinement
         !   Vbar: knot vector after p-refinement
-        use nurbs_curve
-        use nurbs_surface
+        use nurbs_curve_module
+        use nurbs_surface_module
         use utils
         integer, intent(in) :: p, q
         real, dimension(:,:), intent(in) :: P_pts
@@ -1002,8 +1002,8 @@ contains
         !   wk_pts: weights after k-refinement
         !   Uk: knot vector after k-refinement
         !   Vk: knot vector after k-refinement
-        use nurbs_curve
-        use nurbs_surface
+        use nurbs_curve_module
+        use nurbs_surface_module
         use utils
         integer, intent(in) :: p, q
         real, dimension(:,:), intent(in) :: P_pts
@@ -1066,8 +1066,8 @@ contains
     end subroutine surface_k_refinement
 
     subroutine surface_spline_refinement(p, q, P_pts, w_pts, Uknot, Vknot, ref_list, pk, qk, Pk_pts, wk_pts, Uk, Vk)
-        use nurbs_curve
-        use nurbs_surface
+        use nurbs_curve_module
+        use nurbs_surface_module
         use utils
         integer, intent(in) :: p, q
         real, dimension(:,:), intent(in) :: P_pts

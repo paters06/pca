@@ -1,6 +1,6 @@
 program nurbs_surface_example
     use utils
-    use nurbs_surface
+    use nurbs_surface_module
     implicit none
 
     integer :: p, q

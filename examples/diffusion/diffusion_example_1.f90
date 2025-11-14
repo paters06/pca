@@ -1,12 +1,14 @@
 program diffusion_example_1
     use utils
-    use nurbs_surface
+    use nurbs_surface_module
     use surface_refinement
     use input_output
     use diffusion_solver
+    use derived_types
     implicit none
 
     character(:), allocatable :: file_name
+    character(len=50) :: file_name_inp
     character(len=50), dimension(:), allocatable :: line_array
 
     real, dimension(:,:), allocatable :: ctrl_pts, P_pts, w_pts
@@ -26,11 +28,15 @@ program diffusion_example_1
     integer, dimension(:), allocatable :: id_disp, remainder_dofs
     real, dimension(:), allocatable :: u_pres
 
-    ! Information import
-    file_name = "input_file_diffusion.txt"
+    type(boundary_condition), dimension(:), allocatable :: bc_array
 
+    call get_command_argument(1, file_name_inp)
+    file_name = file_name_inp
+
+    ! Information import
     call import_data(file_name, line_array)
     call convert_data_to_surface(line_array, p, q, UP, VP, ctrl_pts, ref_list)
+    call convert_data_to_solver(line_array, num_gauss_pts, kappa, bc_array)
 
     size_1 = size(ctrl_pts, 1)
     size_2 = size(ctrl_pts, 2) - 1
@@ -60,13 +66,11 @@ program diffusion_example_1
 
     call assess_surface_refinement(spts_1, spts_2)
 
+    call get_boundary_conditions_dof(pref, qref, Uref, Vref, bc_array, id_disp, u_pres)
+
     ! IGA implementation
-    num_gauss_pts = 3
-    kappa = 355
-    id_disp = (/0, 4, 5, 9/)
-    u_pres = (/0., 100., 0., 100./)
     call assemble_weak_form(pref, qref, Uref, Vref, Pref_pts, wref_pts, num_gauss_pts, kappa, Kmat, Fvec)
     call matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred, remainder_dofs)
     call solve_matrix_equations(Kred, Fred, remainder_dofs, id_disp, u_pres, Usol)
-    call compute_postprocessing_solutions(pref, qref, Usol, Pref_pts, wref_pts, Uref, Vref)
+    call compute_postprocessing_solutions(pref, qref, Usol, Pref_pts, wref_pts, Uref, Vref, file_name)
 end program diffusion_example_1
