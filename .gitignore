@@ -131,6 +131,7 @@ dmypy.json
 .pyre/
 .vscode/settings.json
 .vscode/launch.json
+.vscode/
 build/
 src/phenomenon/*.mod
 bin/
