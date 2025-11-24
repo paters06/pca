@@ -262,26 +262,36 @@ contains
         end do param_coor_loop
     end subroutine element_stiffness_matrix
     
-    subroutine assemble_weak_form(p, q, UP, VP, P_pts, w_pts, num_gauss_pts, kappa, Kmat, Fvec)
+    subroutine assemble_weak_form(input_surf, num_gauss_pts, kappa, Kmat, Fvec)
         use nurbs_curve_module, only: weighted_control_points
         use nurbs_surface_module, only: create_control_net
-        integer, intent(in) :: p, q, num_gauss_pts
+        use derived_types, only: nurbs_surface
+        type(nurbs_surface), intent(in) :: input_surf
+        integer :: p, q
+        integer, intent(in) :: num_gauss_pts
         real, intent(in) :: kappa
-        real, dimension(0:), intent(in) :: UP, VP
-        real, dimension(0:,0:), intent(in) :: P_pts, w_pts
+        real, dimension(:), allocatable :: UP, VP
+        real, dimension(:,:), allocatable :: P_pts, w_pts
         real, dimension(:,:), allocatable, intent(out) :: Kmat, Fvec
 
         real, dimension(:), allocatable :: gauss_nodes, gauss_weights, param_intg_weights
         real, dimension(:,:), allocatable :: surface_elem_bounds, param_intg_points
         real, dimension(:,:), allocatable :: Pw_pts
         real, dimension(:,:,:), allocatable :: Pw_net
-        real, dimension(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1) :: K_local
+        real, dimension(:,:), allocatable :: K_local
         integer, dimension(:,:), allocatable :: global_dofs_loc
 
         integer :: n_der
         integer :: i_elem, num_elements, r, s, nu, nv, num_dofs, i_global_loop
         integer :: i_global, j_global, num_non_zero, aa, bb
         real :: ua, ub, va, vb
+
+        p = input_surf%p
+        q = input_surf%q
+        UP = input_surf%U_knot
+        VP = input_surf%V_knot
+        P_pts = input_surf%control_points
+        w_pts = input_surf%weight_points
 
         r = size(UP) - 1
         s = size(VP) - 1
@@ -302,6 +312,7 @@ contains
         num_dofs = size(P_pts,1)
         allocate(Kmat(0:num_dofs-1,0:num_dofs-1))
         allocate(Fvec(0:num_dofs-1,1))
+        allocate(K_local(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1))
         Kmat = 0.
         Fvec = 0.
         num_non_zero = (p+1)*(q+1)
@@ -410,20 +421,22 @@ contains
         call print_column_vector(Usol)
     end subroutine solve_matrix_equations
 
-    subroutine compute_postprocessing_solutions(p, q, F_pts, P_pts, w_pts, UP, VP, file_name)
+    subroutine compute_postprocessing_solutions(F_pts, surf, file_name)
         use nurbs_surface_module
         use input_output, only: export_matrix
-        integer, intent(in) :: p, q
-        real, dimension(:,:), allocatable, intent(in) :: P_pts, w_pts, F_pts
+        use derived_types
+        ! integer, intent(in) :: p, q
+        real, dimension(:,:), allocatable, intent(in) :: F_pts
         real, dimension(:,:), allocatable :: spts, fpts, post_pts
-        real, dimension(:), allocatable, intent(in) :: UP, VP
+        ! real, dimension(:), allocatable, intent(in) :: UP, VP
         integer :: num_points, n_dim_1, n_dim_2
+        type(nurbs_surface), intent(in) :: surf
         character(:), allocatable, intent(in) :: file_name
         character(:), allocatable :: file_output
 
         num_points = 25
-        call create_surface(num_points, p, q, P_pts, w_pts, UP, VP, spts)
-        call create_n_surface(num_points, p, q, F_pts, UP, VP, fpts)
+        call create_surface(num_points, surf, spts)
+        call create_n_surface(num_points, surf, F_pts, fpts)
 
         n_dim_1 = size(spts,2)
         n_dim_2 = size(fpts,2)

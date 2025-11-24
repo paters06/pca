@@ -377,10 +377,11 @@ contains
         end do fourth_boundary
     end function compute_parametric_boundary_points
 
-    subroutine get_boundary_conditions_dof(p, q, UP, VP, bc_array, id_disp, u_pres)
+    subroutine get_boundary_conditions_dof(surf, bc_array, id_disp, u_pres)
         use derived_types
-        integer, intent(in) :: p, q
-        real, dimension(:), intent(in) :: UP, VP
+        integer :: p, q
+        real, dimension(:), allocatable :: UP, VP
+        type(nurbs_surface), intent(in) :: surf
         type(boundary_condition), dimension(:), allocatable, intent(in) :: bc_array
         integer, dimension(:), allocatable, intent(out) :: id_disp
         real, dimension(:), allocatable, intent(out) :: u_pres
@@ -390,6 +391,11 @@ contains
         real, dimension(:), allocatable :: temp_2
 
         integer, parameter :: MAX_SIZE = 5000
+
+        p = surf%p
+        q = surf%q
+        UP = surf%U_knot
+        VP = surf%V_knot
 
         r = size(UP) - 1
         s = size(VP) - 1
@@ -448,4 +454,19 @@ contains
         id_disp = temp_1(1:i_temp_1-1)
         u_pres = temp_2(1:i_temp_1-1)
     end subroutine get_boundary_conditions_dof
+
+    subroutine print_nurbs_surface_info(surf)
+        use derived_types
+        type(nurbs_surface), intent(in) :: surf
+
+        print "(A)", "Surface control points"
+        call print_matrix(surf%control_points)
+        print "(A)", "Surface weight points"
+        call print_matrix(surf%weight_points)
+        print "(A)", "U knot vector"
+        call print_row_vector(surf%U_knot)
+        print "(A)", "V knot vector"
+        call print_row_vector(surf%V_knot)
+        print "(A, I3, A, I3)", "p degree:", surf%p, " |  q degree:", surf%q
+    end subroutine print_nurbs_surface_info
 end module utils

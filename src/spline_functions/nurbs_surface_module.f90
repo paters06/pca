@@ -146,17 +146,19 @@ contains
         S_pt = Sw(0:n_dim-1)/Sw(n_dim)
     end subroutine n_surface_point
 
-    subroutine create_surface(num_points, p, q, P_pts, w_pts, U_array, V_array, spts)
+    subroutine create_surface(num_points, surf, spts)
         ! r+1 is the length of the U knot vector
         ! s+1 is the length of the V knot vector
         ! n+1 is the number of control points
         use utils
         use nurbs_curve_module, only: weighted_control_points
+        use derived_types
         
-        integer, intent(in) :: p, q, num_points
-        real, intent(in), dimension(:,:) :: P_pts
-        real, intent(in), dimension(:,:) :: w_pts
-        real, intent(in), dimension(:) :: U_array, V_array
+        type(nurbs_surface), intent(in) :: surf
+        integer, intent(in) :: num_points
+        integer :: p, q
+        real, dimension(:,:), allocatable :: P_pts, w_pts
+        real, dimension(:), allocatable :: U_array, V_array
         real, intent(out), dimension(:,:), allocatable :: spts
 
         real :: U_min, U_max, V_min, V_max, u, v
@@ -164,6 +166,13 @@ contains
         real, dimension(:,:), allocatable :: Pw
         real, dimension(:), allocatable :: S_pti
         real, dimension(:,:,:), allocatable :: Pw_net
+
+        p = surf%p
+        q = surf%q
+        P_pts = surf%control_points
+        w_pts = surf%weight_points
+        U_array = surf%U_knot
+        V_array = surf%V_knot
 
         r = size(U_array) - 1
         s = size(V_array) - 1
@@ -195,17 +204,19 @@ contains
         end do
     end subroutine create_surface
 
-    subroutine create_n_surface(num_points, p, q, F_pts, U_array, V_array, spts)
+    subroutine create_n_surface(num_points, surf, F_pts, spts)
         ! r+1 is the length of the U knot vector
         ! s+1 is the length of the V knot vector
         ! n+1 is the number of control points
         ! F_pts are the control points of the Field of interest
         use utils
         use nurbs_curve_module, only: weighted_control_points
-        
-        integer, intent(in) :: p, q, num_points
+        use derived_types
+        type(nurbs_surface), intent(in) :: surf
+        integer :: p, q
+        integer, intent(in) :: num_points
         real, intent(in), allocatable, dimension(:,:) :: F_pts
-        real, intent(in), dimension(:) :: U_array, V_array
+        real, dimension(:), allocatable :: U_array, V_array
         real, intent(out), dimension(:,:), allocatable :: spts
 
         real :: U_min, U_max, V_min, V_max, u, v
@@ -213,6 +224,11 @@ contains
         real, dimension(:), allocatable :: S_pti, wf_pts
         real, dimension(:,:), allocatable :: wf_col, Fw
         real, dimension(:,:,:), allocatable :: Pw_net
+
+        p = surf%p
+        q = surf%q
+        U_array = surf%U_knot
+        V_array = surf%V_knot
 
         ! num_points = 625
         r = size(U_array) - 1
@@ -312,17 +328,19 @@ contains
         end do
     end subroutine create_tangent_surface
 
-    subroutine create_surface_boundary(p, q, P_pts, w_pts, U_array, V_array, sbpts)
+    subroutine create_surface_boundary(surf, sbpts)
         ! r+1 is the length of the U knot vector
         ! s+1 is the length of the V knot vector
         ! n+1 is the number of control points
         use utils
         use nurbs_curve_module, only: weighted_control_points
+        use derived_types
         
-        integer, intent(in) :: p, q
-        real, intent(in), dimension(:,:) :: P_pts
-        real, intent(in), dimension(:,:) :: w_pts
-        real, intent(in), dimension(:) :: U_array, V_array
+        type(nurbs_surface), intent(in) :: surf
+        integer:: p, q
+        real, dimension(:,:), allocatable :: P_pts
+        real, dimension(:,:), allocatable :: w_pts
+        real, dimension(:), allocatable :: U_array, V_array
         real, intent(out), dimension(:,:), allocatable :: sbpts
 
         real :: u, v
@@ -333,6 +351,13 @@ contains
 
         real, dimension(0:3) :: first_boundary, second_boundary
         real, dimension(0:3) :: third_boundary, fourth_boundary
+
+        p = surf%p
+        q = surf%q
+        P_pts = surf%control_points
+        w_pts = surf%weight_points
+        U_array = surf%U_knot
+        V_array = surf%V_knot
 
         r = size(U_array) - 1
         s = size(V_array) - 1
