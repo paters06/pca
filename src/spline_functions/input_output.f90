@@ -51,19 +51,25 @@ contains
         line_array = line_array_temp(0:num_values-1)
     end subroutine import_data
 
-    subroutine convert_data_to_curve(line_array, p, U_knot, ctrl_pts, refn_array)
+    subroutine convert_data_to_curve(line_array, input_curve, refn_array)
+        use derived_types
         character(len=*), dimension(0:), intent(in) :: line_array
-        integer, intent(out) :: p
-        real, dimension(:), allocatable, intent(out) :: U_knot
-        real, dimension(:,:), allocatable, intent(out) :: ctrl_pts
+        integer :: p
+        real, dimension(:), allocatable :: U_knot
+        real, dimension(:,:), allocatable :: ctrl_pts
+        type(nurbs_curve), intent(out) :: input_curve
         character(len=1), dimension(:), allocatable, intent(out), optional :: refn_array
 
         character(:), allocatable :: format_line, second_format_line
         ! character(len=50), dimension(:), allocatable :: label_array
         character(:), allocatable :: control_points_label, p_label, uknot_label, end_label, refinement_label
+        character(:), allocatable :: patch_label
         integer :: i, label_counter
-        integer :: control_points_flag, p_flag, uknot_flag, refinement_flag
+        integer :: control_points_flag, p_flag, uknot_flag, refinement_flag, patch_flag
         integer, dimension(:), allocatable :: label_position
+
+        integer :: size_1, size_2
+        real, dimension(:,:), allocatable :: P_pts, w_pts
 
         format_line = "(A)"
         second_format_line = "(A, I3)"
@@ -72,7 +78,7 @@ contains
         p_label = "*p_ORDER"
         uknot_label = "*U_KNOT"
         refinement_label = "*REFN"
-        end_label = "**END**"
+        end_label = "**END_GEOMETRY**"
 
         label_counter = 0
         allocate(label_position(5))
@@ -124,13 +130,29 @@ contains
         if (refinement_flag == 1) then
             call read_row_string(line_array(label_position(4)+1), ",", refn_array)
         end if
+
+        size_1 = size(ctrl_pts, 1)
+        size_2 = size(ctrl_pts, 2) - 1
+
+        allocate(P_pts(0:size_1-1,0:size_2-1))
+        allocate(w_pts(0:size_1-1,0))
+
+        P_pts = ctrl_pts(1:size_1,1:size_2)
+        w_pts = reshape(ctrl_pts(1:size_1,size_2+1), (/size_1, 1/))
+
+        input_curve%p = p
+        input_curve%U_knot = U_knot
+        input_curve%control_points = P_pts
+        input_curve%weight_points = w_pts
     end subroutine
 
-    subroutine convert_data_to_surface(line_array, p, q, U_knot, V_knot, ctrl_pts, refn_array)
+    subroutine convert_data_to_surface(line_array, input_surf, refn_array)
+        use derived_types
         character(len=*), dimension(0:), intent(in) :: line_array
-        integer, intent(out) :: p, q
-        real, dimension(:), allocatable, intent(out) :: U_knot, V_knot
-        real, dimension(:,:), allocatable, intent(out) :: ctrl_pts
+        integer :: p, q
+        real, dimension(:), allocatable :: U_knot, V_knot
+        real, dimension(:,:), allocatable :: ctrl_pts
+        type(nurbs_surface), intent(out) :: input_surf
         ! character(len=1), dimension(:), allocatable, intent(out), optional :: refn_array
         character(len=1), dimension(:,:), allocatable, intent(out), optional :: refn_array
 
@@ -144,6 +166,9 @@ contains
         integer :: start_geom_flag, control_points_flag, p_flag, q_flag
         integer :: uknot_flag, vknot_flag, refinement_flag, end_geom_flag
         integer, dimension(:), allocatable :: label_position
+
+        integer :: size_1, size_2, size_vec_1, size_vec_2
+        real, dimension(:,:), allocatable :: P_pts, w_pts
 
         format_line = "(A)"
         second_format_line = "(A, I3)"
@@ -241,6 +266,24 @@ contains
             ! call read_row_string(line_array(label_position(6)+1), ",", refn_array)
             call read_string_matrix(line_array(label_position(6)+1:i_end-1), ",", refn_array)
         end if
+
+        size_1 = size(ctrl_pts, 1)
+        size_2 = size(ctrl_pts, 2) - 1
+        size_vec_1 = size(U_knot)
+        size_vec_2 = size(V_knot)
+
+        allocate(P_pts(0:size_1-1,0:size_2-1))
+        allocate(w_pts(0:size_1-1,0))
+
+        P_pts = ctrl_pts(1:size_1,1:size_2)
+        w_pts = reshape(ctrl_pts(1:size_1,size_2+1), (/size_1, 1/))
+
+        input_surf%p = p
+        input_surf%q = q
+        input_surf%U_knot = U_knot
+        input_surf%V_knot = V_knot
+        input_surf%control_points = P_pts
+        input_surf%weight_points = w_pts
     end subroutine
 
     subroutine convert_data_to_solver(line_array, num_gauss_pts, kappa, bc_array)

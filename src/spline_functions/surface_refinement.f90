@@ -1065,19 +1065,22 @@ contains
         call geometric_control_points(Qw_pts, Pk_pts, wk_pts)
     end subroutine surface_k_refinement
 
-    subroutine surface_spline_refinement(p, q, P_pts, w_pts, Uknot, Vknot, ref_list, pk, qk, Pk_pts, wk_pts, Uk, Vk)
+    subroutine surface_spline_refinement(input_surf, ref_list, refined_surf)
         use nurbs_curve_module
         use nurbs_surface_module
         use utils
-        integer, intent(in) :: p, q
-        real, dimension(:,:), intent(in) :: P_pts
-        real, dimension(:,:), intent(in) :: w_pts
-        real, dimension(0:), intent(in) :: Uknot, Vknot
+        use derived_types
+        type(nurbs_surface), intent(in) :: input_surf
+        type(nurbs_surface), intent(out) :: refined_surf
+        integer :: p, q
+        real, dimension(:,:), allocatable :: P_pts
+        real, dimension(:,:), allocatable :: w_pts
+        real, dimension(:), allocatable :: Uknot, Vknot
         character(len=*), dimension(:,:), allocatable, intent(in) :: ref_list
-        integer, intent(out) :: pk, qk
-        real, dimension(:,:), allocatable, intent(out) :: Pk_pts
-        real, dimension(:,:), allocatable, intent(out) :: wk_pts
-        real, dimension(:), allocatable, intent(out) :: Uk, Vk
+        integer :: pk, qk
+        real, dimension(:,:), allocatable :: Pk_pts
+        real, dimension(:,:), allocatable :: wk_pts
+        real, dimension(:), allocatable :: Uk, Vk
 
         integer :: i, ptemp, qtemp, t, r, s, nu, nv, ph, qh
         character(:), allocatable :: dir, refn_type
@@ -1087,6 +1090,13 @@ contains
         real, dimension(:,:,:), allocatable :: Pw_net, Qkw_net, Pw_temp, Qhw_net
 
         t = 1
+
+        p = input_surf%p
+        q = input_surf%q
+        Uknot = input_surf%U_knot
+        Vknot = input_surf%V_knot
+        P_pts = input_surf%control_points
+        w_pts = input_surf%weight_points
         
         r = size(Uknot) - 1
         s = size(Vknot) - 1
@@ -1152,16 +1162,32 @@ contains
 
         call create_control_list(Qkw_net, Qw_pts)
         call geometric_control_points(Qw_pts, Pk_pts, wk_pts)
+
+        refined_surf%p = pk
+        refined_surf%q = qk
+        refined_surf%U_knot = Uk
+        refined_surf%V_knot = Vk
+        refined_surf%control_points = Pk_pts
+        refined_surf%weight_points = wk_pts
     end subroutine surface_spline_refinement
 
-    subroutine assess_surface_refinement(spts_1, spts_2)
+    subroutine assess_surface_refinement(surf_1, surf_2)
         use utils
-        real, dimension(:,:), intent(in) :: spts_1, spts_2
+        use nurbs_surface_module
+        use derived_types
+        real, dimension(:,:), allocatable :: spts_1, spts_2
+        type(nurbs_surface), intent(in) :: surf_1, surf_2
         real, dimension(:,:), allocatable :: diff
         real, dimension(:), allocatable :: norm_diff
         logical, dimension(:), allocatable :: norm_diff_bool
         real :: tol = 1e-5
         real :: average_error
+        integer :: num_points
+
+        num_points = 41
+
+        call create_surface(num_points, surf_1, spts_1)
+        call create_surface(num_points, surf_2, spts_2)
         
         diff = spts_1-spts_2
 

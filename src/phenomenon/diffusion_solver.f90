@@ -262,26 +262,36 @@ contains
         end do param_coor_loop
     end subroutine element_stiffness_matrix
     
-    subroutine assemble_weak_form(p, q, UP, VP, P_pts, w_pts, num_gauss_pts, kappa, Kmat, Fvec)
+    subroutine assemble_weak_form(input_surf, num_gauss_pts, kappa, Kmat, Fvec)
         use nurbs_curve_module, only: weighted_control_points
         use nurbs_surface_module, only: create_control_net
-        integer, intent(in) :: p, q, num_gauss_pts
+        use derived_types, only: nurbs_surface
+        type(nurbs_surface), intent(in) :: input_surf
+        integer :: p, q
+        integer, intent(in) :: num_gauss_pts
         real, intent(in) :: kappa
-        real, dimension(0:), intent(in) :: UP, VP
-        real, dimension(0:,0:), intent(in) :: P_pts, w_pts
+        real, dimension(:), allocatable :: UP, VP
+        real, dimension(:,:), allocatable :: P_pts, w_pts
         real, dimension(:,:), allocatable, intent(out) :: Kmat, Fvec
 
         real, dimension(:), allocatable :: gauss_nodes, gauss_weights, param_intg_weights
         real, dimension(:,:), allocatable :: surface_elem_bounds, param_intg_points
         real, dimension(:,:), allocatable :: Pw_pts
         real, dimension(:,:,:), allocatable :: Pw_net
-        real, dimension(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1) :: K_local
+        real, dimension(:,:), allocatable :: K_local
         integer, dimension(:,:), allocatable :: global_dofs_loc
 
         integer :: n_der
         integer :: i_elem, num_elements, r, s, nu, nv, num_dofs, i_global_loop
         integer :: i_global, j_global, num_non_zero, aa, bb
         real :: ua, ub, va, vb
+
+        p = input_surf%p
+        q = input_surf%q
+        UP = input_surf%U_knot
+        VP = input_surf%V_knot
+        P_pts = input_surf%control_points
+        w_pts = input_surf%weight_points
 
         r = size(UP) - 1
         s = size(VP) - 1
@@ -302,6 +312,7 @@ contains
         num_dofs = size(P_pts,1)
         allocate(Kmat(0:num_dofs-1,0:num_dofs-1))
         allocate(Fvec(0:num_dofs-1,1))
+        allocate(K_local(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1))
         Kmat = 0.
         Fvec = 0.
         num_non_zero = (p+1)*(q+1)
@@ -330,78 +341,6 @@ contains
             end do row_loop
         end do element_loop
     end subroutine assemble_weak_form
-
-    subroutine get_boundary_conditions_dof(p, q, UP, VP, bc_array, id_disp, u_pres)
-        use derived_types
-        integer, intent(in) :: p, q
-        real, dimension(:), intent(in) :: UP, VP
-        type(boundary_condition), dimension(:), allocatable, intent(in) :: bc_array
-        integer, dimension(:), allocatable, intent(out) :: id_disp
-        real, dimension(:), allocatable, intent(out) :: u_pres
-
-        integer :: i, j, r, s, iu, jv, nu, nv, id, num_bc, i_temp_1
-        integer, dimension(:), allocatable :: i_arr, temp_1
-        real, dimension(:), allocatable :: temp_2
-
-        integer, parameter :: MAX_SIZE = 5000
-
-        r = size(UP) - 1
-        s = size(VP) - 1
-        nu = r - p - 1
-        nv = s - q - 1
-
-        num_bc = size(bc_array)
-
-        allocate(temp_1(MAX_SIZE))
-        allocate(temp_2(MAX_SIZE))
-        temp_1 = 0
-        temp_2 = 0.0
-        i_temp_1 = 1
-
-        do j = 1, num_bc
-            if (bc_array(j)%dir == "U") then
-                allocate(i_arr(0:nu))
-                i_arr = (/(i, i = 0, nu)/)
-                if (abs(bc_array(j)%UV_param) < 1e-5) then
-                    jv = 0
-                end if
-                if (abs(bc_array(j)%UV_param-1.0) < 1e-5) then
-                    jv = nv
-                end if
-    
-                do i = 0, nu
-                    id = compute_global_dof(i_arr(i),jv,nu)
-                    ! print "(A, I3, A, F6.1)", "Global dof:", id, " |BC value:", bc_arr(j)
-                    temp_1(i_temp_1) = id
-                    temp_2(i_temp_1) = bc_array(j)%prescribed_val
-                    i_temp_1 = i_temp_1 + 1
-                end do
-                deallocate(i_arr)
-            else if (bc_array(j)%dir == "V") then
-                allocate(i_arr(0:nv))
-                i_arr = (/(i, i = 0, nv)/)
-                if (abs(bc_array(j)%UV_param) < 1e-5) then
-                    iu = 0
-                end if
-                if (abs(bc_array(j)%UV_param-1.0) < 1e-5) then
-                    iu = nu
-                end if
-                do i = 0, nv
-                    id = compute_global_dof(iu,i_arr(i),nu)
-                    ! print "(A, I3, A, F6.1)", "Global dof:", id, " |BC value:", bc_arr(j)
-                    temp_1(i_temp_1) = id
-                    temp_2(i_temp_1) = bc_array(j)%prescribed_val
-                    i_temp_1 = i_temp_1 + 1
-                end do
-                deallocate(i_arr)
-            end if
-        end do
-
-        allocate(id_disp(i_temp_1-1))
-        allocate(u_pres(i_temp_1-1))
-        id_disp = temp_1(1:i_temp_1-1)
-        u_pres = temp_2(1:i_temp_1-1)
-    end subroutine get_boundary_conditions_dof
 
     subroutine matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred, remainder_dofs)
         use utils
@@ -482,20 +421,22 @@ contains
         call print_column_vector(Usol)
     end subroutine solve_matrix_equations
 
-    subroutine compute_postprocessing_solutions(p, q, F_pts, P_pts, w_pts, UP, VP, file_name)
+    subroutine compute_postprocessing_solutions(F_pts, surf, file_name)
         use nurbs_surface_module
         use input_output, only: export_matrix
-        integer, intent(in) :: p, q
-        real, dimension(:,:), allocatable, intent(in) :: P_pts, w_pts, F_pts
+        use derived_types
+        ! integer, intent(in) :: p, q
+        real, dimension(:,:), allocatable, intent(in) :: F_pts
         real, dimension(:,:), allocatable :: spts, fpts, post_pts
-        real, dimension(:), allocatable, intent(in) :: UP, VP
+        ! real, dimension(:), allocatable, intent(in) :: UP, VP
         integer :: num_points, n_dim_1, n_dim_2
+        type(nurbs_surface), intent(in) :: surf
         character(:), allocatable, intent(in) :: file_name
         character(:), allocatable :: file_output
 
         num_points = 25
-        call create_surface(num_points, p, q, P_pts, w_pts, UP, VP, spts)
-        call create_n_surface(num_points, p, q, F_pts, UP, VP, fpts)
+        call create_surface(num_points, surf, spts)
+        call create_n_surface(num_points, surf, F_pts, fpts)
 
         n_dim_1 = size(spts,2)
         n_dim_2 = size(fpts,2)

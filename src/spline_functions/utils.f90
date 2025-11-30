@@ -305,4 +305,168 @@ contains
         integer :: dof
         dof = j*(nu+1) + i
     end function compute_global_dof
+
+    function compute_parametric_boundary_points(arr1, arr2, arr3, arr4) result(bound_param_pts)
+        ! arr_i structure: Umin, Vmin, Umax, Vmax
+        !
+        !
+        real, dimension(:), intent(in) :: arr1, arr2, arr3, arr4
+        real, dimension(:,:), allocatable :: bound_param_pts
+        integer :: num_points, i_pt, i
+        real :: u, v, u_max, u_min, v_max, v_min
+
+        num_points = 41
+
+        allocate(bound_param_pts(0:(4*num_points)-1,0:1))
+        bound_param_pts = 0.0
+        i_pt = 0
+
+        ! u = ((u_max - u_min)/num_points)*(i-1) + u_min
+        ! v = ((v_max - v_min)/num_points)*(i-1) + v_min
+
+        u_min = arr1(1)
+        v_min = arr1(2)
+        u_max = arr1(3)
+        v_max = arr1(4)
+
+        first_boundary: do i = 1, num_points
+            u = ((u_max - u_min)/num_points)*(i-1) + u_min
+            v = v_min
+            bound_param_pts(i_pt,0) = u
+            bound_param_pts(i_pt,1) = v
+            i_pt = i_pt + 1
+        end do first_boundary
+
+        u_min = arr2(1)
+        v_min = arr2(2)
+        u_max = arr2(3)
+        v_max = arr2(4)
+
+        second_boundary: do i = 1, num_points
+            u = u_max
+            v = ((v_max - v_min)/num_points)*(i-1) + v_min
+            bound_param_pts(i_pt,0) = u
+            bound_param_pts(i_pt,1) = v
+            i_pt = i_pt + 1
+        end do second_boundary
+
+        u_min = arr3(1)
+        v_min = arr3(2)
+        u_max = arr3(3)
+        v_max = arr3(4)
+
+        third_boundary: do i = 1, num_points
+            u = ((u_max - u_min)/num_points)*(i-1) + u_min
+            v = v_max
+            bound_param_pts(i_pt,0) = u
+            bound_param_pts(i_pt,1) = v
+            i_pt = i_pt + 1
+        end do third_boundary
+
+        u_min = arr4(1)
+        v_min = arr4(2)
+        u_max = arr4(3)
+        v_max = arr4(4)
+
+        fourth_boundary: do i = 1, num_points
+            u = u_min
+            v = ((v_max - v_min)/num_points)*(i-1) + v_min
+            bound_param_pts(i_pt,0) = u
+            bound_param_pts(i_pt,1) = v
+            i_pt = i_pt + 1
+        end do fourth_boundary
+    end function compute_parametric_boundary_points
+
+    subroutine get_boundary_conditions_dof(surf, bc_array, id_disp, u_pres)
+        use derived_types
+        integer :: p, q
+        real, dimension(:), allocatable :: UP, VP
+        type(nurbs_surface), intent(in) :: surf
+        type(boundary_condition), dimension(:), allocatable, intent(in) :: bc_array
+        integer, dimension(:), allocatable, intent(out) :: id_disp
+        real, dimension(:), allocatable, intent(out) :: u_pres
+
+        integer :: i, j, r, s, iu, jv, nu, nv, id, num_bc, i_temp_1
+        integer, dimension(:), allocatable :: i_arr, temp_1
+        real, dimension(:), allocatable :: temp_2
+
+        integer, parameter :: MAX_SIZE = 5000
+
+        p = surf%p
+        q = surf%q
+        UP = surf%U_knot
+        VP = surf%V_knot
+
+        r = size(UP) - 1
+        s = size(VP) - 1
+        nu = r - p - 1
+        nv = s - q - 1
+
+        num_bc = size(bc_array)
+
+        allocate(temp_1(MAX_SIZE))
+        allocate(temp_2(MAX_SIZE))
+        temp_1 = 0
+        temp_2 = 0.0
+        i_temp_1 = 1
+
+        do j = 1, num_bc
+            if (bc_array(j)%dir == "U") then
+                allocate(i_arr(0:nu))
+                i_arr = (/(i, i = 0, nu)/)
+                if (abs(bc_array(j)%UV_param) < 1e-5) then
+                    jv = 0
+                end if
+                if (abs(bc_array(j)%UV_param-1.0) < 1e-5) then
+                    jv = nv
+                end if
+    
+                do i = 0, nu
+                    id = compute_global_dof(i_arr(i),jv,nu)
+                    ! print "(A, I3, A, F6.1)", "Global dof:", id, " |BC value:", bc_arr(j)
+                    temp_1(i_temp_1) = id
+                    temp_2(i_temp_1) = bc_array(j)%prescribed_val
+                    i_temp_1 = i_temp_1 + 1
+                end do
+                deallocate(i_arr)
+            else if (bc_array(j)%dir == "V") then
+                allocate(i_arr(0:nv))
+                i_arr = (/(i, i = 0, nv)/)
+                if (abs(bc_array(j)%UV_param) < 1e-5) then
+                    iu = 0
+                end if
+                if (abs(bc_array(j)%UV_param-1.0) < 1e-5) then
+                    iu = nu
+                end if
+                do i = 0, nv
+                    id = compute_global_dof(iu,i_arr(i),nu)
+                    ! print "(A, I3, A, F6.1)", "Global dof:", id, " |BC value:", bc_arr(j)
+                    temp_1(i_temp_1) = id
+                    temp_2(i_temp_1) = bc_array(j)%prescribed_val
+                    i_temp_1 = i_temp_1 + 1
+                end do
+                deallocate(i_arr)
+            end if
+        end do
+
+        allocate(id_disp(i_temp_1-1))
+        allocate(u_pres(i_temp_1-1))
+        id_disp = temp_1(1:i_temp_1-1)
+        u_pres = temp_2(1:i_temp_1-1)
+    end subroutine get_boundary_conditions_dof
+
+    subroutine print_nurbs_surface_info(surf)
+        use derived_types
+        type(nurbs_surface), intent(in) :: surf
+
+        print "(A)", "Surface control points"
+        call print_matrix(surf%control_points)
+        print "(A)", "Surface weight points"
+        call print_matrix(surf%weight_points)
+        print "(A)", "U knot vector"
+        call print_row_vector(surf%U_knot)
+        print "(A)", "V knot vector"
+        call print_row_vector(surf%V_knot)
+        print "(A, I3, A, I3)", "p degree:", surf%p, " |  q degree:", surf%q
+    end subroutine print_nurbs_surface_info
 end module utils

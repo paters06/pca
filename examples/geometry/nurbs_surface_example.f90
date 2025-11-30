@@ -1,6 +1,7 @@
 program nurbs_surface_example
     use utils
     use nurbs_surface_module
+    use derived_types
     implicit none
 
     integer :: p, q
@@ -10,6 +11,7 @@ program nurbs_surface_example
     real, dimension(:), allocatable :: U_knot, V_knot
     real, dimension(:,:), allocatable :: spts
     real, dimension(:,:,:,:), allocatable :: dspts
+    type(nurbs_surface) :: surf
     ! character(:), allocatable :: file_name
 
     size_1 = 4
@@ -34,12 +36,19 @@ program nurbs_surface_example
     U_knot = (/0.,0.,1.,1./)
     V_knot = (/0.,0.,1.,1./)
 
+    surf%p = p
+    surf%q = q
+    surf%U_knot = U_knot
+    surf%V_knot = V_knot
+    surf%control_points = P_pts
+    surf%weight_points = w_pts
+
     call print_matrix(P_pts)
     call print_row_vector(U_knot)
     call print_row_vector(V_knot)
 
     num_points = 41
-    call create_surface(num_points, p, q, P_pts, w_pts, U_knot, V_knot, spts)
+    call create_surface(num_points, surf, spts)
     call create_tangent_surface(p, q, P_pts, w_pts, U_knot, V_knot, dspts)
 
     ! call print_matrix(spts)
