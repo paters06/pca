@@ -10,6 +10,12 @@ module derived_types
         real :: prescribed_val
     end type boundary_condition
 
+    type :: nurbs_curve
+        integer :: p
+        real, dimension(:), allocatable :: U_knot
+        real, dimension(:,:), allocatable :: control_points, weight_points
+    end type nurbs_curve
+
     type :: nurbs_surface
         integer :: p, q
         real, dimension(:), allocatable :: U_knot, V_knot

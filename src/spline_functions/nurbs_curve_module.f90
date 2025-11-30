@@ -87,17 +87,24 @@ contains
         C = Cw/w
     end subroutine curve_point
 
-    subroutine create_curve(P_array, w_array, U_array, p, cpts)
+    subroutine create_curve(curve, cpts)
         use utils
-        integer, intent(in) :: p
-        real, intent(in), dimension(:,:) :: P_array
-        real, intent(in), dimension(:,:) :: w_array
-        real, intent(in), dimension(:) :: U_array
+        use derived_types
+        type(nurbs_curve), intent(in) :: curve
+        integer :: p
+        real, dimension(:,:), allocatable :: P_array
+        real, dimension(:,:), allocatable :: w_array
+        real, dimension(:), allocatable :: U_array
         real, intent(out), dimension(:,:), allocatable :: cpts
         real :: U_min, U_max, u
         integer :: num_points, i, n, m
         real, dimension(:,:), allocatable :: Pw
         real, dimension(:), allocatable :: Ci
+
+        p = curve%p
+        P_array = curve%control_points
+        w_array = curve%weight_points
+        U_array = curve%U_knot
 
         num_points = 41
         n = size(P_array, 1) - 1

@@ -1,3 +1,6 @@
+add_executable(multipatch_curve_example multipatch_curve_example.f90)
 add_executable(nurbs_surface_example nurbs_surface_example.f90)
 target_include_directories(nurbs_surface_example PUBLIC $<TARGET_PROPERTY:spline_mod,Fortran_MODULE_DIRECTORY>)
+target_include_directories(multipatch_curve_example PUBLIC $<TARGET_PROPERTY:spline_mod,Fortran_MODULE_DIRECTORY>)
 target_link_libraries(nurbs_surface_example PRIVATE spline_mod)
+target_link_libraries(multipatch_curve_example PRIVATE spline_mod)
