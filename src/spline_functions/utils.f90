@@ -404,11 +404,11 @@ contains
 
         num_bc = size(bc_array)
 
-        allocate(temp_1(MAX_SIZE))
-        allocate(temp_2(MAX_SIZE))
+        allocate(temp_1(0:MAX_SIZE-1))
+        allocate(temp_2(0:MAX_SIZE-1))
         temp_1 = 0
         temp_2 = 0.0
-        i_temp_1 = 1
+        i_temp_1 = 0
 
         do j = 1, num_bc
             if (bc_array(j)%dir == "U") then
@@ -449,10 +449,10 @@ contains
             end if
         end do
 
-        allocate(id_disp(i_temp_1-1))
-        allocate(u_pres(i_temp_1-1))
-        id_disp = temp_1(1:i_temp_1-1)
-        u_pres = temp_2(1:i_temp_1-1)
+        allocate(id_disp(i_temp_1-2))
+        allocate(u_pres(i_temp_1-2))
+        id_disp = temp_1(0:i_temp_1-2)
+        u_pres = temp_2(0:i_temp_1-2)
     end subroutine get_boundary_conditions_dof
 
     subroutine print_nurbs_surface_info(surf)
@@ -469,4 +469,20 @@ contains
         call print_row_vector(surf%V_knot)
         print "(A, I3, A, I3)", "p degree:", surf%p, " |  q degree:", surf%q
     end subroutine print_nurbs_surface_info
+
+    function find_string_in_array(string, string_array) result (idx)
+        ! If string is not found, return -1
+        character(len=*), intent(in) :: string
+        character(len=*), dimension(0:), intent(in) :: string_array
+        integer :: num_elements, i, idx
+
+        idx = -1
+        num_elements = size(string_array)
+
+        do i = 0, num_elements-1
+            if (string_array(i) == string) then
+                idx = i
+            end if
+        end do
+    end function find_string_in_array
 end module utils

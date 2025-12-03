@@ -63,10 +63,9 @@ contains
         character(:), allocatable :: format_line, second_format_line
         ! character(len=50), dimension(:), allocatable :: label_array
         character(:), allocatable :: control_points_label, p_label, uknot_label, end_label, refinement_label
-        character(:), allocatable :: patch_label
         integer :: i, label_counter
-        integer :: control_points_flag, p_flag, uknot_flag, refinement_flag, patch_flag
-        integer, dimension(:), allocatable :: label_position
+        integer :: control_points_flag, p_flag, uknot_flag, refinement_flag
+        integer, dimension(:), allocatable :: label_position_temp, label_position
 
         integer :: size_1, size_2
         real, dimension(:,:), allocatable :: P_pts, w_pts
@@ -81,8 +80,8 @@ contains
         end_label = "**END_GEOMETRY**"
 
         label_counter = 0
-        allocate(label_position(5))
-        label_position = 0
+        allocate(label_position_temp(5))
+        label_position_temp = 0
 
         control_points_flag = 0
         p_flag = 0
@@ -109,13 +108,15 @@ contains
             end if
         end do
 
-        p = 0
+        allocate(label_position(label_counter))
+        label_position = label_position_temp(label_counter)
         
         ! Reading control points
         if (control_points_flag == 1) then
             call read_real_matrix(line_array(label_position(1)+1:label_position(2)-1), ",", ctrl_pts)
         end if
         
+        p = 0
         ! Reading spline degree
         if (p_flag == 1) then
             read (line_array(label_position(2)+1),*) p
@@ -146,26 +147,27 @@ contains
         input_curve%weight_points = w_pts
     end subroutine
 
-    subroutine convert_data_to_surface(line_array, input_surf, refn_array)
+    subroutine convert_data_to_surface(line_array, input_surf, refn_flag, refn_array, interf_flag, interf_var)
         use derived_types
         character(len=*), dimension(0:), intent(in) :: line_array
         integer :: p, q
         real, dimension(:), allocatable :: U_knot, V_knot
         real, dimension(:,:), allocatable :: ctrl_pts
         type(nurbs_surface), intent(out) :: input_surf
-        ! character(len=1), dimension(:), allocatable, intent(out), optional :: refn_array
         character(len=1), dimension(:,:), allocatable, intent(out), optional :: refn_array
+        type(interface_line), dimension(:), allocatable, intent(out), optional :: interf_var
 
         character(:), allocatable :: format_line, second_format_line
-        ! character(len=50), dimension(:), allocatable :: label_array
         character(:), allocatable :: start_geom_label, control_points_label
         character(:), allocatable :: p_label, q_label, uknot_label, vknot_label
-        character(:), allocatable :: end_geom_label, refinement_label
+        character(:), allocatable :: end_geom_label, refinement_label, interface_label
         
-        integer :: i, label_counter, i_start, i_end
-        integer :: start_geom_flag, control_points_flag, p_flag, q_flag
-        integer :: uknot_flag, vknot_flag, refinement_flag, end_geom_flag
-        integer, dimension(:), allocatable :: label_position
+        integer :: i, i_start, i_end
+        integer :: start_geom_flag, end_geom_flag
+        integer, intent(out) :: refn_flag, interf_flag
+
+        integer :: idx_control_points, idx_p, idx_q, idx_UP, idx_VP, idx_refn
+        integer :: idx_interf
 
         integer :: size_1, size_2, size_vec_1, size_vec_2
         real, dimension(:,:), allocatable :: P_pts, w_pts
@@ -180,19 +182,11 @@ contains
         uknot_label = "*U_KNOT"
         vknot_label = "*V_KNOT"
         refinement_label = "*REFN"
+        interface_label = "*INTERFACE"
         end_geom_label = "**END_GEOMETRY**"
 
-        label_counter = 0
-        allocate(label_position(6))
-        label_position = 0
-
         start_geom_flag = 0
-        control_points_flag = 0
-        p_flag = 0
-        q_flag = 0
-        uknot_flag = 0
-        vknot_flag = 0
-        refinement_flag = 0
+        refn_flag = 0
         end_geom_flag = 0
 
         do i = 0, size(line_array)-1
@@ -205,66 +199,55 @@ contains
             end if
         end do
 
-        do i = i_start, i_end
-            if (control_points_label == line_array(i)) then
-                label_counter = label_counter + 1
-                label_position(label_counter) = i
-                control_points_flag = 1
-            else if (p_label == line_array(i)) then
-                label_counter = label_counter + 1
-                label_position(label_counter) = i
-                p_flag = 1
-            else if (q_label == line_array(i)) then
-                label_counter = label_counter + 1
-                label_position(label_counter) = i
-                q_flag = 1
-            else if (uknot_label == line_array(i)) then
-                label_counter = label_counter + 1
-                label_position(label_counter) = i
-                uknot_flag = 1
-            else if (vknot_label == line_array(i)) then
-                label_counter = label_counter + 1
-                label_position(label_counter) = i
-                vknot_flag = 1
-            else if (refinement_label == line_array(i)) then
-                label_counter = label_counter + 1
-                label_position(label_counter) = i
-                refinement_flag = 1
-            end if
-        end do
+        idx_control_points = find_string_in_array(control_points_label,line_array)
+        idx_p = find_string_in_array(p_label,line_array)
+        idx_q = find_string_in_array(q_label,line_array)
+        idx_UP = find_string_in_array(uknot_label,line_array)
+        idx_VP = find_string_in_array(vknot_label,line_array)
+        idx_refn = find_string_in_array(refinement_label,line_array)
+        idx_interf = find_string_in_array(interface_label,line_array)
 
-        p = 0
-        q = 0
-        
         ! Reading control points
-        if (control_points_flag == 1) then
-            call read_real_matrix(line_array(label_position(1)+1:label_position(2)-1), ",", ctrl_pts)
+        if (idx_control_points /= -1) then
+            call read_real_matrix(line_array(idx_control_points+1:idx_p-1), ",", ctrl_pts)
         end if
         
         ! Reading spline degree
-        if (p_flag == 1) then
-            read (line_array(label_position(2)+1),*) p
+        p = 0
+        if (idx_p /= -1) then
+            read (line_array(idx_p+1),*) p
         end if
 
         ! Reading spline degree
-        if (q_flag == 1) then
-            read (line_array(label_position(3)+1),*) q
+        q = 0
+        if (idx_q /= -1) then
+            read (line_array(idx_q+1),*) q
         end if
 
         ! Reading knot vector U
-        if (uknot_flag == 1) then
-            call read_real_row_array(line_array(label_position(4)+1), ",", U_knot)
+        if (idx_UP /= -1) then
+            call read_real_row_array(line_array(idx_UP+1), ",", U_knot)
         end if
 
         ! Reading knot vector V
-        if (vknot_flag == 1) then
-            call read_real_row_array(line_array(label_position(5)+1), ",", V_knot)
+        if (idx_VP /= -1) then
+            call read_real_row_array(line_array(idx_VP+1), ",", V_knot)
         end if
 
         ! Reading refining types
-        if (refinement_flag == 1) then
-            ! call read_row_string(line_array(label_position(6)+1), ",", refn_array)
-            call read_string_matrix(line_array(label_position(6)+1:i_end-1), ",", refn_array)
+        if (idx_refn /= -1) then
+            refn_flag = 1
+            if (idx_interf == -1) then
+                call read_string_matrix(line_array(idx_refn+1:i_end-1), ",", refn_array)
+            else
+                call read_string_matrix(line_array(idx_refn+1:idx_interf-1), ",", refn_array)
+            end if
+        end if
+
+        ! Reading interface information
+        if (idx_interf /= -1) then
+            interf_flag = 1
+            call read_interface_info(line_array(idx_interf+1:i_end-1), interf_var)
         end if
 
         size_1 = size(ctrl_pts, 1)
@@ -557,6 +540,25 @@ contains
             ! print "('Prescribed value: ', F6.2)", temp%prescribed_val
         end do
     end subroutine read_derived_type_matrix
+
+    subroutine read_interface_info(strings, interf_var)
+        use derived_types
+        character(len=*), dimension(:), intent(in) :: strings
+        type(interface_line), dimension(:), allocatable, intent(out) :: interf_var
+        type(interface_line) :: temp
+        integer, parameter :: MAX_SIZE = 50
+        integer :: num_values, i
+
+        num_values = size(strings)
+        allocate(interf_var(num_values))
+
+        do i = 1, num_values
+            read (strings(i),*) temp
+            interf_var(i) = temp
+            print "('Direction: ', A)", temp%dir
+            print "('Parameter: ', F4.2)", temp%UV_param
+        end do
+    end subroutine
 
     subroutine export_matrix(mat, file_name)
         ! This function is to be generalized for more than two columns

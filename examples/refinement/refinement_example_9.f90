@@ -9,17 +9,19 @@ program refinement_example_9
     character(:), allocatable :: file_name
     character(len=50), dimension(:), allocatable :: line_array
     character(len=1), dimension(:,:), allocatable :: ref_list
+    integer :: refn_flag, interf_flag
     type(nurbs_surface) :: input_nurbs_surface, refined_surface
+    type(interface_line), dimension(:), allocatable :: interf_var
 
     file_name = "input_file_surface.txt"
 
     call import_data(file_name, line_array)
-    call convert_data_to_surface(line_array, input_nurbs_surface, ref_list)
+    call convert_data_to_surface(line_array, input_nurbs_surface, refn_flag, ref_list, interf_flag, interf_var)
 
     call print_nurbs_surface_info(input_nurbs_surface)
     call print_string_matrix(ref_list)
 
-    call surface_spline_refinement(input_nurbs_surface, ref_list, refined_surface)
+    call surface_spline_refinement(input_nurbs_surface, ref_list)
     call print_nurbs_surface_info(refined_surface)
     call assess_surface_refinement(input_nurbs_surface, refined_surface)
 end program refinement_example_9

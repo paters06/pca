@@ -21,4 +21,9 @@ module derived_types
         real, dimension(:), allocatable :: U_knot, V_knot
         real, dimension(:,:), allocatable :: control_points, weight_points
     end type nurbs_surface
+
+    type :: interface_line
+        character(len=1) :: dir
+        real :: UV_param
+    end type interface_line
 end module derived_types
