@@ -13,12 +13,12 @@ contains
         integer :: MAX_NUM_VALS = 9999
         character(len=50), dimension(:), allocatable :: line_array_temp
         character(len=*), dimension(:), allocatable, intent(out) :: line_array
-        integer :: io, ierror, num_values
+        integer :: io, ierror, id_values
         logical :: exists
 
-        num_values = 0
+        id_values = 0
 
-        allocate(line_array_temp(0:MAX_NUM_VALS-1))
+        allocate(line_array_temp(MAX_NUM_VALS))
         format_line = "(A)"
 
         inquire(file=file_name, exist=exists)
@@ -29,15 +29,15 @@ contains
             if (ierror == 0) then
                 do
                     read (io,fmt=format_line,iostat=ierror) line
-                    line_array_temp(num_values) = line
+                    id_values = id_values + 1
+                    line_array_temp(id_values) = line
                     if (ierror /= 0) exit
-                    num_values = num_values + 1
                 end do
 
                 if (ierror > 0) then
-                    print "(A, I6)", "An error ocurred reading line ", num_values + 1
+                    print "(A, I6)", "An error ocurred reading line ", id_values
                 else
-                    print "(A, I6, A)", "End of file reached. There were", num_values + 1, " values in the file"
+                    print "(A, I6, A)", "End of file reached. There were", id_values-1, " values in the file"
                 end if
             else
                 print "(A, I6)", "Error opening file: IOSTAT ", ierror
@@ -46,9 +46,9 @@ contains
             close(io)
         end if
 
-        allocate(line_array(0:num_values-1))
+        allocate(line_array(1:id_values-1))
 
-        line_array = line_array_temp(0:num_values-1)
+        line_array = line_array_temp(1:id_values-1)
     end subroutine import_data
 
     subroutine convert_data_to_curve(line_array, input_curve, refn_array)
@@ -61,7 +61,6 @@ contains
         character(len=1), dimension(:), allocatable, intent(out), optional :: refn_array
 
         character(:), allocatable :: format_line, second_format_line
-        ! character(len=50), dimension(:), allocatable :: label_array
         character(:), allocatable :: control_points_label, p_label, uknot_label, end_label, refinement_label
         integer :: i, label_counter
         integer :: control_points_flag, p_flag, uknot_flag, refinement_flag
@@ -88,7 +87,7 @@ contains
         uknot_flag = 0
         refinement_flag = 0
 
-        do i = 0, size(line_array)-1
+        do i = 1, size(line_array)
             if (control_points_label == line_array(i)) then
                 label_counter =  label_counter + 1
                 label_position(label_counter) = i
@@ -147,13 +146,61 @@ contains
         input_curve%weight_points = w_pts
     end subroutine
 
-    subroutine convert_data_to_surface(line_array, input_surf, refn_flag, refn_array, interf_flag, interf_var)
+    function find_geom_input_limits(string_a, string_b, string_array) result(string_limits)
+        use utils
+        character(len=*), intent(in) :: string_a, string_b
+        character(len=*), dimension(:), intent(in) :: string_array
+        integer, dimension(:,:), allocatable :: string_limits_temp, string_limits
+        integer :: i, MAX_SIZE, counter_a, counter_b
+        
+        MAX_SIZE = size(string_array)
+        allocate(string_limits_temp(MAX_SIZE,2))
+        string_limits_temp = -1
+
+        counter_a = 0
+        counter_b = 0
+        do i = 1, MAX_SIZE
+            if (string_array(i) == string_a) then
+                counter_a = counter_a + 1
+                string_limits_temp(counter_a, 1) = i
+            end if
+            if (string_array(i) == string_b) then
+                counter_b = counter_b + 1
+                string_limits_temp(counter_b, 2) = i
+            end if
+        end do
+
+        if (counter_a == counter_b) then
+            allocate(string_limits(counter_a,2))
+            string_limits = string_limits_temp(1:counter_a,:)
+        end if
+    end function find_geom_input_limits
+
+    function find_string_in_array(string, string_array, i_start, i_end) result (idx)
+        ! If string is not found, return -1
+        character(len=*), intent(in) :: string
+        character(len=*), dimension(:), intent(in) :: string_array
+        integer, intent(in) :: i_start, i_end
+        integer :: num_elements, i, idx
+
+        idx = -1
+        num_elements = size(string_array)
+
+        do i = i_start, i_end
+            if (string_array(i) == string) then
+                idx = i
+            end if
+        end do
+    end function find_string_in_array
+
+    subroutine convert_data_to_surface(line_array, input_patches, refn_flag, refn_array, interf_flag, interf_var)
         use derived_types
-        character(len=*), dimension(0:), intent(in) :: line_array
+        character(len=*), dimension(:), intent(in) :: line_array
+        character(:), dimension(:), allocatable :: patch_input_array
         integer :: p, q
         real, dimension(:), allocatable :: U_knot, V_knot
         real, dimension(:,:), allocatable :: ctrl_pts
-        type(nurbs_surface), intent(out) :: input_surf
+        type(nurbs_surface), dimension(:), allocatable, intent(out) :: input_patches
         character(len=1), dimension(:,:), allocatable, intent(out), optional :: refn_array
         type(interface_line), dimension(:), allocatable, intent(out), optional :: interf_var
 
@@ -161,8 +208,9 @@ contains
         character(:), allocatable :: start_geom_label, control_points_label
         character(:), allocatable :: p_label, q_label, uknot_label, vknot_label
         character(:), allocatable :: end_geom_label, refinement_label, interface_label
+        integer, dimension(:,:), allocatable :: geom_input_limits
         
-        integer :: i, i_start, i_end
+        integer :: i, i_start, i_end, num_patches
         integer :: start_geom_flag, end_geom_flag
         integer, intent(out) :: refn_flag, interf_flag
 
@@ -189,90 +237,94 @@ contains
         refn_flag = 0
         end_geom_flag = 0
 
-        do i = 0, size(line_array)-1
-            if (start_geom_label == line_array(i)) then
-                i_start = i
-                start_geom_flag = 1
-            else if (end_geom_label == line_array(i)) then
-                i_end = i
-                end_geom_flag = 1
+        geom_input_limits = find_geom_input_limits(start_geom_label, end_geom_label, line_array)
+        num_patches = size(geom_input_limits,1)
+
+        allocate(input_patches(num_patches))
+
+        do i = 1, num_patches
+            i_start = geom_input_limits(i,1)
+            i_end = geom_input_limits(i,2)
+            patch_input_array = line_array(i_start:i_end)
+
+            idx_control_points = find_string_in_array(control_points_label,line_array, i_start, i_end)
+            idx_p = find_string_in_array(p_label,line_array, i_start, i_end)
+            idx_q = find_string_in_array(q_label,line_array, i_start, i_end)
+            idx_UP = find_string_in_array(uknot_label,line_array, i_start, i_end)
+            idx_VP = find_string_in_array(vknot_label,line_array, i_start, i_end)
+            idx_refn = find_string_in_array(refinement_label,line_array, i_start, i_end)
+            idx_interf = find_string_in_array(interface_label,line_array, i_start, i_end)
+
+            ! Reading control points
+            if (idx_control_points /= -1) then
+                call read_real_matrix(line_array(idx_control_points+1:idx_p-1), ",", ctrl_pts)
             end if
+            
+            ! Reading spline degree
+            p = 0
+            if (idx_p /= -1) then
+                read (line_array(idx_p+1),*) p
+            end if
+
+            ! Reading spline degree
+            q = 0
+            if (idx_q /= -1) then
+                read (line_array(idx_q+1),*) q
+            end if
+
+            ! Reading knot vector U
+            if (idx_UP /= -1) then
+                call read_real_row_array(line_array(idx_UP+1), ",", U_knot)
+            end if
+
+            ! Reading knot vector V
+            if (idx_VP /= -1) then
+                call read_real_row_array(line_array(idx_VP+1), ",", V_knot)
+            end if
+
+            ! Reading refining types
+            if (idx_refn /= -1) then
+                refn_flag = 1
+                if (idx_interf == -1) then
+                    call read_string_matrix(line_array(idx_refn+1:i_end-1), ",", refn_array)
+                else
+                    call read_string_matrix(line_array(idx_refn+1:idx_interf-1), ",", refn_array)
+                end if
+            end if
+
+            ! Reading interface information
+            if (idx_interf /= -1) then
+                interf_flag = 1
+                call read_interface_info(line_array(idx_interf+1:i_end-1), interf_var)
+            end if
+
+            size_1 = size(ctrl_pts, 1)
+            size_2 = size(ctrl_pts, 2) - 1
+            size_vec_1 = size(U_knot)
+            size_vec_2 = size(V_knot)
+
+            allocate(P_pts(0:size_1-1,0:size_2-1))
+            allocate(w_pts(0:size_1-1,0))
+
+            P_pts = ctrl_pts(1:size_1,1:size_2)
+            w_pts = reshape(ctrl_pts(1:size_1,size_2+1), (/size_1, 1/))
+
+            input_patches(i)%p = p
+            input_patches(i)%q = q
+            input_patches(i)%U_knot = U_knot
+            input_patches(i)%V_knot = V_knot
+            input_patches(i)%control_points = P_pts
+            input_patches(i)%weight_points = w_pts
+
+            deallocate(P_pts)
+            deallocate(w_pts)
         end do
-
-        idx_control_points = find_string_in_array(control_points_label,line_array)
-        idx_p = find_string_in_array(p_label,line_array)
-        idx_q = find_string_in_array(q_label,line_array)
-        idx_UP = find_string_in_array(uknot_label,line_array)
-        idx_VP = find_string_in_array(vknot_label,line_array)
-        idx_refn = find_string_in_array(refinement_label,line_array)
-        idx_interf = find_string_in_array(interface_label,line_array)
-
-        ! Reading control points
-        if (idx_control_points /= -1) then
-            call read_real_matrix(line_array(idx_control_points+1:idx_p-1), ",", ctrl_pts)
-        end if
-        
-        ! Reading spline degree
-        p = 0
-        if (idx_p /= -1) then
-            read (line_array(idx_p+1),*) p
-        end if
-
-        ! Reading spline degree
-        q = 0
-        if (idx_q /= -1) then
-            read (line_array(idx_q+1),*) q
-        end if
-
-        ! Reading knot vector U
-        if (idx_UP /= -1) then
-            call read_real_row_array(line_array(idx_UP+1), ",", U_knot)
-        end if
-
-        ! Reading knot vector V
-        if (idx_VP /= -1) then
-            call read_real_row_array(line_array(idx_VP+1), ",", V_knot)
-        end if
-
-        ! Reading refining types
-        if (idx_refn /= -1) then
-            refn_flag = 1
-            if (idx_interf == -1) then
-                call read_string_matrix(line_array(idx_refn+1:i_end-1), ",", refn_array)
-            else
-                call read_string_matrix(line_array(idx_refn+1:idx_interf-1), ",", refn_array)
-            end if
-        end if
-
-        ! Reading interface information
-        if (idx_interf /= -1) then
-            interf_flag = 1
-            call read_interface_info(line_array(idx_interf+1:i_end-1), interf_var)
-        end if
-
-        size_1 = size(ctrl_pts, 1)
-        size_2 = size(ctrl_pts, 2) - 1
-        size_vec_1 = size(U_knot)
-        size_vec_2 = size(V_knot)
-
-        allocate(P_pts(0:size_1-1,0:size_2-1))
-        allocate(w_pts(0:size_1-1,0))
-
-        P_pts = ctrl_pts(1:size_1,1:size_2)
-        w_pts = reshape(ctrl_pts(1:size_1,size_2+1), (/size_1, 1/))
-
-        input_surf%p = p
-        input_surf%q = q
-        input_surf%U_knot = U_knot
-        input_surf%V_knot = V_knot
-        input_surf%control_points = P_pts
-        input_surf%weight_points = w_pts
     end subroutine
 
     subroutine convert_data_to_solver(line_array, num_gauss_pts, kappa, bc_array)
         ! bc_array: array with information for the enforcement of boundary conditions
         use derived_types
-        character(len=*), dimension(0:), intent(in) :: line_array
+        character(len=*), dimension(:), intent(in) :: line_array
         integer, intent(out) :: num_gauss_pts
         real, intent(out) :: kappa
 
@@ -286,6 +338,8 @@ contains
         integer, dimension(:), allocatable :: label_position
         
         type(boundary_condition), dimension(:), allocatable, intent(out) :: bc_array
+
+        integer, dimension(:,:), allocatable :: solver_input_limits
 
         format_line = "(A)"
         second_format_line = "(A, I3)"
@@ -306,13 +360,15 @@ contains
         bc_flag = 0
         end_solver_flag = 0
 
-        do i = 0, size(line_array)-1
+        do i = 1, size(line_array)
             if (start_solver_label == line_array(i)) then
                 i_start = i
             else if (end_solver_label == line_array(i)) then
                 i_end = i
             end if
         end do
+
+        solver_input_limits = find_geom_input_limits(start_solver_label, end_solver_label, line_array)
 
         do i = i_start, i_end
             if (intg_label == line_array(i)) then

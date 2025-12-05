@@ -53,7 +53,7 @@ contains
             allocate(alpha(0:p-s-1,r))
             allocate(UQ(0:nq+p+1))
             allocate(Rw(0:p,0:3))
-            allocate(Qw_net(0:np+1,0:mp,0:3))
+            allocate(Qw_net(0:np+r,0:mp,0:3))
             
             call find_span(rp, p, uv, UP, k)
             
@@ -86,7 +86,7 @@ contains
                 end do
 
                 do i = k-s, np
-                    ! print *, i
+                    ! print "(A,I3)", "k:", k
                     Qw_net(i+r,row,:) = Pw_net(i,row,:)
                 end do
 
@@ -122,7 +122,7 @@ contains
             allocate(alpha(0:p-s-1,r))
             allocate(VQ(0:mq+q+1))
             allocate(Rw(0:q,0:3))
-            allocate(Qw_net(0:np,0:mp+1,0:3))
+            allocate(Qw_net(0:np,0:mp+r,0:3))
             
             call find_span(sp, q, uv, VP, k)
             

@@ -390,6 +390,26 @@ contains
         end do
     end subroutine create_surface_boundary
 
+    subroutine create_patch_boundaries(patch, pbpts)
+        use derived_types
+        type(nurbs_surface), dimension(:), intent(in) :: patch
+        real, dimension(:,:), allocatable :: sbpts
+        real, intent(out), dimension(:,:), allocatable :: pbpts
+        integer :: num_patches, i, num_points, j
+
+        num_patches = size(patch, 1)
+        num_points = num_patches*4*41
+
+        allocate(pbpts(0:num_points-1,0:2))
+
+        do i = 1, num_patches
+            call create_surface_boundary(patch(i), sbpts)
+            do j = 0, 4*41-1
+                pbpts(j+(i-1)*4*41,:) = sbpts(j,:)
+            end do
+        end do
+    end subroutine
+
     subroutine bspline_surface_gradient(r, p, U_array, s, q, V_array, Pw_net, u, v, d, SKL)
         ! Algorithm 3.6 from the NURBS Book
         ! Compute surface point and derivatives

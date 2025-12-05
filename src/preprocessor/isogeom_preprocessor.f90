@@ -17,7 +17,8 @@ program isogeom_preprocessor
     real, dimension(:), allocatable :: u_pres
     type(boundary_condition), dimension(:), allocatable :: bc_array
     character(:), allocatable :: file_output_1, file_output_2, file_output_3
-    type(nurbs_surface) :: input_nurbs_surface
+    character(:), allocatable :: file_output_2_1, file_output_2_2
+    type(nurbs_surface), dimension(:), allocatable :: input_patches
     type(interface_line), dimension(:), allocatable :: interf_var
 
     call get_command_argument(1, file_name_inp)
@@ -25,29 +26,33 @@ program isogeom_preprocessor
 
     ! Information import
     call import_data(file_name, line_array)
-    call convert_data_to_surface(line_array, input_nurbs_surface, refn_flag, ref_list, interf_flag, interf_var)
+    call convert_data_to_surface(line_array, input_patches, refn_flag, ref_list, interf_flag, interf_var)
     call convert_data_to_solver(line_array, num_gauss_pts, kappa, bc_array)
     
     if (refn_flag /= 1) then
         print "(A)", "No refinement"
-        call print_nurbs_surface_info(input_nurbs_surface)
+        call print_nurbs_surface_info(input_patches(1))
+        call print_nurbs_surface_info(input_patches(2))
     else
         call print_string_matrix(ref_list)
-        call surface_spline_refinement(input_nurbs_surface, ref_list)
-        call print_nurbs_surface_info(input_nurbs_surface)
+        call surface_spline_refinement(input_patches(1), ref_list)
+        call print_nurbs_surface_info(input_patches(1))
     end if
 
     if (interf_flag == 1) then
-        call patch_generation(input_nurbs_surface, interf_var)
+        call patch_generation(input_patches(1), interf_var)
+        call print_nurbs_surface_info(input_patches(1))
     end if
 
-    call create_surface_boundary(input_nurbs_surface, sbpts)
-    call get_boundary_conditions_dof(input_nurbs_surface, bc_array, id_disp, u_pres)
+    call create_patch_boundaries(input_patches, sbpts)
+    ! call get_boundary_conditions_dof(input_nurbs_surface, bc_array, id_disp, u_pres)
 
     file_output_1 = 'boundary_points_'//file_name
-    file_output_2 = 'control_points_'//file_name
+    file_output_2_1 = 'control_points_1_'//file_name
+    file_output_2_2 = 'control_points_2_'//file_name
     file_output_3 = 'dirichlet_points_'//file_name
     call export_matrix(sbpts, file_output_1)
-    call export_matrix(input_nurbs_surface%control_points, file_output_2)
-    call export_matrix(input_nurbs_surface%control_points(id_disp+1,:), file_output_3)
+    call export_matrix(input_patches(1)%control_points, file_output_2_1)
+    call export_matrix(input_patches(2)%control_points, file_output_2_2)
+    ! call export_matrix(input_nurbs_surface%control_points(id_disp,:), file_output_3)
 end program isogeom_preprocessor
