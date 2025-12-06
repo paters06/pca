@@ -1065,7 +1065,7 @@ contains
         call geometric_control_points(Qw_pts, Pk_pts, wk_pts)
     end subroutine surface_k_refinement
 
-    subroutine surface_spline_refinement(input_surf, ref_list)
+    subroutine surface_spline_refinement(input_surf)
         use nurbs_curve_module
         use nurbs_surface_module
         use utils
@@ -1076,7 +1076,7 @@ contains
         real, dimension(:,:), allocatable :: P_pts
         real, dimension(:,:), allocatable :: w_pts
         real, dimension(:), allocatable :: Uknot, Vknot
-        character(len=*), dimension(:,:), allocatable, intent(in) :: ref_list
+        character(len=1), dimension(:,:), allocatable :: ref_list
         integer :: pk, qk
         real, dimension(:,:), allocatable :: Pk_pts
         real, dimension(:,:), allocatable :: wk_pts
@@ -1097,6 +1097,7 @@ contains
         Vknot = input_surf%V_knot
         P_pts = input_surf%control_points
         w_pts = input_surf%weight_points
+        ref_list = input_surf%refn_input
         
         r = size(Uknot) - 1
         s = size(Vknot) - 1

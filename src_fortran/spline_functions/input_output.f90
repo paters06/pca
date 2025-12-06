@@ -1,5 +1,6 @@
 module input_output
     use utils
+    use derived_types
     implicit none
 contains
     subroutine import_data(file_name, line_array)
@@ -52,7 +53,7 @@ contains
     end subroutine import_data
 
     subroutine convert_data_to_curve(line_array, input_curve, refn_array)
-        use derived_types
+        ! use derived_types
         character(len=*), dimension(0:), intent(in) :: line_array
         integer :: p
         real, dimension(:), allocatable :: U_knot
@@ -194,7 +195,7 @@ contains
     end function find_string_in_array
 
     subroutine convert_data_to_surface(line_array, input_patches, refn_flag, refn_array, interf_flag, interf_var)
-        use derived_types
+        ! use derived_types
         character(len=*), dimension(:), intent(in) :: line_array
         character(:), dimension(:), allocatable :: patch_input_array
         integer :: p, q
@@ -315,27 +316,31 @@ contains
             input_patches(i)%V_knot = V_knot
             input_patches(i)%control_points = P_pts
             input_patches(i)%weight_points = w_pts
+            input_patches(i)%refn_flag = refn_flag
+            
+            if (refn_flag == 1) then
+                input_patches(i)%refn_input = refn_array
+            end if
 
             deallocate(P_pts)
             deallocate(w_pts)
         end do
     end subroutine
 
-    subroutine convert_data_to_solver(line_array, num_gauss_pts, kappa, bc_array)
+    subroutine convert_data_to_solver(line_array, num_gauss_pts, kappa, bc_array, id_patch)
         ! bc_array: array with information for the enforcement of boundary conditions
-        use derived_types
+        ! use derived_types
         character(len=*), dimension(:), intent(in) :: line_array
         integer, intent(out) :: num_gauss_pts
         real, intent(out) :: kappa
 
         character(:), allocatable :: format_line, second_format_line
         character(:), allocatable :: start_solver_label, intg_label
-        character(:), allocatable :: diffusion_label, bc_label
+        character(:), allocatable :: kappa_label, bc_label
         character(:), allocatable :: end_solver_label
-        integer :: i, label_counter, i_start, i_end
-        integer :: start_solver_flag, intg_flag, diffusion_flag, bc_flag
-        integer :: end_solver_flag
-        integer, dimension(:), allocatable :: label_position
+        integer :: i_start, i_end
+        integer :: idx_intg, idx_kappa, idx_bc
+        integer, dimension(:), allocatable, intent(out) :: id_patch
         
         type(boundary_condition), dimension(:), allocatable, intent(out) :: bc_array
 
@@ -346,59 +351,31 @@ contains
 
         start_solver_label = "**START_SOLVER**"
         intg_label = "*GAUSS_NUM"
-        diffusion_label = "*DIFFUSION"
+        kappa_label = "*DIFFUSION"
         bc_label = "*ESSENTIAL_COND_DOFS"
         end_solver_label = "**END_SOLVER**"
 
-        label_counter = 0
-        allocate(label_position(4))
-        label_position = 0
-
-        start_solver_flag = 0
-        intg_flag = 0
-        diffusion_flag = 0
-        bc_flag = 0
-        end_solver_flag = 0
-
-        do i = 1, size(line_array)
-            if (start_solver_label == line_array(i)) then
-                i_start = i
-            else if (end_solver_label == line_array(i)) then
-                i_end = i
-            end if
-        end do
-
         solver_input_limits = find_geom_input_limits(start_solver_label, end_solver_label, line_array)
 
-        do i = i_start, i_end
-            if (intg_label == line_array(i)) then
-                label_counter = label_counter + 1
-                label_position(label_counter) = i
-                intg_flag = 1
-            else if (diffusion_label == line_array(i)) then
-                label_counter = label_counter + 1
-                label_position(label_counter) = i
-                diffusion_flag = 1
-            else if (bc_label == line_array(i)) then
-                label_counter = label_counter + 1
-                label_position(label_counter) = i
-                bc_flag = 1
-            end if
-        end do
+        i_start = solver_input_limits(1,1)
+        i_end = solver_input_limits(1,2)
+        idx_intg = find_string_in_array(intg_label, line_array, i_start, i_end)
+        idx_kappa = find_string_in_array(kappa_label, line_array, i_start, i_end)
+        idx_bc = find_string_in_array(bc_label,line_array, i_start, i_end)
 
         ! Reading number of gauss points for numerical integration
-        if (intg_flag == 1) then
-            read (line_array(label_position(1)+1),*) num_gauss_pts
+        if (idx_intg /= -1) then
+            read (line_array(idx_intg+1),*) num_gauss_pts
         end if
         
         ! Reading diffusion conductivity value
-        if (diffusion_flag == 1) then
-            read (line_array(label_position(2)+1),*) kappa
+        if (idx_kappa /= -1) then
+            read (line_array(idx_kappa+1),*) kappa
         end if
 
         ! Reading essential boundary conditions
-        if (bc_flag == 1) then
-            call read_derived_type_matrix(line_array(label_position(3)+1:i_end-1), bc_array)
+        if (idx_bc /= -1) then
+            call read_derived_type_matrix(line_array(idx_bc+1:i_end-1), bc_array, id_patch)
         end if
     end subroutine convert_data_to_solver
 
@@ -576,33 +553,36 @@ contains
         matrix = temp_matrix(:,1:size(array))
     end subroutine read_string_matrix
 
-    subroutine read_derived_type_matrix(strings, derived_array)
-        use derived_types
+    subroutine read_derived_type_matrix(strings, derived_array, id_patches)
         character(len=*), dimension(:), intent(in) :: strings
         type(boundary_condition), dimension(:), allocatable, intent(out) :: derived_array
-        integer, parameter :: MAX_SIZE = 50
+        integer, dimension(:), allocatable, intent(out) :: id_patches
         type(boundary_condition) :: temp
 
-        integer :: num_values, i
+        integer :: num_patches, i
 
-        num_values = size(strings)
-        allocate(derived_array(num_values))
+        num_patches = size(strings)/2
+        allocate(derived_array(num_patches))
+        allocate(id_patches(num_patches))
+        id_patches = 0
 
-        do i = 1, num_values
-            read (strings(i),*) temp
+        do i = 1, num_patches
+            read (strings(2*i-1),*) id_patches(i)
+            read (strings(2*i),*) temp
             derived_array(i) = temp
-            ! print "('Direction: ', A)", temp%dir
-            ! print "('Parameter: ', F4.2)", temp%UV_param
-            ! print "('Prescribed value: ', F6.2)", temp%prescribed_val
+            print "('Patch ID: ', I3)", id_patches(i)
+            print "('Direction: ', A)", temp%dir
+            print "('Parameter: ', F4.2)", temp%UV_param
+            print "('Prescribed value: ', F6.2)", temp%prescribed_val
         end do
     end subroutine read_derived_type_matrix
 
     subroutine read_interface_info(strings, interf_var)
-        use derived_types
+        ! use derived_types
         character(len=*), dimension(:), intent(in) :: strings
         type(interface_line), dimension(:), allocatable, intent(out) :: interf_var
         type(interface_line) :: temp
-        integer, parameter :: MAX_SIZE = 50
+        ! integer, parameter :: MAX_SIZE = 50
         integer :: num_values, i
 
         num_values = size(strings)
