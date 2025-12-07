@@ -47,7 +47,6 @@ program isogeom_preprocessor
 
     call create_patch_boundaries(input_patches, sbpts, p_ctrl_pts)
     call get_boundary_conditions_dof(input_patches, bc_array, id_patches, id_disp, u_pres, ctrl_pts_pres)
-    call print_row_vector_intg(id_disp)
 
     file_output_1 = 'boundary_points_'//file_name
     file_output_2 = 'control_points_'//file_name

@@ -260,6 +260,8 @@ contains
             if (idx_control_points /= -1) then
                 call read_real_matrix(line_array(idx_control_points+1:idx_p-1), ",", ctrl_pts)
             end if
+
+            print "(I3, I3)", lbound(ctrl_pts,1), ubound(ctrl_pts,1)
             
             ! Reading spline degree
             p = 0

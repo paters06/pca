@@ -133,7 +133,8 @@ dmypy.json
 .vscode/launch.json
 .vscode/
 build/
-src/phenomenon/*.mod
+src_fortran/phenomenon/*.mod
 bin/
-src/postprocessor/*.txt
-src/preprocessor/*.txt
+src_fortran/postprocessor/*.txt
+src_fortran/preprocessor/*.txt
+src_python/*.txt

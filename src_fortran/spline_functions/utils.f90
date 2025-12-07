@@ -394,7 +394,7 @@ contains
         integer :: i_patch, num_patches
         integer, dimension(:), allocatable :: i_arr, temp_1
         real, dimension(:), allocatable :: temp_2
-        real, dimension(:,:), allocatable :: temp_3
+        real, dimension(:,:), allocatable :: temp_3, ctrl_pts_i
 
         integer, parameter :: MAX_SIZE = 5000
         allocate(temp_1(0:MAX_SIZE-1))
@@ -412,11 +412,16 @@ contains
             q = surf(i_patch)%q
             UP = surf(i_patch)%U_knot
             VP = surf(i_patch)%V_knot
+            
+            allocate(ctrl_pts_i(0:size(surf(i_patch)%control_points,1)-1,0:size(surf(i_patch)%control_points,2)-1))
+            ctrl_pts_i = surf(i_patch)%control_points
 
             r = size(UP) - 1
             s = size(VP) - 1
             nu = r - p - 1
             nv = s - q - 1
+
+            print "(I3, I3)", lbound(ctrl_pts_i,1), ubound(ctrl_pts_i,1)
 
             if (bc_array(i_patch)%dir == "U") then
                 allocate(i_arr(0:nu))
@@ -433,7 +438,7 @@ contains
                     ! print "(A, I3, A, F6.1)", "Global dof:", id, " |BC value:", bc_arr(j)
                     temp_1(i_temp_1) = id
                     temp_2(i_temp_1) = bc_array(i_patch)%prescribed_val
-                    temp_3(i_temp_1,:) = surf(i_patch)%control_points(id,:)
+                    temp_3(i_temp_1,:) = ctrl_pts_i(id,:)
                     i_temp_1 = i_temp_1 + 1
                 end do
                 deallocate(i_arr)
@@ -449,13 +454,16 @@ contains
                 do i = 0, nv
                     id = compute_global_dof(iu,i_arr(i),nu)
                     ! print "(A, I3, A, F6.1)", "Global dof:", id, " |BC value:", bc_array(i_patch)%prescribed_val
+                    ! print "(F6.3)", ctrl_pts_i(id,:)
                     temp_1(i_temp_1) = id
                     temp_2(i_temp_1) = bc_array(i_patch)%prescribed_val
-                    temp_3(i_temp_1,:) = surf(i_patch)%control_points(id,:)
+                    temp_3(i_temp_1,:) = ctrl_pts_i(id,:)
                     i_temp_1 = i_temp_1 + 1
                 end do
                 deallocate(i_arr)
             end if
+
+            deallocate(ctrl_pts_i)
         end do
 
         allocate(id_disp(i_temp_1))
@@ -464,6 +472,10 @@ contains
         id_disp = temp_1(0:i_temp_1-1)
         u_pres = temp_2(0:i_temp_1-1)
         ctrl_pts_pres = temp_3(0:i_temp_1-1,:)
+        ! call print_matrix(ctrl_pts_pres)
+
+        ! PENDING: RECALCULATION OF DOFS FOR MULTIPATCH SCHEMES
+        call print_row_vector_intg(id_disp)
     end subroutine get_boundary_conditions_dof
 
     subroutine print_nurbs_surface_info(surf)
