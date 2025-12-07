@@ -2,7 +2,7 @@ module surface_refinement
     use utils
     implicit none
 contains
-    subroutine surface_knot_insertion(p, UP, q, VP, Pw_net, uv, dir, nq, UQ, mq, VQ, Qw_net)
+    subroutine surface_knot_insertion(p, UP, q, VP, Pw_net, uv, dir, r, nq, UQ, mq, VQ, Qw_net)
         ! Algorithm A5.3 form the NURBS Book
         ! Surface knot insertion
         ! ---------------------------------------------------------------------
@@ -23,7 +23,7 @@ contains
         ! r: number of insertions
         use bspline_basis_functions, only: find_span
 
-        integer, intent(in) :: p, q
+        integer, intent(in) :: p, q, r
         real, intent(in) :: uv
         real, dimension(0:), intent(in) :: UP, VP
         real, dimension(0:,0:,0:), intent(in) :: Pw_net
@@ -33,12 +33,12 @@ contains
         real, dimension(:), allocatable, intent(out) :: UQ, VQ
         real, dimension(:,:,:), allocatable, intent(out) :: Qw_net
 
-        integer :: np, mp, r, s, k, rp, sp
+        integer :: np, mp, s, k, rp, sp
         integer :: j, L, i, row
         real, dimension(:,:), allocatable :: Rw
         real, dimension(:,:), allocatable :: alpha
 
-        r = 1
+        ! r = 1
         s = 0
         
         U_dir_refn: if (dir == "U") then
@@ -53,7 +53,7 @@ contains
             allocate(alpha(0:p-s-1,r))
             allocate(UQ(0:nq+p+1))
             allocate(Rw(0:p,0:3))
-            allocate(Qw_net(0:np+1,0:mp,0:3))
+            allocate(Qw_net(0:np+r,0:mp,0:3))
             
             call find_span(rp, p, uv, UP, k)
             
@@ -86,7 +86,7 @@ contains
                 end do
 
                 do i = k-s, np
-                    print *, i
+                    ! print "(A,I3)", "k:", k
                     Qw_net(i+r,row,:) = Pw_net(i,row,:)
                 end do
 
@@ -122,7 +122,7 @@ contains
             allocate(alpha(0:p-s-1,r))
             allocate(VQ(0:mq+q+1))
             allocate(Rw(0:q,0:3))
-            allocate(Qw_net(0:np,0:mp+1,0:3))
+            allocate(Qw_net(0:np,0:mp+r,0:3))
             
             call find_span(sp, q, uv, VP, k)
             
@@ -1065,18 +1065,18 @@ contains
         call geometric_control_points(Qw_pts, Pk_pts, wk_pts)
     end subroutine surface_k_refinement
 
-    subroutine surface_spline_refinement(input_surf, ref_list, refined_surf)
+    subroutine surface_spline_refinement(input_surf)
         use nurbs_curve_module
         use nurbs_surface_module
         use utils
         use derived_types
-        type(nurbs_surface), intent(in) :: input_surf
-        type(nurbs_surface), intent(out) :: refined_surf
+        type(nurbs_surface), intent(inout) :: input_surf
+        type(nurbs_surface) :: refined_surf
         integer :: p, q
         real, dimension(:,:), allocatable :: P_pts
         real, dimension(:,:), allocatable :: w_pts
         real, dimension(:), allocatable :: Uknot, Vknot
-        character(len=*), dimension(:,:), allocatable, intent(in) :: ref_list
+        character(len=1), dimension(:,:), allocatable :: ref_list
         integer :: pk, qk
         real, dimension(:,:), allocatable :: Pk_pts
         real, dimension(:,:), allocatable :: wk_pts
@@ -1097,6 +1097,7 @@ contains
         Vknot = input_surf%V_knot
         P_pts = input_surf%control_points
         w_pts = input_surf%weight_points
+        ref_list = input_surf%refn_input
         
         r = size(Uknot) - 1
         s = size(Vknot) - 1
@@ -1117,33 +1118,24 @@ contains
             dir = ref_list(i,2)
             
             if (refn_type == "h") then
-                
                 if (dir == "U") then
                     call compute_element_midvalues(Utemp, ptemp, X_array)
                 else if (dir == "V") then
                     call compute_element_midvalues(Vtemp, qtemp, X_array)
                 end if
-                
                 call surface_knot_refinement(ptemp, Utemp, qtemp, Vtemp, Pw_temp, X_array, dir, Uk, Vk, Qkw_net)
                 ph = ptemp
                 qh = qtemp
-
             else if (refn_type == "p") then
-                
                 call surface_degree_elevation(ptemp, Utemp, qtemp, Vtemp, Pw_temp, dir, t, ph, Uk, qh, Vk, Qkw_net)
-
             else if (refn_type == "k") then
-                
                 call surface_degree_elevation(ptemp, Utemp, qtemp, Vtemp, Pw_temp, dir, t, ph, Uh, qh, Vh, Qhw_net)
-            
                 if (dir == "U") then
                     call compute_element_midvalues(Uh, ph, X_array)
                 else if (dir == "V") then
                     call compute_element_midvalues(Vh, qh, X_array)
                 end if
-                
                 call surface_knot_refinement(ph, Uh, qh, Vh, Qhw_net, X_array, dir, Uk, Vk, Qkw_net)
-
             else
                 exit
             end if
@@ -1169,6 +1161,15 @@ contains
         refined_surf%V_knot = Vk
         refined_surf%control_points = Pk_pts
         refined_surf%weight_points = wk_pts
+
+        call assess_surface_refinement(input_surf, refined_surf)
+
+        input_surf%p = pk
+        input_surf%q = qk
+        input_surf%U_knot = Uk
+        input_surf%V_knot = Vk
+        input_surf%control_points = Pk_pts
+        input_surf%weight_points = wk_pts
     end subroutine surface_spline_refinement
 
     subroutine assess_surface_refinement(surf_1, surf_2)
@@ -1206,4 +1207,68 @@ contains
         print *, "Average L2 error: "
         print *, average_error
     end subroutine assess_surface_refinement
+
+    subroutine patch_generation(input_surf, interface_var)
+        use nurbs_curve_module
+        use nurbs_surface_module
+        use derived_types
+        type(nurbs_surface), intent(inout) :: input_surf
+        type(nurbs_surface) :: refined_surf
+        type(interface_line), dimension(:), allocatable, intent(in) :: interface_var
+        integer :: p, q
+        real, dimension(:,:), allocatable :: P_pts, Pk_pts
+        real, dimension(:,:), allocatable :: w_pts, wk_pts
+        real, dimension(:), allocatable :: UP, VP, UQ, VQ
+
+        character(len=1) :: dir
+        real :: uv
+        integer :: r, s, nu, nv, nq, mq, num_interfaces, i, num_insertions
+        real, dimension(:,:), allocatable :: Pw_pts, Qw_pts
+        real, dimension(:,:,:), allocatable :: Pw_net, Qw_net
+
+        p = input_surf%p
+        q = input_surf%q
+        UP = input_surf%U_knot
+        VP = input_surf%V_knot
+        P_pts = input_surf%control_points
+        w_pts = input_surf%weight_points
+
+        r = size(UP) - 1
+        s = size(VP) - 1
+        nu = r - p - 1
+        nv = s - q - 1
+        
+        call weighted_control_points(P_pts, w_pts, Pw_pts)
+        call create_control_net(nu, nv, Pw_pts, Pw_net)
+
+        num_interfaces = size(interface_var)
+
+        do i = 1, num_interfaces
+            dir = interface_var(i)%dir
+            uv = interface_var(i)%UV_param
+        end do
+
+        ! p insertions to generate interface
+        num_insertions = p
+        call surface_knot_insertion(p, UP, q, VP, Pw_net, uv, dir, num_insertions, nq, UQ, mq, VQ, Qw_net)
+
+        call create_control_list(Qw_net, Qw_pts)
+        call geometric_control_points(Qw_pts, Pk_pts, wk_pts)
+
+        refined_surf%p = p
+        refined_surf%q = q
+        refined_surf%U_knot = UQ
+        refined_surf%V_knot = VQ
+        refined_surf%control_points = Pk_pts
+        refined_surf%weight_points = wk_pts
+
+        call assess_surface_refinement(input_surf, refined_surf)
+
+        input_surf%p = p
+        input_surf%q = q
+        input_surf%U_knot = UQ
+        input_surf%V_knot = VQ
+        input_surf%control_points = Pk_pts
+        input_surf%weight_points = wk_pts
+    end subroutine patch_generation
 end module surface_refinement

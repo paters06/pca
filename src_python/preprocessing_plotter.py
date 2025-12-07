@@ -51,7 +51,8 @@ def plot_geometry(contour, P_mat, dirichlet_points) -> None:
     ax.axis("off")
 
     # Boundary Geometry
-    fieldplot = ax.fill(contour[:,0],contour[:,1],facecolor='none',edgecolor='black',linewidth=1.5)
+    # fieldplot = ax.fill(contour[:,0],contour[:,1],facecolor='none',edgecolor='black',linewidth=1.5)
+    fieldplot = ax.scatter(contour[:,0],contour[:,1],marker='.')
 
     # Control Points
     controlplot = ax.scatter(P_mat[:,0],P_mat[:,1])

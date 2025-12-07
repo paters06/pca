@@ -1,0 +1,4 @@
+add_executable(isogeom_preprocessor isogeom_preprocessor.f90)
+target_include_directories(isogeom_preprocessor PUBLIC $<TARGET_PROPERTY:spline_mod,Fortran_MODULE_DIRECTORY>)
+target_include_directories(isogeom_preprocessor PUBLIC $<TARGET_PROPERTY:solver_mod,Fortran_MODULE_DIRECTORY>)
+target_link_libraries(isogeom_preprocessor PRIVATE spline_mod solver_mod)

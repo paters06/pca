@@ -377,47 +377,59 @@ contains
         end do fourth_boundary
     end function compute_parametric_boundary_points
 
-    subroutine get_boundary_conditions_dof(surf, bc_array, id_disp, u_pres)
+    subroutine get_boundary_conditions_dof(surf, bc_array, id_patches, id_disp, u_pres, ctrl_pts_pres)
+        ! ctrl_pts_pres: Control points with prescribed essential boundary conditions
         use derived_types
         integer :: p, q
         real, dimension(:), allocatable :: UP, VP
-        type(nurbs_surface), intent(in) :: surf
+        integer, dimension(:), allocatable, intent(in) :: id_patches
+        type(nurbs_surface), dimension(size(id_patches)), intent(in) :: surf
         type(boundary_condition), dimension(:), allocatable, intent(in) :: bc_array
+        
         integer, dimension(:), allocatable, intent(out) :: id_disp
         real, dimension(:), allocatable, intent(out) :: u_pres
+        real, dimension(:,:), allocatable, intent(out) :: ctrl_pts_pres
 
-        integer :: i, j, r, s, iu, jv, nu, nv, id, num_bc, i_temp_1
+        integer :: i, r, s, iu, jv, nu, nv, id, i_temp_1
+        integer :: i_patch, num_patches
         integer, dimension(:), allocatable :: i_arr, temp_1
         real, dimension(:), allocatable :: temp_2
+        real, dimension(:,:), allocatable :: temp_3, ctrl_pts_i
 
         integer, parameter :: MAX_SIZE = 5000
-
-        p = surf%p
-        q = surf%q
-        UP = surf%U_knot
-        VP = surf%V_knot
-
-        r = size(UP) - 1
-        s = size(VP) - 1
-        nu = r - p - 1
-        nv = s - q - 1
-
-        num_bc = size(bc_array)
-
-        allocate(temp_1(MAX_SIZE))
-        allocate(temp_2(MAX_SIZE))
+        allocate(temp_1(0:MAX_SIZE-1))
+        allocate(temp_2(0:MAX_SIZE-1))
+        allocate(temp_3(0:MAX_SIZE-1,0:2))
         temp_1 = 0
         temp_2 = 0.0
-        i_temp_1 = 1
+        temp_3 = 0.0
+        i_temp_1 = 0
 
-        do j = 1, num_bc
-            if (bc_array(j)%dir == "U") then
+        num_patches = size(id_patches)
+
+        do i_patch = 1, num_patches
+            p = surf(i_patch)%p
+            q = surf(i_patch)%q
+            UP = surf(i_patch)%U_knot
+            VP = surf(i_patch)%V_knot
+            
+            allocate(ctrl_pts_i(0:size(surf(i_patch)%control_points,1)-1,0:size(surf(i_patch)%control_points,2)-1))
+            ctrl_pts_i = surf(i_patch)%control_points
+
+            r = size(UP) - 1
+            s = size(VP) - 1
+            nu = r - p - 1
+            nv = s - q - 1
+
+            print "(I3, I3)", lbound(ctrl_pts_i,1), ubound(ctrl_pts_i,1)
+
+            if (bc_array(i_patch)%dir == "U") then
                 allocate(i_arr(0:nu))
                 i_arr = (/(i, i = 0, nu)/)
-                if (abs(bc_array(j)%UV_param) < 1e-5) then
+                if (abs(bc_array(i_patch)%UV_param) < 1e-5) then
                     jv = 0
                 end if
-                if (abs(bc_array(j)%UV_param-1.0) < 1e-5) then
+                if (abs(bc_array(i_patch)%UV_param-1.0) < 1e-5) then
                     jv = nv
                 end if
     
@@ -425,34 +437,45 @@ contains
                     id = compute_global_dof(i_arr(i),jv,nu)
                     ! print "(A, I3, A, F6.1)", "Global dof:", id, " |BC value:", bc_arr(j)
                     temp_1(i_temp_1) = id
-                    temp_2(i_temp_1) = bc_array(j)%prescribed_val
+                    temp_2(i_temp_1) = bc_array(i_patch)%prescribed_val
+                    temp_3(i_temp_1,:) = ctrl_pts_i(id,:)
                     i_temp_1 = i_temp_1 + 1
                 end do
                 deallocate(i_arr)
-            else if (bc_array(j)%dir == "V") then
+            else if (bc_array(i_patch)%dir == "V") then
                 allocate(i_arr(0:nv))
                 i_arr = (/(i, i = 0, nv)/)
-                if (abs(bc_array(j)%UV_param) < 1e-5) then
+                if (abs(bc_array(i_patch)%UV_param) < 1e-5) then
                     iu = 0
                 end if
-                if (abs(bc_array(j)%UV_param-1.0) < 1e-5) then
+                if (abs(bc_array(i_patch)%UV_param-1.0) < 1e-5) then
                     iu = nu
                 end if
                 do i = 0, nv
                     id = compute_global_dof(iu,i_arr(i),nu)
-                    ! print "(A, I3, A, F6.1)", "Global dof:", id, " |BC value:", bc_arr(j)
+                    ! print "(A, I3, A, F6.1)", "Global dof:", id, " |BC value:", bc_array(i_patch)%prescribed_val
+                    ! print "(F6.3)", ctrl_pts_i(id,:)
                     temp_1(i_temp_1) = id
-                    temp_2(i_temp_1) = bc_array(j)%prescribed_val
+                    temp_2(i_temp_1) = bc_array(i_patch)%prescribed_val
+                    temp_3(i_temp_1,:) = ctrl_pts_i(id,:)
                     i_temp_1 = i_temp_1 + 1
                 end do
                 deallocate(i_arr)
             end if
+
+            deallocate(ctrl_pts_i)
         end do
 
-        allocate(id_disp(i_temp_1-1))
-        allocate(u_pres(i_temp_1-1))
-        id_disp = temp_1(1:i_temp_1-1)
-        u_pres = temp_2(1:i_temp_1-1)
+        allocate(id_disp(i_temp_1))
+        allocate(u_pres(i_temp_1))
+        allocate(ctrl_pts_pres(i_temp_1,0:2))
+        id_disp = temp_1(0:i_temp_1-1)
+        u_pres = temp_2(0:i_temp_1-1)
+        ctrl_pts_pres = temp_3(0:i_temp_1-1,:)
+        ! call print_matrix(ctrl_pts_pres)
+
+        ! PENDING: RECALCULATION OF DOFS FOR MULTIPATCH SCHEMES
+        call print_row_vector_intg(id_disp)
     end subroutine get_boundary_conditions_dof
 
     subroutine print_nurbs_surface_info(surf)
@@ -469,4 +492,23 @@ contains
         call print_row_vector(surf%V_knot)
         print "(A, I3, A, I3)", "p degree:", surf%p, " |  q degree:", surf%q
     end subroutine print_nurbs_surface_info
+
+    function stack_arrays_by_column(array_a, array_b) result(array_ab)
+        real, dimension(:,:), allocatable, intent(in) :: array_a, array_b
+        real, dimension(:,:), allocatable :: array_ab
+        integer :: num_rows_a, num_rows_b, num_cols_a, num_cols_b
+        integer :: num_rows_ab
+
+        num_rows_a = size(array_a,1)
+        num_rows_b = size(array_b,1)
+        num_cols_a = size(array_a,2)
+        num_cols_b = size(array_b,2)
+
+        if (num_cols_a == num_cols_b) then
+            num_rows_ab = num_rows_a + num_rows_b
+            allocate(array_ab(num_rows_ab,num_cols_a))
+            array_ab(1:num_rows_a,:) = array_a(:,:)
+            array_ab(num_rows_a+1:num_rows_ab,:) = array_b(:,:)
+        end if
+    end function stack_arrays_by_column
 end module utils

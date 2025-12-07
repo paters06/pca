@@ -1,8 +1,8 @@
 module nurbs_surface_module
+    use utils
     implicit none
 contains
     subroutine create_control_net(nu, nv, P_pts, P_net)
-        use utils
         integer, intent(in) :: nu, nv
         real, dimension(:,:), allocatable, intent(in) :: P_pts
         real, dimension(:,:,:), allocatable, intent(out) :: P_net
@@ -18,7 +18,6 @@ contains
     end subroutine create_control_net
 
     subroutine create_n_control_net(nu, nv, n_dim, P_pts, P_net)
-        use utils
         integer, intent(in) :: nu, nv, n_dim
         real, dimension(:,:), allocatable, intent(in) :: P_pts
         real, dimension(:,:,:), allocatable, intent(out) :: P_net
@@ -59,7 +58,6 @@ contains
         ! n+1 and m+1 are the number of control points in the U and V direction
         ! r+1 and s+1 are the number of elements of the U and V knot vectors
         ! p and q are the orders in the U and V knot vectors
-        use utils
         use bspline_basis_functions, only: find_span, basis_function
 
         integer, intent(in) :: r, s, p, q
@@ -106,7 +104,6 @@ contains
         ! n+1 and m+1 are the number of control points in the U and V direction
         ! r+1 and s+1 are the number of elements of the U and V knot vectors
         ! p and q are the orders in the U and V knot vectors
-        use utils
         use bspline_basis_functions, only: find_span, basis_function
 
         integer, intent(in) :: r, s, p, q, n_dim
@@ -150,7 +147,6 @@ contains
         ! r+1 is the length of the U knot vector
         ! s+1 is the length of the V knot vector
         ! n+1 is the number of control points
-        use utils
         use nurbs_curve_module, only: weighted_control_points
         use derived_types
         
@@ -209,7 +205,6 @@ contains
         ! s+1 is the length of the V knot vector
         ! n+1 is the number of control points
         ! F_pts are the control points of the Field of interest
-        use utils
         use nurbs_curve_module, only: weighted_control_points
         use derived_types
         type(nurbs_surface), intent(in) :: surf
@@ -276,7 +271,6 @@ contains
         ! r+1 is the length of the U knot vector
         ! s+1 is the length of the V knot vector
         ! n+1 is the number of control points
-        use utils
         use nurbs_curve_module, only: weighted_control_points
         
         integer, intent(in) :: p, q
@@ -332,7 +326,6 @@ contains
         ! r+1 is the length of the U knot vector
         ! s+1 is the length of the V knot vector
         ! n+1 is the number of control points
-        use utils
         use nurbs_curve_module, only: weighted_control_points
         use derived_types
         
@@ -389,6 +382,30 @@ contains
             sbpts(j-1,:) = S_pti(:)
         end do
     end subroutine create_surface_boundary
+
+    subroutine create_patch_boundaries(patch, pbpts, p_ctrl_pts)
+        use derived_types
+        type(nurbs_surface), dimension(:), intent(in) :: patch
+        real, dimension(:,:), allocatable :: sbpts, pbpts_i, p_ctrl_pts_i
+        real, intent(out), dimension(:,:), allocatable :: pbpts, p_ctrl_pts
+        integer :: num_patches, i
+
+        num_patches = size(patch, 1)
+
+        call create_surface_boundary(patch(1), sbpts)
+        pbpts = sbpts
+        p_ctrl_pts = patch(1)%control_points
+        ! print "(I3,I3)", size(pbpts,1), size(pbpts,2)
+
+        do i = 2, num_patches
+            call create_surface_boundary(patch(i), sbpts)
+            pbpts_i = stack_arrays_by_column(pbpts, sbpts)
+            p_ctrl_pts_i = stack_arrays_by_column(p_ctrl_pts, patch(i)%control_points)
+            pbpts = pbpts_i
+            p_ctrl_pts = p_ctrl_pts_i
+        end do
+        ! print "(I3,I3)", size(pbpts,1), size(pbpts,2)
+    end subroutine
 
     subroutine bspline_surface_gradient(r, p, U_array, s, q, V_array, Pw_net, u, v, d, SKL)
         ! Algorithm 3.6 from the NURBS Book
