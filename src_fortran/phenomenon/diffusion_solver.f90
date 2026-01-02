@@ -1,5 +1,7 @@
 module diffusion_solver
     use utils
+    ! use utils_solver
+    use derived_types
     implicit none
 contains
 
@@ -64,6 +66,7 @@ contains
 
     subroutine derivative_shape_function_parametric(p, q, UP, VP, n_der, Pw_net, u, v, dR_dxi, non_zero_indices, global_dofs)
         use bspline_basis_functions, only: der_basis_functions, find_span
+        use utils_solver, only: compute_global_dof
         integer, intent(in) :: p, q, n_der
         real, intent(in) :: u, v
         real, dimension(0:), intent(in) :: UP, VP
@@ -199,6 +202,7 @@ contains
         ! n_der: n-th derivative to compute
         ! p, q: degrees of the B-splines in the U and V direction
         use bspline_basis_functions, only: der_basis_functions, find_span
+        use utils_solver, only: inverse_matrix_2
         integer, intent(in) :: p, q, n_der
         real, intent(in) :: ua, ub, va, vb, kappa
         real, dimension(0:), intent(in) :: UP, VP, parametric_weights
@@ -262,11 +266,46 @@ contains
         end do param_coor_loop
     end subroutine element_stiffness_matrix
     
-    subroutine assemble_weak_form(input_surf, num_gauss_pts, kappa, Kmat, Fvec)
+    subroutine get_multipatch_dofs(num_patches, input_surf, num_dofs_full)
+        integer, intent(in) :: num_patches
+        type(nurbs_surface), dimension(num_patches), intent(in) :: input_surf
+        integer, intent(out) :: num_dofs_full
+
+        integer :: i_patch, p, q, r, s, nu, nv
+        real, dimension(:), allocatable :: UP, VP
+        
+        num_dofs_full = 0
+        ! num_patches = size(id_patches)
+
+        do i_patch = 1, num_patches
+            p = input_surf(i_patch)%p
+            q = input_surf(i_patch)%q
+            UP = input_surf(i_patch)%U_knot
+            VP = input_surf(i_patch)%V_knot
+
+            r = size(UP) - 1
+            s = size(VP) - 1
+            nu = r - p - 1
+            nv = s - q - 1
+
+            if (i_patch == 1) then
+                num_dofs_full = num_dofs_full + (nu+1)*nv + nu
+            else
+                num_dofs_full = num_dofs_full + (nu)*nv + nu
+            end if
+        end do
+
+        ! The first dof starts at 0, that is why it is added 1
+        num_dofs_full = num_dofs_full + 1
+    end subroutine get_multipatch_dofs
+
+    subroutine assemble_weak_form(input_surf, id_patches, num_gauss_pts, kappa, Kmat, Fvec)
         use nurbs_curve_module, only: weighted_control_points
         use nurbs_surface_module, only: create_control_net
         use derived_types, only: nurbs_surface
-        type(nurbs_surface), intent(in) :: input_surf
+        use utils_solver, only: compute_connectivity_matrices_2, compute_patch_nodes
+        integer, dimension(:), allocatable, intent(in) :: id_patches
+        type(nurbs_surface), dimension(size(id_patches)), intent(in) :: input_surf
         integer :: p, q
         integer, intent(in) :: num_gauss_pts
         real, intent(in) :: kappa
@@ -274,72 +313,91 @@ contains
         real, dimension(:,:), allocatable :: P_pts, w_pts
         real, dimension(:,:), allocatable, intent(out) :: Kmat, Fvec
 
-        real, dimension(:), allocatable :: gauss_nodes, gauss_weights, param_intg_weights
+        real, dimension(:), allocatable :: gauss_nodes, gauss_weights, param_intg_weights   
         real, dimension(:,:), allocatable :: surface_elem_bounds, param_intg_points
         real, dimension(:,:), allocatable :: Pw_pts
         real, dimension(:,:,:), allocatable :: Pw_net
         real, dimension(:,:), allocatable :: K_local
         integer, dimension(:,:), allocatable :: global_dofs_loc
+        integer, dimension(:,:), allocatable :: elem_mat, patch_nodes
 
         integer :: n_der
-        integer :: i_elem, num_elements, r, s, nu, nv, num_dofs, i_global_loop
-        integer :: i_global, j_global, num_non_zero, aa, bb
+        integer :: i_elem, num_elements, r, s, nu, nv, i_global_loop
+        integer :: i_global, j_global, num_non_zero, aa, bb, i_patch, num_full_dofs
         real :: ua, ub, va, vb
+        integer :: num_patches, ni_dof
 
-        p = input_surf%p
-        q = input_surf%q
-        UP = input_surf%U_knot
-        VP = input_surf%V_knot
-        P_pts = input_surf%control_points
-        w_pts = input_surf%weight_points
+        num_patches = size(id_patches)
+        call get_multipatch_dofs(num_patches, input_surf, num_full_dofs)
 
-        r = size(UP) - 1
-        s = size(VP) - 1
-        nu = r - p - 1
-        nv = s - q - 1
-
-        call weighted_control_points(P_pts, w_pts, Pw_pts)
-        call create_control_net(nu, nv, Pw_pts, Pw_net)
+        call compute_patch_nodes(num_patches, input_surf, num_full_dofs, patch_nodes)
 
         ! Degree of derivatives to compute
         n_der = 1
 
-        call gauss_legendre_nodes_weights(num_gauss_pts, gauss_nodes, gauss_weights)
-
-        call calculate_surface_elements(UP, VP, surface_elem_bounds)
-        num_elements = size(surface_elem_bounds,1)
-
-        num_dofs = size(P_pts,1)
-        allocate(Kmat(0:num_dofs-1,0:num_dofs-1))
-        allocate(Fvec(0:num_dofs-1,1))
-        allocate(K_local(0:(p+1)*(q+1)-1,0:(p+1)*(q+1)-1))
+        print "(A, I3)", "Number of degrees of freedom (multipatch):", num_full_dofs
+        allocate(Kmat(0:num_full_dofs-1,0:num_full_dofs-1))
+        allocate(Fvec(0:num_full_dofs-1,1))
         Kmat = 0.
         Fvec = 0.
-        num_non_zero = (p+1)*(q+1)
 
-        element_loop: do i_elem = 0, num_elements - 1
-            K_local = 0.
-        
-            ua = surface_elem_bounds(i_elem, 0)
-            ub = surface_elem_bounds(i_elem, 1)
-            va = surface_elem_bounds(i_elem, 2)
-            vb = surface_elem_bounds(i_elem, 3)
+        i_global_loop = 0
+        ni_dof = 0
+
+        patch_loop: do i_patch = 1, num_patches
+            p = input_surf(i_patch)%p
+            q = input_surf(i_patch)%q
+            UP = input_surf(i_patch)%U_knot
+            VP = input_surf(i_patch)%V_knot
+            P_pts = input_surf(i_patch)%control_points
+            w_pts = input_surf(i_patch)%weight_points
+
+            r = size(UP) - 1
+            s = size(VP) - 1
+            nu = r - p - 1
+            nv = s - q - 1
+
+            call compute_connectivity_matrices_2(nu, nv, p, q, i_patch, ni_dof, elem_mat)
+
+            call weighted_control_points(P_pts, w_pts, Pw_pts)
+            call create_control_net(nu, nv, Pw_pts, Pw_net)
+
+            call gauss_legendre_nodes_weights(num_gauss_pts, gauss_nodes, gauss_weights)
+
+            call calculate_surface_elements(UP, VP, surface_elem_bounds)
+            num_elements = size(surface_elem_bounds,1)
+
+            num_non_zero = (p+1)*(q+1)
+            allocate(K_local(0:num_non_zero-1,0:num_non_zero-1))
+
+            element_loop: do i_elem = 0, num_elements - 1
+                K_local = 0.
             
-            call compute_parametric_coords(ua, ub, va, vb, gauss_nodes, gauss_weights, param_intg_points, param_intg_weights)
-            call element_stiffness_matrix(p, q, UP, VP, ua, ub, va, vb, n_der, kappa, &
-                                          Pw_net, param_intg_points, param_intg_weights, K_local, global_dofs_loc)
+                ua = surface_elem_bounds(i_elem, 0)
+                ub = surface_elem_bounds(i_elem, 1)
+                va = surface_elem_bounds(i_elem, 2)
+                vb = surface_elem_bounds(i_elem, 3)
+                
+                call compute_parametric_coords(ua, ub, va, vb, gauss_nodes, gauss_weights, param_intg_points, param_intg_weights)
+                call element_stiffness_matrix(p, q, UP, VP, ua, ub, va, vb, n_der, kappa, &
+                                              Pw_net, param_intg_points, param_intg_weights, K_local, global_dofs_loc)
 
-            i_global_loop = 0
+                row_loop: do bb = 0, num_non_zero - 1
+                    column_loop: do aa = 0, num_non_zero - 1
+                        i_global = elem_mat(aa+1, i_elem)
+                        j_global = elem_mat(bb+1, i_elem)
+                        Kmat(i_global, j_global) = Kmat(i_global, j_global) + K_local(aa,bb)
+                    end do column_loop
+                end do row_loop
+            end do element_loop
+            deallocate(K_local)
 
-            row_loop: do bb = 0, num_non_zero - 1
-                column_loop: do aa = 0, num_non_zero - 1
-                    i_global = global_dofs_loc(i_global_loop,0)
-                    j_global = global_dofs_loc(i_global_loop,1)
-                    Kmat(i_global, j_global) = Kmat(i_global, j_global) + K_local(aa,bb)
-                    i_global_loop = i_global_loop + 1
-                end do column_loop
-            end do row_loop
-        end do element_loop
+            if (i_patch == 1) then
+                ni_dof = ni_dof + (nu+1)*nv + nu
+            else
+                ni_dof = ni_dof + (nu)*nv + nu
+            end if
+        end do patch_loop
     end subroutine assemble_weak_form
 
     subroutine matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred, remainder_dofs)
@@ -428,7 +486,6 @@ contains
         ! integer, intent(in) :: p, q
         real, dimension(:,:), allocatable, intent(in) :: F_pts
         real, dimension(:,:), allocatable :: spts, fpts, post_pts
-        ! real, dimension(:), allocatable, intent(in) :: UP, VP
         integer :: num_points, n_dim_1, n_dim_2
         type(nurbs_surface), intent(in) :: surf
         character(:), allocatable, intent(in) :: file_name

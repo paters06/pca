@@ -1,5 +1,6 @@
 program isogeom_preprocessor
     use utils
+    use utils_solver
     use nurbs_surface_module
     use surface_refinement
     use input_output

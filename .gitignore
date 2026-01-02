@@ -138,3 +138,5 @@ bin/
 src_fortran/postprocessor/*.txt
 src_fortran/preprocessor/*.txt
 src_python/*.txt
+src_python/control_points_input_file_diffusion_4.txt
+src_python/dirichlet_points_input_file_diffusion_4.txt
