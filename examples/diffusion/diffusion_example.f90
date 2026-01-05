@@ -24,6 +24,7 @@ program diffusion_example
     type(nurbs_surface), dimension(:), allocatable :: input_patches
     type(interface_line), dimension(:), allocatable :: interf_var
     integer :: i_patch
+    integer, dimension(:,:), allocatable :: patch_nodes
 
     call get_command_argument(1, file_name_inp)
     file_name = file_name_inp
@@ -45,8 +46,8 @@ program diffusion_example
     call create_patch_boundaries(input_patches, sbpts, p_ctrl_pts)
     call get_boundary_conditions_dof(input_patches, bc_array, id_patches, id_disp, u_pres, ctrl_pts_pres)
 
-    call assemble_weak_form(input_patches, id_patches, num_gauss_pts, kappa, Kmat, Fvec)
+    call assemble_weak_form(input_patches, id_patches, num_gauss_pts, kappa, Kmat, Fvec, patch_nodes)
     call matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred, remainder_dofs)
     call solve_matrix_equations(Kred, Fred, remainder_dofs, id_disp, u_pres, Usol)
-    ! call compute_postprocessing_solutions(Usol, input_nurbs_surface, file_name)
+    call compute_postprocessing_solutions(Usol, input_patches, patch_nodes, file_name)
 end program diffusion_example

@@ -299,7 +299,7 @@ contains
         num_dofs_full = num_dofs_full + 1
     end subroutine get_multipatch_dofs
 
-    subroutine assemble_weak_form(input_surf, id_patches, num_gauss_pts, kappa, Kmat, Fvec)
+    subroutine assemble_weak_form(input_surf, id_patches, num_gauss_pts, kappa, Kmat, Fvec, patch_nodes)
         use nurbs_curve_module, only: weighted_control_points
         use nurbs_surface_module, only: create_control_net
         use derived_types, only: nurbs_surface
@@ -312,6 +312,7 @@ contains
         real, dimension(:), allocatable :: UP, VP
         real, dimension(:,:), allocatable :: P_pts, w_pts
         real, dimension(:,:), allocatable, intent(out) :: Kmat, Fvec
+        integer, dimension(:,:), allocatable, intent(out) :: patch_nodes
 
         real, dimension(:), allocatable :: gauss_nodes, gauss_weights, param_intg_weights   
         real, dimension(:,:), allocatable :: surface_elem_bounds, param_intg_points
@@ -319,7 +320,7 @@ contains
         real, dimension(:,:,:), allocatable :: Pw_net
         real, dimension(:,:), allocatable :: K_local
         integer, dimension(:,:), allocatable :: global_dofs_loc
-        integer, dimension(:,:), allocatable :: elem_mat, patch_nodes
+        integer, dimension(:,:), allocatable :: elem_mat
 
         integer :: n_der
         integer :: i_elem, num_elements, r, s, nu, nv, i_global_loop
@@ -479,28 +480,83 @@ contains
         call print_column_vector(Usol)
     end subroutine solve_matrix_equations
 
-    subroutine compute_postprocessing_solutions(F_pts, surf, file_name)
+    subroutine compute_postprocessing_solutions(F_pts, input_surf, patch_nodes, file_name)
         use nurbs_surface_module
         use input_output, only: export_matrix
         use derived_types
-        ! integer, intent(in) :: p, q
         real, dimension(:,:), allocatable, intent(in) :: F_pts
-        real, dimension(:,:), allocatable :: spts, fpts, post_pts
-        integer :: num_points, n_dim_1, n_dim_2
-        type(nurbs_surface), intent(in) :: surf
+        real, dimension(:,:), allocatable :: spts, fpts, post_pts, F_pts_i, P_pts
+        real, dimension(:,:), allocatable :: spts_i, fpts_i, spts_stack, fpts_stack
+        integer :: num_points, n_dim_1, n_dim_2, num_patches, i_patch, num_dim_i
+        integer :: num_total_points, i_dof, num_dof_i, i_local, i_global, num_dof_o
+        type(nurbs_surface), dimension(:), allocatable, intent(in) :: input_surf
+        integer, dimension(:,:), allocatable, intent(in) :: patch_nodes
         character(:), allocatable, intent(in) :: file_name
         character(:), allocatable :: file_output
 
+        num_patches = size(input_surf)
         num_points = 25
-        call create_surface(num_points, surf, spts)
-        call create_n_surface(num_points, surf, F_pts, fpts)
 
-        n_dim_1 = size(spts,2)
-        n_dim_2 = size(fpts,2)
+        P_pts = input_surf(1)%control_points
+        num_dof_i = size(P_pts, 1)
+        num_dim_i = size(F_pts, 2)
 
-        allocate(post_pts((num_points+1)**2,n_dim_1+n_dim_2))
-        post_pts(:,1:n_dim_1) = spts
-        post_pts(:,n_dim_1+1:) = fpts
+        allocate(F_pts_i(0:num_dof_i-1,0:num_dim_i-1))
+
+        do i_dof = 0, num_dof_i - 1
+            ! print "(I3, I3, I3)", patch_nodes(i_dof, 0), patch_nodes(i_dof, 1), patch_nodes(i_dof, 2)
+            i_local = patch_nodes(i_dof, 1)
+            i_global = patch_nodes(i_dof, 2)
+            F_pts_i(i_local,:) = F_pts(i_global,:)
+        end do
+
+        ! call print_matrix(F_pts_i)
+
+        call create_surface(num_points, input_surf(1), spts)
+        call create_n_surface(num_points, input_surf(1), F_pts_i, fpts)
+
+        spts_stack = spts
+        fpts_stack = fpts
+
+        deallocate(F_pts_i)
+
+        num_dof_o = num_dof_i
+
+        patch_loop: do i_patch = 2, num_patches
+            P_pts = input_surf(i_patch)%control_points
+            num_dof_i = num_dof_o + size(P_pts, 1)    
+            allocate(F_pts_i(0:size(P_pts, 1) -1,0:num_dim_i-1))
+
+            do i_dof = num_dof_o, num_dof_i - 1
+                ! print "(I3, I3, I3)", patch_nodes(i_dof, 0), patch_nodes(i_dof, 1), patch_nodes(i_dof, 2)
+                i_local = patch_nodes(i_dof, 1)
+                i_global = patch_nodes(i_dof, 2)
+                F_pts_i(i_local,:) = F_pts(i_global,:)
+            end do
+
+            ! call print_matrix(F_pts_i)
+
+            call create_surface(num_points, input_surf(i_patch), spts)
+            call create_n_surface(num_points, input_surf(i_patch), F_pts_i, fpts)
+
+            spts_i = stack_arrays_by_column(spts_stack, spts)
+            fpts_i = stack_arrays_by_column(fpts_stack, fpts)
+
+            spts_stack = spts_i
+            fpts_stack = fpts_i
+
+            deallocate(F_pts_i)
+            num_dof_o = num_dof_i
+        end do patch_loop
+
+        n_dim_1 = size(spts_stack,2)
+        n_dim_2 = size(fpts_stack,2)
+
+        num_total_points = size(spts_stack, 1)
+
+        allocate(post_pts(num_total_points,n_dim_1+n_dim_2))
+        post_pts(:,1:n_dim_1) = spts_stack
+        post_pts(:,n_dim_1+1:) = fpts_stack
 
         file_output = 'output_'//file_name
         call export_matrix(post_pts, file_output)
