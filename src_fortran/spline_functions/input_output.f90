@@ -1,6 +1,6 @@
 module input_output
-    use utils
     use derived_types
+    use utils
     implicit none
 contains
     subroutine import_data(file_name, line_array)
@@ -53,7 +53,6 @@ contains
     end subroutine import_data
 
     subroutine convert_data_to_curve(line_array, input_curve, refn_array)
-        ! use derived_types
         character(len=*), dimension(0:), intent(in) :: line_array
         integer :: p
         real, dimension(:), allocatable :: U_knot
@@ -148,7 +147,6 @@ contains
     end subroutine
 
     function find_geom_input_limits(string_a, string_b, string_array) result(string_limits)
-        use utils
         character(len=*), intent(in) :: string_a, string_b
         character(len=*), dimension(:), intent(in) :: string_array
         integer, dimension(:,:), allocatable :: string_limits_temp, string_limits
@@ -195,15 +193,15 @@ contains
     end function find_string_in_array
 
     subroutine convert_data_to_surface(line_array, input_patches, refn_flag, refn_array, interf_flag, interf_var)
-        ! use derived_types
         character(len=*), dimension(:), intent(in) :: line_array
         character(:), dimension(:), allocatable :: patch_input_array
         integer :: p, q
         real, dimension(:), allocatable :: U_knot, V_knot
         real, dimension(:,:), allocatable :: ctrl_pts
+        type(interface_boundary), dimension(:), allocatable, intent(out) :: interf_var
         type(nurbs_surface), dimension(:), allocatable, intent(out) :: input_patches
-        character(len=1), dimension(:,:), allocatable, intent(out), optional :: refn_array
-        type(interface_line), dimension(:), allocatable, intent(out), optional :: interf_var
+        character(len=1), dimension(:,:), allocatable, intent(out) :: refn_array
+        ! type(interface_boundary), dimension(:), allocatable, intent(out) :: interf_var
 
         character(:), allocatable :: format_line, second_format_line
         character(:), allocatable :: start_geom_label, control_points_label
@@ -216,10 +214,11 @@ contains
         integer, intent(out) :: refn_flag, interf_flag
 
         integer :: idx_control_points, idx_p, idx_q, idx_UP, idx_VP, idx_refn
-        integer :: idx_interf
+        integer :: idx_interf, i_interf
 
         integer :: size_1, size_2, size_vec_1, size_vec_2
         real, dimension(:,:), allocatable :: P_pts, w_pts
+        integer, dimension(2) :: num_interfaces
 
         format_line = "(A)"
         second_format_line = "(A, I3)"
@@ -322,6 +321,21 @@ contains
                 input_patches(i)%refn_input = refn_array
             end if
 
+            if (interf_flag == 1) then
+                num_interfaces = 0
+                do i_interf = 1, size(interf_var)
+                    if (interf_var(i_interf)%dir == "U") then
+                        num_interfaces(1) = num_interfaces(1) + 1
+                    end if
+
+                    if (interf_var(i_interf)%dir == "V") then
+                        num_interfaces(2) = num_interfaces(2) + 1
+                    end if
+
+                    input_patches(i)%num_interfaces = num_interfaces
+                end do
+            end if
+
             deallocate(P_pts)
             deallocate(w_pts)
         end do
@@ -329,7 +343,6 @@ contains
 
     subroutine convert_data_to_solver(line_array, num_gauss_pts, kappa, bc_array, id_patch)
         ! bc_array: array with information for the enforcement of boundary conditions
-        ! use derived_types
         character(len=*), dimension(:), intent(in) :: line_array
         integer, intent(out) :: num_gauss_pts
         real, intent(out) :: kappa
@@ -351,7 +364,7 @@ contains
 
         start_solver_label = "**START_SOLVER**"
         intg_label = "*GAUSS_NUM"
-        kappa_label = "*DIFFUSION"
+        kappa_label = "*KAPPA"
         bc_label = "*ESSENTIAL_COND_DOFS"
         end_solver_label = "**END_SOLVER**"
 
@@ -578,10 +591,9 @@ contains
     end subroutine read_derived_type_matrix
 
     subroutine read_interface_info(strings, interf_var)
-        ! use derived_types
         character(len=*), dimension(:), intent(in) :: strings
-        type(interface_line), dimension(:), allocatable, intent(out) :: interf_var
-        type(interface_line) :: temp
+        type(interface_boundary), dimension(:), allocatable, intent(out) :: interf_var
+        type(interface_boundary) :: temp
         ! integer, parameter :: MAX_SIZE = 50
         integer :: num_values, i
 
@@ -591,8 +603,9 @@ contains
         do i = 1, num_values
             read (strings(i),*) temp
             interf_var(i) = temp
-            print "('Direction: ', A)", temp%dir
-            print "('Parameter: ', F4.2)", temp%UV_param
+            ! print "('Patch ID: ', I3)", temp%patch_id
+            ! print "('Direction: ', A)", temp%dir
+            ! print "('Parameter: ', F4.2)", temp%UV_param
         end do
     end subroutine
 

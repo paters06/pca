@@ -1,11 +1,11 @@
 program diffusion_example
+    use derived_types
     use utils
+    use input_output
     use utils_solver
     use nurbs_surface_module
     use surface_refinement
-    use input_output
     use diffusion_solver
-    use derived_types
     implicit none
 
     character(:), allocatable :: file_name
@@ -22,7 +22,7 @@ program diffusion_example
     type(boundary_condition), dimension(:), allocatable :: bc_array
     real, dimension(:,:), allocatable :: p_ctrl_pts
     type(nurbs_surface), dimension(:), allocatable :: input_patches
-    type(interface_line), dimension(:), allocatable :: interf_var
+    type(interface_boundary), dimension(:), allocatable :: interf_var
     integer :: i_patch
     integer, dimension(:,:), allocatable :: patch_nodes
 
@@ -46,7 +46,7 @@ program diffusion_example
     call create_patch_boundaries(input_patches, sbpts, p_ctrl_pts)
     call get_boundary_conditions_dof(input_patches, bc_array, id_patches, id_disp, u_pres, ctrl_pts_pres)
 
-    call assemble_weak_form(input_patches, id_patches, num_gauss_pts, kappa, Kmat, Fvec, patch_nodes)
+    call assemble_weak_form(input_patches, id_patches, interf_var, num_gauss_pts, kappa, Kmat, Fvec, patch_nodes)
     call matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred, remainder_dofs)
     call solve_matrix_equations(Kred, Fred, remainder_dofs, id_disp, u_pres, Usol)
     call compute_postprocessing_solutions(Usol, input_patches, patch_nodes, file_name)

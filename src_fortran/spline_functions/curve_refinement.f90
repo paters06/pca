@@ -1,4 +1,7 @@
 module curve_refinement
+    use utils
+    use bspline_basis_functions
+    use nurbs_curve_module
     implicit none
 contains
     subroutine knot_insertion(p, U_knot, Pw_pts, u, UQ, Qw_pts)
@@ -8,9 +11,6 @@ contains
         ! k: knot span
         ! s: knot multiplicity
         ! r: number of insertions
-        use bspline_basis_functions
-        use utils
-        
         integer, intent(in) :: p
         real, intent(in) :: u
         real, dimension(0:), intent(in) :: U_knot
@@ -89,8 +89,8 @@ contains
         ! Refine curve knot vector
         ! Input: n, p, U_knot, Pw_pts, X_array, r
         ! Output: Ubar, Qw_pts
-        use bspline_basis_functions
-        use utils
+        ! use bspline_basis_functions
+        ! use utils
         
         real, dimension(0:), intent(in) :: U_knot, X_array
         real, dimension(0:,0:), intent(in) :: Pw_pts
@@ -192,9 +192,6 @@ contains
         ! ebpts(p+t+1): (p+t)th degree Bezier control points of the current segment
         ! Nextbpts(p-1): leftmost control points of the next Bezier segment
         ! alphas(p-1): knot insertion alphas
-        use utils
-        use nurbs_curve
-
         integer, intent(in) :: p
         real, dimension(0:), intent(in) :: U_knot
         real, dimension(0:,0:), intent(in) :: Pw
@@ -432,8 +429,8 @@ contains
         !   Ph_pts: control points after h-refinement
         !   wh_pts: weights after h-refinement
         !   Ubar: knot vector after h-refinement
-        use nurbs_curve
-        use utils
+        ! use nurbs_curve
+        ! use utils
         integer, intent(in) :: p
         real, dimension(:,:), intent(in) :: P_pts
         real, dimension(:,:), intent(in) :: w_pts
@@ -481,8 +478,8 @@ contains
         ! Pw = rbs.weightedControlPoints(P,w)
         ! Pw = np.hstack((P,np.ones((P.shape[0],1))))
         ! Pw *= w
-        use nurbs_curve
-        use utils
+        ! use nurbs_curve
+        ! use utils
         integer, intent(in) :: p
         real, dimension(:,:), intent(in) :: P_pts
         real, dimension(:,:), intent(in) :: w_pts
@@ -599,7 +596,6 @@ contains
     end subroutine spline_refinement
 
     subroutine assess_refinement(cpts_1, cpts_2)
-        use utils
         real, dimension(:,:), intent(in) :: cpts_1, cpts_2
         real, dimension(:,:), allocatable :: diff
         real, dimension(:), allocatable :: norm_diff

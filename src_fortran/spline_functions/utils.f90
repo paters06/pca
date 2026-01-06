@@ -292,6 +292,8 @@ contains
         print "(A)", "V knot vector"
         call print_row_vector(surf%V_knot)
         print "(A, I3, A, I3)", "p degree:", surf%p, " |  q degree:", surf%q
+        print "(A, I3)", "Number of U interfaces:", surf%num_interfaces(1)
+        print "(A, I3)", "Number of V interfaces:", surf%num_interfaces(2)
     end subroutine print_nurbs_surface_info
 
     function stack_arrays_by_column(array_a, array_b) result(array_ab)

@@ -1214,7 +1214,7 @@ contains
         use derived_types
         type(nurbs_surface), intent(inout) :: input_surf
         type(nurbs_surface) :: refined_surf
-        type(interface_line), dimension(:), allocatable, intent(in) :: interface_var
+        type(interface_boundary), dimension(:), allocatable, intent(in) :: interface_var
         integer :: p, q
         real, dimension(:,:), allocatable :: P_pts, Pk_pts
         real, dimension(:,:), allocatable :: w_pts, wk_pts

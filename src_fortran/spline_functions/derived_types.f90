@@ -1,6 +1,5 @@
 module derived_types
     implicit none
-
     type :: boundary_condition
         ! id_patch: number of the patch where the boundary condition is applied (NOT INCLUDED DUE TO GFORTRAN BUG)
         ! dir: parameter where the boundary condition will be enforced
@@ -20,15 +19,19 @@ module derived_types
     type :: nurbs_surface
         ! refn_input has the information of the type of refinement
         ! and the parameter to be applied with
+        ! num_interfaces(1) refers to the number of boundaries with other patches in the U direction
+        ! num_interfaces(2) refers to the number of boundaries with other patches in the V direction
         integer :: p, q
         real, dimension(:), allocatable :: U_knot, V_knot
         real, dimension(:,:), allocatable :: control_points, weight_points
         character(len=1), dimension(:,:), allocatable :: refn_input
         integer :: refn_flag
+        integer, dimension(2) :: num_interfaces
     end type nurbs_surface
 
-    type :: interface_line
+    type :: interface_boundary
+        integer :: patch_id
         character(len=1) :: dir
         real :: UV_param
-    end type interface_line
+    end type interface_boundary
 end module derived_types

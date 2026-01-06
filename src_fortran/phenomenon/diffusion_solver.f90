@@ -299,13 +299,14 @@ contains
         num_dofs_full = num_dofs_full + 1
     end subroutine get_multipatch_dofs
 
-    subroutine assemble_weak_form(input_surf, id_patches, num_gauss_pts, kappa, Kmat, Fvec, patch_nodes)
+    subroutine assemble_weak_form(input_surf, id_patches, interf_var, num_gauss_pts, kappa, Kmat, Fvec, patch_nodes)
         use nurbs_curve_module, only: weighted_control_points
         use nurbs_surface_module, only: create_control_net
         use derived_types, only: nurbs_surface
         use utils_solver, only: compute_connectivity_matrices_2, compute_patch_nodes
         integer, dimension(:), allocatable, intent(in) :: id_patches
         type(nurbs_surface), dimension(size(id_patches)), intent(in) :: input_surf
+        type(interface_boundary), dimension(:), allocatable, intent(in) :: interf_var
         integer :: p, q
         integer, intent(in) :: num_gauss_pts
         real, intent(in) :: kappa
@@ -331,7 +332,7 @@ contains
         num_patches = size(id_patches)
         call get_multipatch_dofs(num_patches, input_surf, num_full_dofs)
 
-        call compute_patch_nodes(num_patches, input_surf, num_full_dofs, patch_nodes)
+        call compute_patch_nodes(num_patches, input_surf, interf_var, num_full_dofs, patch_nodes)
 
         ! Degree of derivatives to compute
         n_der = 1
@@ -402,7 +403,6 @@ contains
     end subroutine assemble_weak_form
 
     subroutine matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred, remainder_dofs)
-        use utils
         real, dimension(0:), intent(in) :: u_pres
         integer, dimension(0:), intent(in) :: id_disp
         real, dimension(:,:), allocatable, intent(in) :: Kmat, Fvec

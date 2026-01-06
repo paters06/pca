@@ -163,12 +163,13 @@ contains
         ! call print_integer_matrix(patch_nodes)
     end subroutine compute_connectivity_matrices_2
 
-    subroutine compute_patch_nodes(num_patches, input_surf, num_dofs_full, patch_nodes)
+    subroutine compute_patch_nodes(num_patches, input_surf, interf_var, num_dofs_full, patch_nodes)
         use derived_types, only: nurbs_surface
         integer :: num_patches
         type(nurbs_surface), dimension(num_patches), intent(in) :: input_surf
-        integer :: i_patch, i_nodes, i, j, c1, c11, i_nodes_full
-        integer :: nu, nv, ni_dof, p, q, r, s, num_numbering
+        type(interface_boundary), dimension(:), allocatable, intent(in) :: interf_var
+        integer :: i_patch, i_nodes, i, j, c1, c11, i_nodes_full, k_temp
+        integer :: nu, nv, ni_dof, p, q, r, s, num_numbering, num_interfaces
         real, dimension(:), allocatable :: UP, VP
         integer, intent(out) :: num_dofs_full
         integer, dimension(:,:), allocatable, intent(out) :: patch_nodes
@@ -181,6 +182,7 @@ contains
             q = input_surf(i_patch)%q
             UP = input_surf(i_patch)%U_knot
             VP = input_surf(i_patch)%V_knot
+            num_interfaces = input_surf(i_patch)%num_interfaces
 
             r = size(UP) - 1
             s = size(VP) - 1
@@ -190,7 +192,8 @@ contains
             if (i_patch == 1) then
                 num_dofs_full = num_dofs_full + (nu+1)*nv + nu
             else
-                num_dofs_full = num_dofs_full + (nu)*nv + nu
+                k_temp = (nu+1-num_interfaces(1))*(nv-num_interfaces(2)) + nu
+                num_dofs_full = num_dofs_full + k_temp
             end if
 
             num_numbering = num_numbering + (nu+1)*nv + nu

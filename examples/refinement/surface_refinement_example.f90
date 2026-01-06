@@ -12,7 +12,7 @@ program refinement_example_9
     integer :: refn_flag, interf_flag
     ! type(nurbs_surface) :: input_nurbs_surface, refined_surface
     type(nurbs_surface), dimension(:), allocatable :: input_patches
-    type(interface_line), dimension(:), allocatable :: interf_var
+    type(interface_boundary), dimension(:), allocatable :: interf_var
 
     file_name = "input_file_surface.txt"
 

@@ -20,7 +20,7 @@ program isogeom_preprocessor
     real, dimension(:,:), allocatable :: p_ctrl_pts
     character(:), allocatable :: file_output_1, file_output_2, file_output_3
     type(nurbs_surface), dimension(:), allocatable :: input_patches
-    type(interface_line), dimension(:), allocatable :: interf_var
+    type(interface_boundary), dimension(:), allocatable :: interf_var
     integer :: i_patch
 
     call get_command_argument(1, file_name_inp)
