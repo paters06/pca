@@ -20,18 +20,21 @@ program isogeom_preprocessor
     real, dimension(:,:), allocatable :: p_ctrl_pts
     character(:), allocatable :: file_output_1, file_output_2, file_output_3
     type(nurbs_surface), dimension(:), allocatable :: input_patches
-    type(interface_boundary), dimension(:), allocatable :: interf_var
     integer :: i_patch
+    integer, dimension(:,:), allocatable :: node_numbering
 
     call get_command_argument(1, file_name_inp)
     file_name = file_name_inp
 
     ! Information import
     call import_data(file_name, line_array)
-    call convert_data_to_surface(line_array, input_patches, refn_flag, ref_list, interf_flag, interf_var)
+    call convert_data_to_surface(line_array, input_patches, refn_flag, ref_list)
     call convert_data_to_solver(line_array, num_gauss_pts, kappa, bc_array, id_patches)
     
-    do i_patch = 1, size(id_patches)
+    print "(A, I3)", "NUMBER OF PATCHES", size(input_patches)
+
+    do i_patch = 1, size(input_patches)
+        print "(A, I3)", "PATCH #", i_patch
         if (input_patches(i_patch)%refn_flag == 1) then
             call print_string_matrix(input_patches(i_patch)%refn_input)
             call surface_spline_refinement(input_patches(i_patch))
@@ -41,12 +44,8 @@ program isogeom_preprocessor
         call print_nurbs_surface_info(input_patches(i_patch))
     end do
 
-    if (interf_flag == 1) then
-        call patch_generation(input_patches(1), interf_var)
-        call print_nurbs_surface_info(input_patches(1))
-    end if
-
     call create_patch_boundaries(input_patches, sbpts, p_ctrl_pts)
+    call generate_node_numbering(input_patches, node_numbering)
     call get_boundary_conditions_dof(input_patches, bc_array, id_patches, id_disp, u_pres, ctrl_pts_pres)
 
     file_output_1 = 'boundary_points_'//file_name

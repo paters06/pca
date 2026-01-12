@@ -192,16 +192,15 @@ contains
         end do
     end function find_string_in_array
 
-    subroutine convert_data_to_surface(line_array, input_patches, refn_flag, refn_array, interf_flag, interf_var)
+    subroutine convert_data_to_surface(line_array, input_patches, refn_flag, refn_array)
         character(len=*), dimension(:), intent(in) :: line_array
         character(:), dimension(:), allocatable :: patch_input_array
         integer :: p, q
         real, dimension(:), allocatable :: U_knot, V_knot
         real, dimension(:,:), allocatable :: ctrl_pts
-        type(interface_boundary), dimension(:), allocatable, intent(out) :: interf_var
+        type(interface_boundary), dimension(:), allocatable :: interf_array
         type(nurbs_surface), dimension(:), allocatable, intent(out) :: input_patches
         character(len=1), dimension(:,:), allocatable, intent(out) :: refn_array
-        ! type(interface_boundary), dimension(:), allocatable, intent(out) :: interf_var
 
         character(:), allocatable :: format_line, second_format_line
         character(:), allocatable :: start_geom_label, control_points_label
@@ -210,8 +209,8 @@ contains
         integer, dimension(:,:), allocatable :: geom_input_limits
         
         integer :: i, i_start, i_end, num_patches
-        integer :: start_geom_flag, end_geom_flag
-        integer, intent(out) :: refn_flag, interf_flag
+        integer :: start_geom_flag, end_geom_flag, interf_flag
+        integer, intent(out) :: refn_flag
 
         integer :: idx_control_points, idx_p, idx_q, idx_UP, idx_VP, idx_refn
         integer :: idx_interf, i_interf
@@ -241,6 +240,7 @@ contains
         num_patches = size(geom_input_limits,1)
 
         allocate(input_patches(num_patches))
+        print "(A, I3)", "NUMBER OF PATCHES", num_patches
 
         do i = 1, num_patches
             i_start = geom_input_limits(i,1)
@@ -295,7 +295,7 @@ contains
             ! Reading interface information
             if (idx_interf /= -1) then
                 interf_flag = 1
-                call read_interface_info(line_array(idx_interf+1:i_end-1), interf_var)
+                call read_interface_info(line_array(idx_interf+1:i_end-1), interf_array)
             end if
 
             size_1 = size(ctrl_pts, 1)
@@ -316,6 +316,7 @@ contains
             input_patches(i)%control_points = P_pts
             input_patches(i)%weight_points = w_pts
             input_patches(i)%refn_flag = refn_flag
+            input_patches(i)%interfaces = interf_array
             
             if (refn_flag == 1) then
                 input_patches(i)%refn_input = refn_array
@@ -323,12 +324,12 @@ contains
 
             if (interf_flag == 1) then
                 num_interfaces = 0
-                do i_interf = 1, size(interf_var)
-                    if (interf_var(i_interf)%dir == "U") then
+                do i_interf = 1, size(interf_array)
+                    if (interf_array(i_interf)%dir == "U") then
                         num_interfaces(1) = num_interfaces(1) + 1
                     end if
 
-                    if (interf_var(i_interf)%dir == "V") then
+                    if (interf_array(i_interf)%dir == "V") then
                         num_interfaces(2) = num_interfaces(2) + 1
                     end if
 
@@ -388,7 +389,7 @@ contains
 
         ! Reading essential boundary conditions
         if (idx_bc /= -1) then
-            call read_derived_type_matrix(line_array(idx_bc+1:i_end-1), bc_array, id_patch)
+            call read_boundary_conditions(line_array(idx_bc+1:i_end-1), bc_array, id_patch)
         end if
     end subroutine convert_data_to_solver
 
@@ -566,7 +567,7 @@ contains
         matrix = temp_matrix(:,1:size(array))
     end subroutine read_string_matrix
 
-    subroutine read_derived_type_matrix(strings, derived_array, id_patches)
+    subroutine read_boundary_conditions(strings, derived_array, id_patches)
         character(len=*), dimension(:), intent(in) :: strings
         type(boundary_condition), dimension(:), allocatable, intent(out) :: derived_array
         integer, dimension(:), allocatable, intent(out) :: id_patches
@@ -588,24 +589,24 @@ contains
             print "('Parameter: ', F4.2)", temp%UV_param
             print "('Prescribed value: ', F6.2)", temp%prescribed_val
         end do
-    end subroutine read_derived_type_matrix
+    end subroutine read_boundary_conditions
 
-    subroutine read_interface_info(strings, interf_var)
+    subroutine read_interface_info(strings, interf_array)
         character(len=*), dimension(:), intent(in) :: strings
-        type(interface_boundary), dimension(:), allocatable, intent(out) :: interf_var
+        type(interface_boundary), dimension(:), allocatable, intent(out) :: interf_array
         type(interface_boundary) :: temp
         ! integer, parameter :: MAX_SIZE = 50
         integer :: num_values, i
 
         num_values = size(strings)
-        allocate(interf_var(num_values))
+        allocate(interf_array(num_values))
 
         do i = 1, num_values
             read (strings(i),*) temp
-            interf_var(i) = temp
-            ! print "('Patch ID: ', I3)", temp%patch_id
-            ! print "('Direction: ', A)", temp%dir
-            ! print "('Parameter: ', F4.2)", temp%UV_param
+            interf_array(i) = temp
+            print "('Patch ID: ', I3)", temp%patch_id
+            print "('Direction: ', A)", temp%dir
+            print "('Parameter: ', F4.2)", temp%UV_param
         end do
     end subroutine
 

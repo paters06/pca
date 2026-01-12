@@ -30,7 +30,7 @@ program diffusion_example
     file_name = file_name_inp
 
     call import_data(file_name, line_array)
-    call convert_data_to_surface(line_array, input_patches, refn_flag, ref_list, interf_flag, interf_var)
+    call convert_data_to_surface(line_array, input_patches, refn_flag, ref_list)
     call convert_data_to_solver(line_array, num_gauss_pts, kappa, bc_array, id_patches)
 
     do i_patch = 1, size(id_patches)
@@ -47,7 +47,7 @@ program diffusion_example
     call get_boundary_conditions_dof(input_patches, bc_array, id_patches, id_disp, u_pres, ctrl_pts_pres)
 
     call assemble_weak_form(input_patches, id_patches, interf_var, num_gauss_pts, kappa, Kmat, Fvec, patch_nodes)
-    call matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred, remainder_dofs)
-    call solve_matrix_equations(Kred, Fred, remainder_dofs, id_disp, u_pres, Usol)
-    call compute_postprocessing_solutions(Usol, input_patches, patch_nodes, file_name)
+    ! call matrix_reduction(Kmat, Fvec, u_pres, id_disp, Kred, Fred, remainder_dofs)
+    ! call solve_matrix_equations(Kred, Fred, remainder_dofs, id_disp, u_pres, Usol)
+    ! call compute_postprocessing_solutions(Usol, input_patches, patch_nodes, file_name)
 end program diffusion_example

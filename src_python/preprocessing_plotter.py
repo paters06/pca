@@ -56,6 +56,11 @@ def plot_geometry(contour, P_mat, dirichlet_points) -> None:
 
     # Control Points
     controlplot = ax.scatter(P_mat[:,0],P_mat[:,1])
+    num_points = np.shape(P_mat)[0]
+    control_id = np.linspace(0,num_points-1,num=num_points,dtype=int)
+
+    for i, txt in enumerate(control_id):
+        ax.annotate(txt, (P_mat[i,0], P_mat[i,1]))
 
     dirichletplot = plt.scatter(dirichlet_points[:,0],dirichlet_points[:,1],c = "g",marker = 'o')
 

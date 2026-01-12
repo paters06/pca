@@ -9,7 +9,7 @@ program refinement_example_9
     character(:), allocatable :: file_name
     character(len=50), dimension(:), allocatable :: line_array
     character(len=1), dimension(:,:), allocatable :: ref_list
-    integer :: refn_flag, interf_flag
+    integer :: refn_flag
     ! type(nurbs_surface) :: input_nurbs_surface, refined_surface
     type(nurbs_surface), dimension(:), allocatable :: input_patches
     type(interface_boundary), dimension(:), allocatable :: interf_var
@@ -17,7 +17,7 @@ program refinement_example_9
     file_name = "input_file_surface.txt"
 
     call import_data(file_name, line_array)
-    call convert_data_to_surface(line_array, input_patches, refn_flag, ref_list, interf_flag, interf_var)
+    call convert_data_to_surface(line_array, input_patches, refn_flag, ref_list)
 
     call print_nurbs_surface_info(input_patches(1))
     call print_string_matrix(input_patches(1)%refn_input)

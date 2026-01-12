@@ -1,5 +1,6 @@
 module utils_solver
     use utils
+    use derived_types
     implicit none
 contains
     function inverse_matrix_2(mat) result(inv_mat)
@@ -94,8 +95,9 @@ contains
         end do
     end subroutine compute_connectivity_matrices
 
-    subroutine compute_connectivity_matrices_2(nx, ny, p, q, i_patch, ni_dof, elem_mat)
+    subroutine compute_connectivity_matrices_2(nx, ny, p, q, i_patch, ni_dof, num_interfaces, elem_mat)
         integer, intent(in) :: nx, ny, p, q, i_patch, ni_dof
+        integer, dimension(2), intent(in) :: num_interfaces
         integer :: i_elem, i, j, ii, jj, num_elem
         integer :: c1, num_nonzero, i_nonzero
         integer, dimension(:,:), allocatable, intent(out) :: elem_mat
@@ -137,7 +139,7 @@ contains
                     if (i > 0) then
                         do jj = 0, q
                             do ii = 0, p
-                                c1 = compute_multipatch_global_dof(i + ii, j + jj, nx, ni_dof, i_patch)
+                                c1 = compute_multipatch_global_dof(i + ii, j + jj, nx, num_interfaces, ni_dof, i_patch)
                                 elem_mat(i_nonzero, i_elem) = c1
                                 i_nonzero = i_nonzero + 1
                             end do
@@ -150,7 +152,7 @@ contains
                             i_nonzero = i_nonzero + 1
 
                             ! Other patch dofs
-                            c1 = compute_multipatch_global_dof(1, j + jj, nx, ni_dof, i_patch)
+                            c1 = compute_multipatch_global_dof(1, j + jj, nx, num_interfaces, ni_dof, i_patch)
                             elem_mat(i_nonzero, i_elem) = c1
                             i_nonzero = i_nonzero + 1
                         end do
@@ -169,7 +171,8 @@ contains
         type(nurbs_surface), dimension(num_patches), intent(in) :: input_surf
         type(interface_boundary), dimension(:), allocatable, intent(in) :: interf_var
         integer :: i_patch, i_nodes, i, j, c1, c11, i_nodes_full, k_temp
-        integer :: nu, nv, ni_dof, p, q, r, s, num_numbering, num_interfaces
+        integer :: nu, nv, ni_dof, p, q, r, s, num_numbering
+        integer, dimension(2) :: num_interfaces
         real, dimension(:), allocatable :: UP, VP
         integer, intent(out) :: num_dofs_full
         integer, dimension(:,:), allocatable, intent(out) :: patch_nodes
@@ -236,7 +239,7 @@ contains
                 do j = 0, nv
                     do i = 0, nu
                         if (i > 0) then
-                            c11 = compute_multipatch_global_dof(i, j, nu, ni_dof, i_patch)
+                            c11 = compute_multipatch_global_dof(i, j, nu, num_interfaces, ni_dof, i_patch)
                         else
                             c11 = compute_global_dof(nu, j, nu)
                         end if
@@ -255,29 +258,131 @@ contains
         call print_integer_matrix(patch_nodes)
     end subroutine compute_patch_nodes
 
+    subroutine generate_node_numbering(input_surf, node_numbering)
+        type(nurbs_surface), dimension(:), allocatable, intent(in) :: input_surf
+        integer, dimension(:,:), allocatable, intent(out) :: node_numbering
+        integer :: num_total_nodes, num_patches, i_node, patch_node_i
+        integer :: num_patch_nodes, k_temp, i_nodes_full
+        integer :: i_patch, p, q, r, s, nu, nv, i, j, i_start, i_end
+        real, dimension(:), allocatable :: UP, VP
+        integer, dimension(2) :: num_interfaces
+
+        num_total_nodes = get_multipatch_number_nodes(input_surf)
+        num_patches = size(input_surf)
+        num_patch_nodes = 0
+        i_nodes_full = 0
+
+        allocate(node_numbering(0:num_total_nodes-1,0:2))
+        node_numbering = 0
+
+        patch_loop: do i_patch = 1, num_patches
+            p = input_surf(i_patch)%p
+            q = input_surf(i_patch)%q
+            UP = input_surf(i_patch)%U_knot
+            VP = input_surf(i_patch)%V_knot
+            num_interfaces = input_surf(i_patch)%num_interfaces
+        
+            r = size(UP) - 1
+            s = size(VP) - 1
+            nu = r - p - 1
+            nv = s - q - 1
+
+            i_node = 0
+
+            ! ITERATE THROUGH INTERFACES AND SET THE INDEX BOUNDS
+            ! USE IMPLEMENTATION FROM get_boundary_conditions_dof
+            ! AS REFERENCE
+
+            i_start = 0 + num_interfaces(1)
+            i_end = nu - num_interfaces(1)
+
+            do j = 0, nv
+                do i = 0, nu
+                    ! patch_node_i = compute_global_dof(i, j, nu)
+                    if (i_patch > 1) then
+                        if (i /= i_start) then
+                            patch_node_i = compute_multipatch_global_dof(i, j, nu, num_interfaces, num_patch_nodes, i_patch)
+                        else
+                            patch_node_i = compute_multipatch_global_dof(0, j, nu, num_interfaces, num_patch_nodes, 1)
+                        end if
+                    else
+                        patch_node_i = compute_multipatch_global_dof(i, j, nu, num_interfaces, num_patch_nodes, i_patch)
+                    end if
+                    node_numbering(i_nodes_full, 0) = i_patch
+                    node_numbering(i_nodes_full, 1) = i_node
+                    node_numbering(i_nodes_full, 2) = patch_node_i
+                    ! print "(I3, I3)", i_patch, i_node
+                    i_node = i_node + 1
+                    i_nodes_full = i_nodes_full + 1
+                end do
+            end do
+            k_temp = (nu+1-num_interfaces(1))*(nv-num_interfaces(2)) + nu
+            num_patch_nodes = num_patch_nodes + k_temp
+        end do patch_loop
+        call print_integer_matrix(node_numbering)
+    end subroutine generate_node_numbering
+
     function compute_global_dof(i, j, nu) result(dof)
         integer, intent(in) :: i, j, nu
         integer :: dof
         dof = j*(nu+1) + i
     end function compute_global_dof
 
-    function compute_multipatch_global_dof(i, j, nu, ni_dof, i_patch) result(dof)
+    function compute_multipatch_global_dof(i, j, nu, num_interfaces, ni_dof, i_patch) result(dof)
         integer, intent(in) :: i, j, nu, ni_dof, i_patch
+        integer, dimension(2), intent(in) :: num_interfaces
         integer :: dof
         if (i_patch > 1) then
-            dof = j*(nu) + i + ni_dof
+            dof = j*(nu+1-num_interfaces(1)) + i + ni_dof
         else
-            dof = j*(nu+1) + i
+            dof = j*(nu+1-num_interfaces(1)) + i
         end if
     end function compute_multipatch_global_dof
 
-    subroutine get_boundary_conditions_dof(surf, bc_array, id_patches, id_disp, u_pres, ctrl_pts_pres)
+    function get_multipatch_number_nodes(input_surf) result(num_total_nodes)
+        integer :: num_patches
+        type(nurbs_surface), dimension(:), allocatable, intent(in) :: input_surf
+        integer :: num_total_nodes
+
+        integer :: i_patch, p, q, r, s, nu, nv, k_temp
+        integer, dimension(2) :: num_interfaces
+        real, dimension(:), allocatable :: UP, VP
+        
+        num_patches = size(input_surf)
+        num_total_nodes = 0
+
+        do i_patch = 1, num_patches
+            p = input_surf(i_patch)%p
+            q = input_surf(i_patch)%q
+            UP = input_surf(i_patch)%U_knot
+            VP = input_surf(i_patch)%V_knot
+            num_interfaces = input_surf(i_patch)%num_interfaces
+
+            r = size(UP) - 1
+            s = size(VP) - 1
+            nu = r - p - 1
+            nv = s - q - 1
+
+            if (i_patch == 1) then
+                num_total_nodes = num_total_nodes + (nu+1)*nv + nu
+            else
+                ! k_temp = (nu+1-num_interfaces(1))*(nv-num_interfaces(2)) + nu
+                k_temp = (nu+1)*(nv+1)
+                num_total_nodes = num_total_nodes + k_temp
+            end if
+        end do
+
+        ! The first dof starts at 0, that is why it is added 1
+        num_total_nodes = num_total_nodes + 1
+    end function get_multipatch_number_nodes
+
+    subroutine get_boundary_conditions_dof(input_surf, bc_array, id_patches, id_disp, u_pres, ctrl_pts_pres)
         ! ctrl_pts_pres: Control points with prescribed essential boundary conditions
         use derived_types
         integer :: p, q
         real, dimension(:), allocatable :: UP, VP
         integer, dimension(:), allocatable, intent(in) :: id_patches
-        type(nurbs_surface), dimension(size(id_patches)), intent(in) :: surf
+        type(nurbs_surface), dimension(:), allocatable, intent(in) :: input_surf
         type(boundary_condition), dimension(:), allocatable, intent(in) :: bc_array
         
         integer, dimension(:), allocatable, intent(out) :: id_disp
@@ -285,11 +390,13 @@ contains
         real, dimension(:,:), allocatable, intent(out) :: ctrl_pts_pres
         real :: u_val
 
-        integer :: i, r, s, iu, jv, nu, nv, id, i_temp_1, id_i
-        integer :: i_patch, num_patches, ni_dof
+        integer :: i, r, s, iu, jv, nu, nv, id, i_temp_1, id_i, i_bc
+        integer :: i_patch, num_patches, ni_dof, num_bc
         integer, dimension(:), allocatable :: i_arr, temp_1
+        integer, dimension(2) :: num_interfaces
         real, dimension(:), allocatable :: temp_2
         real, dimension(:,:), allocatable :: temp_3, ctrl_pts_i
+        real, dimension(:,:), allocatable :: P_pts
 
         integer, parameter :: MAX_SIZE = 5000
         allocate(temp_1(0:MAX_SIZE-1))
@@ -300,18 +407,24 @@ contains
         temp_3 = 0.0
         i_temp_1 = 0
 
-        num_patches = size(id_patches)
+        ! num_patches = size(input_surf)
+        num_bc = size(bc_array)
 
         ni_dof = 0
 
-        patch_loop: do i_patch = 1, num_patches
-            p = surf(i_patch)%p
-            q = surf(i_patch)%q
-            UP = surf(i_patch)%U_knot
-            VP = surf(i_patch)%V_knot
+        patch_loop: do i_bc = 1, num_bc
+            print "(A, I3)", "BC #", i_bc
+            i_patch = id_patches(i_bc)
+            print "(A, I3)", "Patch #", i_patch
+            p = input_surf(i_patch)%p
+            q = input_surf(i_patch)%q
+            UP = input_surf(i_patch)%U_knot
+            VP = input_surf(i_patch)%V_knot
+            P_pts = input_surf(i_patch)%control_points
+            num_interfaces = input_surf(i_patch)%num_interfaces
             
-            allocate(ctrl_pts_i(0:size(surf(i_patch)%control_points,1)-1,0:size(surf(i_patch)%control_points,2)-1))
-            ctrl_pts_i = surf(i_patch)%control_points
+            allocate(ctrl_pts_i(0:size(P_pts,1)-1,0:size(P_pts,2)-1))
+            ctrl_pts_i = input_surf(i_patch)%control_points
 
             r = size(UP) - 1
             s = size(VP) - 1
@@ -320,34 +433,35 @@ contains
 
             ! print "(I3, I3)", lbound(ctrl_pts_i,1), ubound(ctrl_pts_i,1)
 
-            if (bc_array(i_patch)%dir == "U") then
+            if (bc_array(i_bc)%dir == "U") then
                 allocate(i_arr(0:nu))
-                u_val = bc_array(i_patch)%prescribed_val
+                u_val = bc_array(i_bc)%prescribed_val
                 i_arr = (/(i, i = 0, nu)/)
-                if (abs(bc_array(i_patch)%UV_param) < 1e-5) then
+                if (abs(bc_array(i_bc)%UV_param) < 1e-5) then
                     jv = 0
                 end if
-                if (abs(bc_array(i_patch)%UV_param-1.0) < 1e-5) then
+                if (abs(bc_array(i_bc)%UV_param-1.0) < 1e-5) then
                     jv = nv
                 end if
 
                 do i = 0, nu
                     id = compute_global_dof(i_arr(i),jv,nu)
-                    ! print "(A, I3, A, F6.1)", "Global dof:", id, " |BC value:", bc_arr(j)
-                    temp_1(i_temp_1) = id
+                    id_i = compute_multipatch_global_dof(i_arr(i), jv, nu, num_interfaces, ni_dof, i_patch)
+                    print "(A, I3, A, I3, A, F6.1)", "Patch ID:", i_patch, "|Global dof:", id_i, " |BC value:", u_val
+                    temp_1(i_temp_1) = id_i
                     temp_2(i_temp_1) = u_val
                     temp_3(i_temp_1,:) = ctrl_pts_i(id,:)
                     i_temp_1 = i_temp_1 + 1
                 end do
                 deallocate(i_arr)
-            else if (bc_array(i_patch)%dir == "V") then
+            else if (bc_array(i_bc)%dir == "V") then
                 allocate(i_arr(0:nv))
-                u_val = bc_array(i_patch)%prescribed_val
+                u_val = bc_array(i_bc)%prescribed_val
                 i_arr = (/(i, i = 0, nv)/)
-                if (abs(bc_array(i_patch)%UV_param) < 1e-5) then
+                if (abs(bc_array(i_bc)%UV_param) < 1e-5) then
                     iu = 0
                 end if
-                if (abs(bc_array(i_patch)%UV_param-1.0) < 1e-5) then
+                if (abs(bc_array(i_bc)%UV_param-1.0) < 1e-5) then
                     iu = nu
                 end if
 
@@ -355,7 +469,7 @@ contains
 
                 do i = 0, nv
                     id = compute_global_dof(iu,i_arr(i),nu)
-                    id_i = compute_multipatch_global_dof(iu, i_arr(i), nu, ni_dof, i_patch)
+                    id_i = compute_multipatch_global_dof(iu, i_arr(i), nu, num_interfaces, ni_dof, i_patch)
                     print "(A, I3, A, I3, A, F6.1)", "Patch ID:", i_patch, "|Global dof:", id_i, " |BC value:", u_val
                     ! print "(F6.3)", ctrl_pts_i(id,:)
                     temp_1(i_temp_1) = id_i

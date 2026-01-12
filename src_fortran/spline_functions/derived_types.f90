@@ -27,6 +27,7 @@ module derived_types
         character(len=1), dimension(:,:), allocatable :: refn_input
         integer :: refn_flag
         integer, dimension(2) :: num_interfaces
+        type(interface_boundary), dimension(:), allocatable :: interfaces
     end type nurbs_surface
 
     type :: interface_boundary

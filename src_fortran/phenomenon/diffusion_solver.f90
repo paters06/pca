@@ -266,46 +266,13 @@ contains
         end do param_coor_loop
     end subroutine element_stiffness_matrix
     
-    subroutine get_multipatch_dofs(num_patches, input_surf, num_dofs_full)
-        integer, intent(in) :: num_patches
-        type(nurbs_surface), dimension(num_patches), intent(in) :: input_surf
-        integer, intent(out) :: num_dofs_full
-
-        integer :: i_patch, p, q, r, s, nu, nv
-        real, dimension(:), allocatable :: UP, VP
-        
-        num_dofs_full = 0
-        ! num_patches = size(id_patches)
-
-        do i_patch = 1, num_patches
-            p = input_surf(i_patch)%p
-            q = input_surf(i_patch)%q
-            UP = input_surf(i_patch)%U_knot
-            VP = input_surf(i_patch)%V_knot
-
-            r = size(UP) - 1
-            s = size(VP) - 1
-            nu = r - p - 1
-            nv = s - q - 1
-
-            if (i_patch == 1) then
-                num_dofs_full = num_dofs_full + (nu+1)*nv + nu
-            else
-                num_dofs_full = num_dofs_full + (nu)*nv + nu
-            end if
-        end do
-
-        ! The first dof starts at 0, that is why it is added 1
-        num_dofs_full = num_dofs_full + 1
-    end subroutine get_multipatch_dofs
-
     subroutine assemble_weak_form(input_surf, id_patches, interf_var, num_gauss_pts, kappa, Kmat, Fvec, patch_nodes)
         use nurbs_curve_module, only: weighted_control_points
         use nurbs_surface_module, only: create_control_net
         use derived_types, only: nurbs_surface
-        use utils_solver, only: compute_connectivity_matrices_2, compute_patch_nodes
+        use utils_solver
         integer, dimension(:), allocatable, intent(in) :: id_patches
-        type(nurbs_surface), dimension(size(id_patches)), intent(in) :: input_surf
+        type(nurbs_surface), dimension(:), allocatable, intent(in) :: input_surf
         type(interface_boundary), dimension(:), allocatable, intent(in) :: interf_var
         integer :: p, q
         integer, intent(in) :: num_gauss_pts
@@ -322,6 +289,7 @@ contains
         real, dimension(:,:), allocatable :: K_local
         integer, dimension(:,:), allocatable :: global_dofs_loc
         integer, dimension(:,:), allocatable :: elem_mat
+        integer, dimension(2) :: num_interfaces
 
         integer :: n_der
         integer :: i_elem, num_elements, r, s, nu, nv, i_global_loop
@@ -330,9 +298,10 @@ contains
         integer :: num_patches, ni_dof
 
         num_patches = size(id_patches)
-        call get_multipatch_dofs(num_patches, input_surf, num_full_dofs)
+        ! call get_multipatch_dofs(num_patches, input_surf, num_full_dofs)
+        call generate_node_numbering(input_surf, patch_nodes)
 
-        call compute_patch_nodes(num_patches, input_surf, interf_var, num_full_dofs, patch_nodes)
+        ! call compute_patch_nodes(num_patches, input_surf, interf_var, num_full_dofs, patch_nodes)
 
         ! Degree of derivatives to compute
         n_der = 1
@@ -359,7 +328,7 @@ contains
             nu = r - p - 1
             nv = s - q - 1
 
-            call compute_connectivity_matrices_2(nu, nv, p, q, i_patch, ni_dof, elem_mat)
+            call compute_connectivity_matrices_2(nu, nv, p, q, i_patch, ni_dof, num_interfaces, elem_mat)
 
             call weighted_control_points(P_pts, w_pts, Pw_pts)
             call create_control_net(nu, nv, Pw_pts, Pw_net)
